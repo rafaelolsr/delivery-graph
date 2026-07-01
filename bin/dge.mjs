@@ -3,7 +3,9 @@ import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import {
+  getNextReadyNode,
   readGraph,
+  summarizeGraph,
   transitionNode,
   validateGraph,
   writeGraph
@@ -71,6 +73,9 @@ function main() {
         break;
       case "status":
         runStatus(graphPath, args);
+        break;
+      case "next":
+        runNext(graphPath, args);
         break;
       case "transition":
         runTransition(graphPath, args);
@@ -158,6 +163,34 @@ function runStatus(graphPath, args = {}) {
     writeStatusReport(outputPath, markdown);
     console.log(`status report: ${outputPath}`);
   }
+}
+
+function runNext(graphPath, args = {}) {
+  const graph = readGraph(graphPath);
+  const summary = summarizeGraph(graph);
+  const next = getNextReadyNode(graph);
+  const doneCount = (summary.statuses.get("done") ?? []).length;
+  const result = {
+    next: next ? { id: next.id, title: next.title, track: next.track, type: next.type } : null,
+    ready_count: summary.readyNodes.length,
+    done_count: doneCount,
+    remaining_count: graph.nodes.length - doneCount,
+    blocker_gap_count: summary.blockerGaps.length
+  };
+
+  if (args.json) {
+    console.log(JSON.stringify(result, null, 2));
+    return;
+  }
+
+  if (next) {
+    console.log(`next: ${next.id} ${next.title}`);
+  } else if (result.remaining_count > 0) {
+    console.log("next: none (remaining nodes are blocked or waiting on dependencies)");
+  } else {
+    console.log("next: none (all nodes done)");
+  }
+  console.log(`ready: ${result.ready_count} | done: ${result.done_count}/${graph.nodes.length} | blocker gaps: ${result.blocker_gap_count}`);
 }
 
 function runTransition(graphPath, args) {
@@ -538,6 +571,7 @@ Usage:
   dge init --title "Graph title" [--graph delivery-graph/graph.json]
   dge validate [--graph path]
   dge status [--graph path] [--out delivery-graph/reports/status.md | --save]
+  dge next [--graph path] [--json]
   dge evidence add NODE-001 --satisfies "npm test" --summary "npm test passed" [--artifact output.txt]
   dge evidence run NODE-001 --satisfies "npm test" -- npm test
   dge evidence playwright NODE-001 --satisfies "checkout works" --url http://localhost:3000 --script tests/e2e/checkout.spec.ts [--artifacts test-results]

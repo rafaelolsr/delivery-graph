@@ -371,6 +371,97 @@ test("CLI captures failed Playwright attempts without satisfying evidence", () =
   assert.equal(fs.readdirSync(path.join(tempDir, "delivery-graph", "evidence", "NODE-001", "artifacts")).filter((file) => file.includes("playwright")).length, 1);
 });
 
+test("CLI next walks the ready queue as dependencies complete", () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "dge-next-"));
+  const graphPath = path.join(tempDir, "delivery-graph", "graph.json");
+
+  run("init", "--graph", graphPath, "--title", "Next graph");
+  run("add-demand", "--graph", graphPath, "--title", "Demand", "--source", "test", "--outcome", "The queue advances");
+  run(
+    "add-requirement",
+    "--graph",
+    graphPath,
+    "--demand",
+    "DEM-001",
+    "--statement",
+    "next returns the head of the ready queue",
+    "--acceptance",
+    "next advances when a dependency completes",
+    "--evidence",
+    "proof"
+  );
+  run("add-track", "--graph", graphPath, "--title", "Validation");
+  run(
+    "add-node",
+    "--graph",
+    graphPath,
+    "--title",
+    "Parent",
+    "--type",
+    "test",
+    "--track",
+    "TRK-validation",
+    "--requirements",
+    "REQ-001",
+    "--validation",
+    "parent proof"
+  );
+  run(
+    "add-node",
+    "--graph",
+    graphPath,
+    "--title",
+    "Child",
+    "--type",
+    "test",
+    "--track",
+    "TRK-validation",
+    "--requirements",
+    "REQ-001",
+    "--depends-on",
+    "NODE-001",
+    "--validation",
+    "child proof"
+  );
+
+  const first = JSON.parse(run("next", "--graph", graphPath, "--json"));
+  assert.equal(first.next.id, "NODE-001");
+  assert.equal(first.ready_count, 1);
+  assert.equal(first.done_count, 0);
+  assert.equal(first.remaining_count, 2);
+
+  completeNode(graphPath, "NODE-001", "parent proof");
+
+  const second = JSON.parse(run("next", "--graph", graphPath, "--json"));
+  assert.equal(second.next.id, "NODE-002");
+  assert.equal(second.done_count, 1);
+  assert.equal(second.remaining_count, 1);
+
+  completeNode(graphPath, "NODE-002", "child proof");
+
+  const third = JSON.parse(run("next", "--graph", graphPath, "--json"));
+  assert.equal(third.next, null);
+  assert.equal(third.ready_count, 0);
+  assert.equal(third.remaining_count, 0);
+});
+
+function completeNode(graphPath, nodeId, satisfies) {
+  run(
+    "evidence",
+    "run",
+    nodeId,
+    "--graph",
+    graphPath,
+    "--satisfies",
+    satisfies,
+    "--",
+    process.execPath,
+    "-e",
+    "console.log('proof')"
+  );
+  run("done", nodeId, "--graph", graphPath);
+}
+
 function run(...args) {
   return execFileSync(process.execPath, [cliPath, ...args], {
     encoding: "utf8",
