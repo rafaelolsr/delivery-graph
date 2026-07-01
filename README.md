@@ -137,7 +137,7 @@ DGE should be proven from a real consuming repository, not by creating all runti
 
 The battle test should prove:
 
-- `/dge-intake` replaces ad hoc `grill-me` behavior by turning raw asks into explicit demands, testable requirements, and blocker gaps.
+- `/dge-intake` turns raw asks into explicit demands, testable requirements, and blocker gaps.
 - `/dge-plan-graph` converts requirements into tracks, nodes, dependencies, and validation contracts.
 - `/dge-work-node` keeps implementation scoped to one ready node.
 - `/dge-verify` blocks completion until evidence exists and writes user-visible proof under `delivery-graph/evidence/NODE-<id>/verification.md`.
