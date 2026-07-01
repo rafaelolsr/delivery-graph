@@ -40,7 +40,7 @@ test("CLI supports usable local loop through evidence, verify, status, and revie
     "--requirements",
     "REQ-001",
     "--validation",
-    "npm test"
+    "node proof command"
   );
 
   assert.ok(fs.existsSync(path.join(tempDir, "delivery-graph", "demands", "DEM-001.md")));
@@ -48,7 +48,7 @@ test("CLI supports usable local loop through evidence, verify, status, and revie
 
   const missingStatus = run("status", "--graph", graphPath);
   assert.match(missingStatus, /Missing validation evidence/);
-  assert.match(missingStatus, /NODE-001: npm test/);
+  assert.match(missingStatus, /NODE-001: node proof command/);
 
   run("transition", "NODE-001", "in_progress", "--graph", graphPath);
   run("transition", "NODE-001", "review", "--graph", graphPath);
@@ -58,16 +58,38 @@ test("CLI supports usable local loop through evidence, verify, status, and revie
     /missing validation evidence/
   );
 
+  assert.throws(
+    () => run(
+      "evidence",
+      "run",
+      "NODE-001",
+      "--graph",
+      graphPath,
+      "--satisfies",
+      "node proof command",
+      "--",
+      process.execPath,
+      "-e",
+      "process.exit(7)"
+    ),
+    /Command failed with exit code 7; output artifact:/
+  );
+  assert.equal(fs.existsSync(path.join(tempDir, "delivery-graph", "evidence", "NODE-001", "evidence.json")), false);
+
   run(
     "evidence",
-    "add",
+    "run",
     "NODE-001",
     "--graph",
     graphPath,
     "--satisfies",
-    "npm test",
+    "node proof command",
     "--summary",
-    "npm test passed"
+    "proof command passed",
+    "--",
+    process.execPath,
+    "-e",
+    "console.log('proof')"
   );
 
   const verifiedOutput = run("verify", "NODE-001", "--graph", graphPath);
@@ -82,7 +104,7 @@ test("CLI supports usable local loop through evidence, verify, status, and revie
   assert.equal(doneGraph.nodes[0].status, "done");
   assert.match(
     fs.readFileSync(path.join(tempDir, "delivery-graph", "evidence", "NODE-001", "verification.md"), "utf8"),
-    /npm test: satisfied/
+    /node proof command: satisfied/
   );
 
   const reviewOutput = run("review", "--graph", graphPath);

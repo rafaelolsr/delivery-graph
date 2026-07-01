@@ -78,11 +78,11 @@ The default graph path is `delivery-graph/graph.json`.
 Evidence is the core completion gate:
 
 ```bash
-npx dge evidence add NODE-001 --satisfies "npm run check" --summary "All checks passed"
+npx dge evidence run NODE-001 --satisfies "npm run check" -- npm run check
 npx dge verify NODE-001
 ```
 
-`verify` fails until every `validation.required[]` item on the node has matching evidence. When it succeeds, it writes `delivery-graph/evidence/NODE-001/verification.md`.
+`evidence run` executes the validation command and stores stdout/stderr/exit code under `delivery-graph/evidence/NODE-001/artifacts/`. Passing commands are added to `evidence.json`; failed commands are saved as attempt artifacts but are not counted as evidence. Use `evidence add` for manual approvals or external proof the agent cannot capture. `verify` fails until every `validation.required[]` item on the node has matching evidence. When it succeeds, it writes `delivery-graph/evidence/NODE-001/verification.md`.
 
 ## Local review
 

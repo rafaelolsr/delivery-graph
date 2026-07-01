@@ -58,6 +58,79 @@ export function addEvidence(graphPath, graph, nodeId, input) {
   return { manifest: nextManifest, record: item };
 }
 
+export function addCommandEvidence(graphPath, graph, nodeId, input) {
+  assertValidGraph(graph);
+  const node = findNode(graph, nodeId);
+  const satisfies = requireText(input.satisfies, "satisfies");
+  const command = requireCommand(input.command);
+  const exitCode = Number(input.exitCode);
+
+  if (exitCode !== 0) {
+    throw new Error(`${node.id} command evidence failed with exit code ${exitCode}`);
+  }
+
+  if (!node.validation.required.includes(satisfies)) {
+    throw new Error(`${node.id} validation contract does not include: ${satisfies}`);
+  }
+
+  const manifest = readEvidenceManifest(graphPath, node);
+  const evidenceId = input.id ?? nextEvidenceId(manifest.items);
+  const artifact = writeCommandArtifact(graphPath, node, evidenceId, {
+    command,
+    exitCode,
+    stdout: input.stdout ?? "",
+    stderr: input.stderr ?? "",
+    createdAt: input.createdAt ?? new Date().toISOString()
+  });
+  const item = {
+    id: evidenceId,
+    kind: "command",
+    summary: input.summary ?? `${command.join(" ")} passed`,
+    satisfies,
+    artifact,
+    command,
+    exit_code: exitCode,
+    created_at: input.createdAt ?? new Date().toISOString()
+  };
+
+  const nextManifest = {
+    node_id: node.id,
+    items: [...manifest.items, item]
+  };
+
+  writeEvidenceManifest(graphPath, node, nextManifest);
+  return { manifest: nextManifest, record: item };
+}
+
+export function writeCommandAttemptArtifact(graphPath, graph, nodeId, input) {
+  assertValidGraph(graph);
+  const node = findNode(graph, nodeId);
+  const satisfies = requireText(input.satisfies, "satisfies");
+  const command = requireCommand(input.command);
+  const createdAt = input.createdAt ?? new Date().toISOString();
+
+  if (!node.validation.required.includes(satisfies)) {
+    throw new Error(`${node.id} validation contract does not include: ${satisfies}`);
+  }
+
+  const evidenceDir = resolveRuntimePath(graphPath, node.validation.evidence_path);
+  const artifactDir = path.join(evidenceDir, "artifacts");
+  const artifactFileName = `ATTEMPT-${safeFilePart(createdAt)}-command.json`;
+  const artifactPath = path.join(artifactDir, artifactFileName);
+  const artifact = {
+    command,
+    satisfies,
+    exit_code: input.exitCode,
+    stdout: input.stdout ?? "",
+    stderr: input.stderr ?? "",
+    created_at: createdAt
+  };
+
+  fs.mkdirSync(artifactDir, { recursive: true });
+  fs.writeFileSync(artifactPath, `${JSON.stringify(artifact, null, 2)}\n`);
+  return { artifact: `artifacts/${artifactFileName}`, artifactPath };
+}
+
 export function getEvidenceStatus(graphPath, graph, node) {
   const manifest = readEvidenceManifest(graphPath, node);
   const satisfied = new Set(manifest.items.map((item) => item.satisfies));
@@ -140,6 +213,23 @@ function copyArtifact(graphPath, node, evidenceId, artifactPath) {
   return `artifacts/${artifactFileName}`;
 }
 
+function writeCommandArtifact(graphPath, node, evidenceId, result) {
+  const evidenceDir = resolveRuntimePath(graphPath, node.validation.evidence_path);
+  const artifactDir = path.join(evidenceDir, "artifacts");
+  const artifactFileName = `${evidenceId}-command.json`;
+  const artifact = {
+    command: result.command,
+    exit_code: result.exitCode,
+    stdout: result.stdout,
+    stderr: result.stderr,
+    created_at: result.createdAt
+  };
+
+  fs.mkdirSync(artifactDir, { recursive: true });
+  fs.writeFileSync(path.join(artifactDir, artifactFileName), `${JSON.stringify(artifact, null, 2)}\n`);
+  return `artifacts/${artifactFileName}`;
+}
+
 function writeEvidenceSummary(graphPath, node, manifest) {
   const evidenceDir = resolveRuntimePath(graphPath, node.validation.evidence_path);
   const lines = [
@@ -196,4 +286,15 @@ function requireText(value, field) {
     throw new Error(`${field} is required`);
   }
   return value.trim();
+}
+
+function requireCommand(command) {
+  if (!Array.isArray(command) || command.length === 0 || command.some((part) => typeof part !== "string" || part === "")) {
+    throw new Error("command is required");
+  }
+  return command;
+}
+
+function safeFilePart(value) {
+  return String(value).replace(/[^A-Za-z0-9-]/g, "-");
 }

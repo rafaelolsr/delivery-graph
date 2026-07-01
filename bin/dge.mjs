@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
+import { spawnSync } from "node:child_process";
 import {
   readGraph,
   transitionNode,
@@ -9,11 +10,13 @@ import {
 } from "../src/graph-engine.mjs";
 import { renderStatus } from "../src/status-renderer.mjs";
 import {
+  addCommandEvidence,
   addEvidence,
   getAllEvidenceStatuses,
   getEvidenceStatus,
   findNode,
-  verifyNode
+  verifyNode,
+  writeCommandAttemptArtifact
 } from "../src/evidence-engine.mjs";
 import {
   defaultReviewPath,
@@ -152,18 +155,57 @@ function runTransition(graphPath, args) {
 
 function runEvidence(graphPath, args) {
   const [subcommand, nodeId] = args._;
-  if (subcommand !== "add" || !nodeId) {
-    throw new Error("Usage: dge evidence add NODE-### --satisfies \"...\" --summary \"...\" [--kind command] [--artifact path]");
+  if (!nodeId || !["add", "run"].includes(subcommand)) {
+    throw new Error("Usage: dge evidence add NODE-### --satisfies \"...\" --summary \"...\" [--kind command] [--artifact path]\n       dge evidence run NODE-### --satisfies \"...\" [--summary \"...\"] -- <command>");
   }
 
   const graph = readGraph(graphPath);
-  const { record } = addEvidence(graphPath, graph, nodeId, {
-    kind: args.kind,
-    summary: args.summary,
-    satisfies: args.satisfies,
-    artifact: args.artifact
-  });
+  const { record } = subcommand === "add"
+    ? addEvidence(graphPath, graph, nodeId, {
+      kind: args.kind,
+      summary: args.summary,
+      satisfies: args.satisfies,
+      artifact: args.artifact
+    })
+    : runCommandEvidence(graphPath, graph, nodeId, args);
   printRecord("evidence", record);
+}
+
+function runCommandEvidence(graphPath, graph, nodeId, args) {
+  if (!Array.isArray(args.command) || args.command.length === 0) {
+    throw new Error("Usage: dge evidence run NODE-### --satisfies \"...\" [--summary \"...\"] -- <command>");
+  }
+
+  const result = spawnSync(args.command[0], args.command.slice(1), {
+    cwd: process.cwd(),
+    encoding: "utf8",
+    maxBuffer: 10 * 1024 * 1024
+  });
+
+  if (result.error) {
+    throw new Error(`Command failed to start: ${result.error.message}`);
+  }
+
+  const exitCode = result.status ?? 1;
+  if (exitCode !== 0) {
+    const { artifactPath } = writeCommandAttemptArtifact(graphPath, graph, nodeId, {
+      satisfies: args.satisfies,
+      command: args.command,
+      exitCode,
+      stdout: result.stdout,
+      stderr: result.stderr
+    });
+    throw new Error(`Command failed with exit code ${exitCode}; output artifact: ${artifactPath}`);
+  }
+
+  return addCommandEvidence(graphPath, graph, nodeId, {
+    satisfies: args.satisfies,
+    summary: args.summary,
+    command: args.command,
+    exitCode,
+    stdout: result.stdout,
+    stderr: result.stderr
+  });
 }
 
 function runVerify(graphPath, args) {
@@ -285,6 +327,11 @@ function parseArgs(rawArgs) {
 
   for (let index = 0; index < rawArgs.length; index += 1) {
     const token = rawArgs[index];
+    if (token === "--") {
+      parsed.command = rawArgs.slice(index + 1);
+      break;
+    }
+
     if (!token.startsWith("--")) {
       parsed._.push(token);
       continue;
@@ -336,6 +383,7 @@ Usage:
   dge validate [--graph path]
   dge status [--graph path]
   dge evidence add NODE-001 --satisfies "npm test" --summary "npm test passed" [--artifact output.txt]
+  dge evidence run NODE-001 --satisfies "npm test" -- npm test
   dge verify NODE-001 [--graph path]
   dge review [--graph path] [--out path]
   dge sync linear [--graph path] [--out delivery-graph/sync/linear.json]

@@ -31,7 +31,7 @@ npm run dge -- status
 Do not mark a node done without evidence. Use:
 
 ```bash
-npm run dge -- evidence add NODE-001 --satisfies "..." --summary "..."
+npm run dge -- evidence run NODE-001 --satisfies "..." -- <validation-command>
 npm run dge -- verify NODE-001
 ```
 

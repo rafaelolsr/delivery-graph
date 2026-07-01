@@ -112,7 +112,7 @@ npx dge add-demand --title "Safer releases" --source "user" --outcome "Every com
 npx dge add-requirement --demand DEM-001 --statement "Nodes require validation evidence" --acceptance "Verify fails without evidence" --evidence "Evidence manifest"
 npx dge add-track --title "Validation"
 npx dge add-node --title "Add evidence gate" --type test --track TRK-validation --requirements REQ-001 --validation "npm test"
-npx dge evidence add NODE-001 --satisfies "npm test" --summary "npm test passed"
+npx dge evidence run NODE-001 --satisfies "npm test" -- npm test
 npx dge verify NODE-001
 npx dge status
 npx dge review
@@ -153,7 +153,7 @@ npx dge add-demand --title "..." --source "user" --outcome "..."
 npx dge add-requirement --demand DEM-001 --statement "..." --acceptance "..." --evidence "..."
 npx dge add-track --title "Validation"
 npx dge add-node --title "..." --type implementation --track TRK-validation --requirements REQ-001 --validation "..."
-npx dge evidence add NODE-001 --satisfies "..." --summary "..."
+npx dge evidence run NODE-001 --satisfies "..." -- <validation-command>
 npx dge verify NODE-001
 npx dge review
 ```

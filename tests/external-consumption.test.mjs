@@ -100,12 +100,16 @@ test("installed package runs DGE intake and evidence loop from another repo", ()
   runDge(
     consumerDir,
     "evidence",
-    "add",
+    "run",
     "NODE-001",
     "--satisfies",
     REQUIRED_EVIDENCE,
     "--summary",
-    "Intake artifacts and blocker resolution are persisted in delivery-graph/"
+    "Intake artifacts and blocker resolution are persisted in delivery-graph/",
+    "--",
+    process.execPath,
+    "-e",
+    "console.log('intake evidence captured')"
   );
   const verifyOutput = runDge(consumerDir, "verify", "NODE-001");
   assert.match(verifyOutput, /NODE-001 verified/);

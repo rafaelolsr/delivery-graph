@@ -4,9 +4,11 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import {
+  addCommandEvidence,
   addEvidence,
   getEvidenceStatus,
-  verifyNode
+  verifyNode,
+  writeCommandAttemptArtifact
 } from "../src/evidence-engine.mjs";
 
 test("adds evidence and verifies a node", () => {
@@ -54,6 +56,76 @@ test("evidence must satisfy the node validation contract", () => {
     }),
     /validation contract does not include/
   );
+});
+
+test("command evidence records output artifact only when command passes", () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "dge-evidence-"));
+  const graphPath = path.join(tempDir, "delivery-graph", "graph.json");
+  const graph = makeGraph();
+
+  const added = addCommandEvidence(graphPath, graph, "NODE-001", {
+    satisfies: "npm test",
+    command: ["npm", "test"],
+    exitCode: 0,
+    stdout: "passed\n",
+    stderr: "",
+    createdAt: "2026-06-30T00:00:00Z"
+  });
+
+  assert.equal(added.record.kind, "command");
+  assert.equal(added.record.artifact, "artifacts/EVD-001-command.json");
+
+  const artifactPath = path.join(tempDir, "delivery-graph", "evidence", "NODE-001", "artifacts", "EVD-001-command.json");
+  const artifact = JSON.parse(fs.readFileSync(artifactPath, "utf8"));
+  assert.deepEqual(artifact.command, ["npm", "test"]);
+  assert.equal(artifact.exit_code, 0);
+  assert.equal(artifact.stdout, "passed\n");
+});
+
+test("command evidence refuses failed commands", () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "dge-evidence-"));
+  const graphPath = path.join(tempDir, "delivery-graph", "graph.json");
+  const graph = makeGraph();
+
+  assert.throws(
+    () => addCommandEvidence(graphPath, graph, "NODE-001", {
+      satisfies: "npm test",
+      command: ["npm", "test"],
+      exitCode: 1,
+      stdout: "",
+      stderr: "failed\n"
+    }),
+    /command evidence failed with exit code 1/
+  );
+
+  assert.equal(fs.existsSync(path.join(tempDir, "delivery-graph", "evidence", "NODE-001", "evidence.json")), false);
+});
+
+test("failed command attempts can be saved without adding evidence", () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "dge-evidence-"));
+  const graphPath = path.join(tempDir, "delivery-graph", "graph.json");
+  const graph = makeGraph();
+
+  const { artifactPath } = writeCommandAttemptArtifact(graphPath, graph, "NODE-001", {
+    satisfies: "npm test",
+    command: ["npm", "test"],
+    exitCode: 1,
+    stdout: "",
+    stderr: "failed\n",
+    createdAt: "2026-06-30T00:00:00Z"
+  });
+
+  assert.match(artifactPath, /ATTEMPT-2026-06-30T00-00-00Z-command\.json$/);
+  assert.equal(fs.existsSync(path.join(tempDir, "delivery-graph", "evidence", "NODE-001", "evidence.json")), false);
+  assert.equal(JSON.parse(fs.readFileSync(artifactPath, "utf8")).stderr, "failed\n");
+
+  const unsafeAttempt = writeCommandAttemptArtifact(graphPath, graph, "NODE-001", {
+    satisfies: "npm test",
+    command: ["npm", "test"],
+    exitCode: 1,
+    createdAt: "../bad/.."
+  });
+  assert.equal(path.dirname(unsafeAttempt.artifactPath), path.join(tempDir, "delivery-graph", "evidence", "NODE-001", "artifacts"));
 });
 
 function makeGraph() {
