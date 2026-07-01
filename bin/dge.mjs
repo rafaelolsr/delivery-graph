@@ -47,7 +47,9 @@ import {
   addRequirement,
   addTrack,
   createGraph,
-  resolveGap
+  removeNode,
+  resolveGap,
+  setNodeValidation
 } from "../src/graph-authoring.mjs";
 import { installSkills } from "../src/skill-installer.mjs";
 
@@ -115,6 +117,12 @@ function main() {
         break;
       case "add-node":
         runMutation(graphPath, (graph) => addNode(graph, mapNodeArgs(args)), args);
+        break;
+      case "remove-node":
+        runMutation(graphPath, (graph) => removeNode(graph, args._[0] ?? args.id), args);
+        break;
+      case "set-validation":
+        runMutation(graphPath, (graph) => setNodeValidation(graph, args._[0] ?? args.id, args.validation), args);
         break;
       case "install-skills":
         runInstallSkills(args);
@@ -686,5 +694,7 @@ Usage:
   dge resolve-gap GAP-001 --resolution "..."
   dge add-track --title "Implementation"
   dge add-node --title "..." --type implementation --track TRK-implementation --requirements REQ-001 --validation "npm test"
+  dge remove-node NODE-001
+  dge set-validation NODE-001 --validation "npm test" --validation "lint passes"
 `);
 }
