@@ -131,6 +131,32 @@ test("installed package runs DGE intake and evidence loop from another repo", ()
   assert.equal(fs.existsSync(path.join(consumerDir, "delivery-graph", "sync", "ado.json")), true);
 });
 
+test("installed package installs the dge-* skills into a consuming harness", () => {
+  const packDir = fs.mkdtempSync(path.join(os.tmpdir(), "dge-pack-"));
+  const consumerDir = fs.mkdtempSync(path.join(os.tmpdir(), "dge-consumer-"));
+  const tarball = packPackage(packDir);
+
+  run("npm", ["init", "-y"], consumerDir);
+  run("npm", ["install", "--silent", "--no-audit", "--no-fund", tarball], consumerDir);
+  fs.mkdirSync(path.join(consumerDir, ".claude"), { recursive: true });
+
+  const output = runDge(consumerDir, "install-skills");
+  assert.match(output, /Installed DGE skills for claude \(copy\)/);
+
+  const skillsRoot = path.join(consumerDir, ".claude", "skills");
+  const packagedSkills = fs
+    .readdirSync(path.join(repoRoot, "skills"), { withFileTypes: true })
+    .filter((entry) => entry.isDirectory() && entry.name.startsWith("dge-"))
+    .map((entry) => entry.name);
+
+  for (const skill of packagedSkills) {
+    assert.ok(
+      fs.existsSync(path.join(skillsRoot, skill, "SKILL.md")),
+      `expected ${skill}/SKILL.md to be installed`
+    );
+  }
+});
+
 function packPackage(packDir) {
   run("npm", ["pack", "--silent", "--pack-destination", packDir], repoRoot);
   const tarballs = fs.readdirSync(packDir).filter((file) => file.endsWith(".tgz"));

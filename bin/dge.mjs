@@ -47,6 +47,7 @@ import {
   createGraph,
   resolveGap
 } from "../src/graph-authoring.mjs";
+import { installSkills } from "../src/skill-installer.mjs";
 
 const DEFAULT_GRAPH_PATH = "delivery-graph/graph.json";
 
@@ -113,6 +114,9 @@ function main() {
       case "add-node":
         runMutation(graphPath, (graph) => addNode(graph, mapNodeArgs(args)));
         break;
+      case "install-skills":
+        runInstallSkills(args);
+        break;
       default:
         throw new Error(`Unknown command: ${command}`);
     }
@@ -134,6 +138,25 @@ function runInit(graphPath, args) {
   });
   writeGraph(graphPath, graph);
   printRecord("graph", graph.graph);
+}
+
+function runInstallSkills(args) {
+  const result = installSkills({
+    harness: typeof args.harness === "string" ? args.harness : undefined,
+    symlink: Boolean(args.symlink),
+    force: Boolean(args.force)
+  });
+
+  console.log(`Installed DGE skills for ${result.harness} (${result.mode}) -> ${result.skillsDir}`);
+  if (result.installed.length > 0) {
+    console.log(`installed: ${result.installed.join(", ")}`);
+  }
+  if (result.skipped.length > 0) {
+    console.log(`skipped (already present, pass --force to overwrite): ${result.skipped.join(", ")}`);
+  }
+  if (result.installed.length === 0 && result.skipped.length === 0) {
+    console.log("no dge-* skills found to install");
+  }
 }
 
 function runValidate(graphPath) {
@@ -569,6 +592,7 @@ function printHelp() {
 
 Usage:
   dge init --title "Graph title" [--graph delivery-graph/graph.json]
+  dge install-skills [--harness claude|copilot] [--symlink] [--force]
   dge validate [--graph path]
   dge status [--graph path] [--out delivery-graph/reports/status.md | --save]
   dge next [--graph path] [--json]

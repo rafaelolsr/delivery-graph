@@ -1,5 +1,9 @@
 # GitHub Issues Adapter
 
+> **Status: planned, not yet implemented.** This document is the design contract. There is no
+> `dge sync github` command or `src/adapters/github.mjs` yet — the shipped tracker adapters are
+> Linear and Azure DevOps (both dry-run). See [linear.md](linear.md) and [azure-devops.md](azure-devops.md).
+
 GitHub Issues is a lightweight projection for repositories that do not use Linear or Azure DevOps.
 
 ## Mapping
