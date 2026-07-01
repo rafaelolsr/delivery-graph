@@ -50,6 +50,7 @@ Use `dge-` prefixes for every public skill:
 - `dge-review`
 - `dge-compound`
 - `dge-status`
+- `dge-execute-graph`
 
 ## Runtime artifact locations
 

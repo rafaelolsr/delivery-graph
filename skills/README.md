@@ -12,3 +12,4 @@ MVP skills:
 - `/dge-review`
 - `/dge-compound`
 - `/dge-status`
+- `/dge-execute-graph`

@@ -173,6 +173,10 @@ export function getReadyNodes(graph) {
   });
 }
 
+export function getNextReadyNode(graph) {
+  return getReadyNodes(graph)[0] ?? null;
+}
+
 export function getMissingEvidenceNodes(graph) {
   return (graph.nodes ?? []).filter((node) => {
     if (!["verified", "done"].includes(node.status)) return false;
