@@ -7,6 +7,7 @@ import {
   addCommandEvidence,
   addEvidence,
   getEvidenceStatus,
+  removeEvidence,
   verifyNode,
   writeCommandAttemptArtifact
 } from "../src/evidence-engine.mjs";
@@ -41,6 +42,116 @@ test("verify fails when evidence is missing", () => {
   assert.throws(
     () => verifyNode(graphPath, graph, "NODE-001"),
     /missing validation evidence: npm test/
+  );
+});
+
+test("a fail-result evidence note does not satisfy a contract item", () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "dge-evidence-"));
+  const graphPath = path.join(tempDir, "delivery-graph", "graph.json");
+  const graph = makeGraph();
+
+  addEvidence(graphPath, graph, "NODE-001", {
+    summary: "npm test failed - flaky assertion",
+    satisfies: "npm test",
+    result: "fail",
+    createdAt: "2026-06-30T00:00:00Z"
+  });
+
+  const status = getEvidenceStatus(graphPath, graph, graph.nodes[0]);
+  assert.equal(status.complete, false);
+  assert.deepEqual(status.missing, ["npm test"]);
+});
+
+test("done stays blocked and names the unmet item when the only evidence is a fail", () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "dge-evidence-"));
+  const graphPath = path.join(tempDir, "delivery-graph", "graph.json");
+  const graph = makeGraph();
+
+  addEvidence(graphPath, graph, "NODE-001", {
+    summary: "npm test failed",
+    satisfies: "npm test",
+    result: "fail",
+    createdAt: "2026-06-30T00:00:00Z"
+  });
+
+  assert.throws(
+    () => verifyNode(graphPath, graph, "NODE-001"),
+    /missing validation evidence: npm test/
+  );
+});
+
+test("a pass result (and the default) satisfies a contract item", () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "dge-evidence-"));
+  const graphPath = path.join(tempDir, "delivery-graph", "graph.json");
+  const graph = makeGraph();
+
+  const added = addEvidence(graphPath, graph, "NODE-001", {
+    summary: "npm test passed",
+    satisfies: "npm test",
+    result: "pass",
+    createdAt: "2026-06-30T00:00:00Z"
+  });
+  assert.equal(added.record.result, "pass");
+  assert.equal(getEvidenceStatus(graphPath, graph, graph.nodes[0]).complete, true);
+});
+
+test("legacy manual evidence with no result field still counts as passing", () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "dge-evidence-"));
+  const graphPath = path.join(tempDir, "delivery-graph", "graph.json");
+  const graph = makeGraph();
+
+  // omit result entirely - backward compatibility for pre-existing manifests
+  addEvidence(graphPath, graph, "NODE-001", {
+    summary: "manual approval",
+    satisfies: "npm test",
+    createdAt: "2026-06-30T00:00:00Z"
+  });
+  assert.equal(getEvidenceStatus(graphPath, graph, graph.nodes[0]).complete, true);
+});
+
+test("an invalid result value is rejected", () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "dge-evidence-"));
+  const graphPath = path.join(tempDir, "delivery-graph", "graph.json");
+  const graph = makeGraph();
+
+  assert.throws(
+    () => addEvidence(graphPath, graph, "NODE-001", {
+      summary: "x",
+      satisfies: "npm test",
+      result: "maybe"
+    }),
+    /result must be "pass" or "fail"/
+  );
+});
+
+test("removeEvidence deletes an item and recomputes completeness", () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "dge-evidence-"));
+  const graphPath = path.join(tempDir, "delivery-graph", "graph.json");
+  const graph = makeGraph();
+
+  const added = addEvidence(graphPath, graph, "NODE-001", {
+    summary: "npm test passed",
+    satisfies: "npm test",
+    result: "pass",
+    createdAt: "2026-06-30T00:00:00Z"
+  });
+  assert.equal(getEvidenceStatus(graphPath, graph, graph.nodes[0]).complete, true);
+
+  const removed = removeEvidence(graphPath, graph, "NODE-001", added.record.id);
+  assert.equal(removed.record.id, added.record.id);
+  const status = getEvidenceStatus(graphPath, graph, graph.nodes[0]);
+  assert.equal(status.complete, false);
+  assert.deepEqual(status.missing, ["npm test"]);
+});
+
+test("removeEvidence rejects an unknown evidence id", () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "dge-evidence-"));
+  const graphPath = path.join(tempDir, "delivery-graph", "graph.json");
+  const graph = makeGraph();
+
+  assert.throws(
+    () => removeEvidence(graphPath, graph, "NODE-001", "EVD-999"),
+    /has no evidence item EVD-999/
   );
 });
 

@@ -21,6 +21,7 @@ import {
   getAllEvidenceStatuses,
   getEvidenceStatus,
   findNode,
+  removeEvidence,
   verifyNode,
   writeCommandAttemptArtifact
 } from "../src/evidence-engine.mjs";
@@ -236,12 +237,22 @@ function runTransition(graphPath, args) {
 }
 
 function runEvidence(graphPath, args) {
-  const [subcommand, nodeId] = args._;
-  if (!nodeId || !["add", "run", "playwright"].includes(subcommand)) {
-    throw new Error("Usage: dge evidence add NODE-### --satisfies \"...\" --summary \"...\" [--kind command] [--artifact path]\n       dge evidence run NODE-### --satisfies \"...\" [--summary \"...\"] -- <command>\n       dge evidence playwright NODE-### --satisfies \"...\" [--url URL] [--script test.spec.ts] [--artifacts test-results] -- <command>");
+  const [subcommand, nodeId, thirdArg] = args._;
+  if (!nodeId || !["add", "run", "playwright", "remove"].includes(subcommand)) {
+    throw new Error("Usage: dge evidence add NODE-### --satisfies \"...\" --summary \"...\" [--result pass|fail] [--kind command] [--artifact path]\n       dge evidence run NODE-### --satisfies \"...\" [--summary \"...\"] -- <command>\n       dge evidence playwright NODE-### --satisfies \"...\" [--url URL] [--script test.spec.ts] [--artifacts test-results] -- <command>\n       dge evidence remove NODE-### EVD-###");
   }
 
   const graph = readGraph(graphPath);
+
+  if (subcommand === "remove") {
+    if (!thirdArg) {
+      throw new Error("Usage: dge evidence remove NODE-### EVD-###");
+    }
+    const { record } = removeEvidence(graphPath, graph, nodeId, thirdArg);
+    console.log(`removed evidence ${record.id} from ${nodeId} (satisfied: ${record.satisfies})`);
+    return;
+  }
+
   const { record } = runEvidenceSubcommand(graphPath, graph, nodeId, subcommand, args);
   printRecord("evidence", record);
 }
@@ -252,6 +263,7 @@ function runEvidenceSubcommand(graphPath, graph, nodeId, subcommand, args) {
       kind: args.kind,
       summary: args.summary,
       satisfies: args.satisfies,
+      result: args.result,
       artifact: args.artifact
     });
   }
@@ -596,9 +608,10 @@ Usage:
   dge validate [--graph path]
   dge status [--graph path] [--out delivery-graph/reports/status.md | --save]
   dge next [--graph path] [--json]
-  dge evidence add NODE-001 --satisfies "npm test" --summary "npm test passed" [--artifact output.txt]
+  dge evidence add NODE-001 --satisfies "npm test" --summary "npm test passed" [--result pass|fail] [--artifact output.txt]
   dge evidence run NODE-001 --satisfies "npm test" -- npm test
   dge evidence playwright NODE-001 --satisfies "checkout works" --url http://localhost:3000 --script tests/e2e/checkout.spec.ts [--artifacts test-results]
+  dge evidence remove NODE-001 EVD-001
   dge verify NODE-001 [--graph path]
   dge done NODE-001 [--graph path]
   dge review [--graph path] [--out path]
