@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  getNextReadyNode,
   getReadyNodes,
   transitionNode,
   validateGraph
@@ -78,6 +79,40 @@ test("returns only ready nodes whose dependencies are done", () => {
   });
 
   assert.deepEqual(getReadyNodes(graph).map((node) => node.id), ["NODE-002"]);
+});
+
+test("getNextReadyNode returns the first ready node in graph order", () => {
+  const graph = makeGraph({
+    nodes: [
+      makeNode("NODE-001", { status: "done" }),
+      makeNode("NODE-002", { status: "ready", depends_on: ["NODE-001"] }),
+      makeNode("NODE-003", { status: "ready" })
+    ]
+  });
+
+  assert.equal(getNextReadyNode(graph).id, "NODE-002");
+});
+
+test("getNextReadyNode skips nodes whose dependencies are not done", () => {
+  const graph = makeGraph({
+    nodes: [
+      makeNode("NODE-001", { status: "review" }),
+      makeNode("NODE-002", { status: "ready", depends_on: ["NODE-001"] })
+    ]
+  });
+
+  assert.equal(getNextReadyNode(graph), null);
+});
+
+test("getNextReadyNode returns null when no node is ready", () => {
+  const graph = makeGraph({
+    nodes: [
+      makeNode("NODE-001", { status: "done" }),
+      makeNode("NODE-002", { status: "in_progress" })
+    ]
+  });
+
+  assert.equal(getNextReadyNode(graph), null);
 });
 
 test("transitions a ready node to in progress", () => {

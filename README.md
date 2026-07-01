@@ -79,6 +79,10 @@ npm run status
 npx dge status --save
 npx dge status --out delivery-graph/reports/status.md
 
+# Show the next ready node (dependency-aware queue head)
+npx dge next
+npx dge next --json
+
 # Run engine tests
 npm test
 
@@ -108,6 +112,7 @@ npx dge add-node --title "Add eval CI command" --type implementation --track TRK
 
 # Inspect and move work
 npx dge status
+npx dge next
 npx dge transition NODE-001 in_progress
 
 # Project ready nodes to a tracker as a dry-run sync map
@@ -153,6 +158,33 @@ delivery-graph/
 
 `dge validate` runs both the published JSON Schema and the semantic graph checks: cross references, unresolved blocker gaps, dependency cycles, dependency readiness, and validation evidence rules.
 
+## Autonomous execution loop
+
+When a plan produces many nodes, you do not have to drive each one by hand. DGE separates the loop into two layers:
+
+- **`dge next`** is a read-only queue accessor. It returns the next ready node — one whose status is `ready` and whose dependencies are all `done` — in graph order, or `null` when none are ready. It never implements work.
+- **`/dge-execute-graph`** is the skill that drives the loop through your harness's agent: it calls `dge next`, implements the node with `/dge-work-node` discipline, captures evidence, and closes it through the evidence-gated `dge done`. Completing a node can unblock its dependents, so the queue is re-queried after every node.
+
+```bash
+# The queue accessor the loop is built on
+npx dge next --json
+# => { "next": { "id": "NODE-001", ... }, "ready_count": 1, "done_count": 0, "remaining_count": 3, ... }
+```
+
+The loop is deliberately constrained:
+
+- **Sequential, one node at a time.** The canonical graph is a single JSON file with no locking, so nodes are executed in series.
+- **Evidence-gated.** A node only reaches `done` when its validation evidence exists and the review has no blockers. The loop never fabricates evidence or weakens a validation contract to force a pass.
+- **Failure-aware retry.** Transient failures (a validation command that exits non-zero — a flaky test, a race, a fixable defect) are retried up to `--max-retries` (default 1). Structural failures (a review blocker, genuinely missing evidence, or an incomplete dependency) require a human decision, so the loop does not retry them — it marks the node `blocked` and stops.
+- **Stop-on-failure.** The first node that exhausts its retries or hits a structural failure halts the run so you can resolve it and re-run.
+
+Run it from your harness:
+
+```text
+/dge-execute-graph
+/dge-execute-graph --max 5 --max-retries 2
+```
+
 ## Downstream battle test
 
 DGE should be proven from a real consuming repository, not by creating all runtime artifacts inside this tool repository. Install DGE as a dev dependency in a separate project and use it to manage one real delivery demand end to end.
@@ -195,6 +227,7 @@ Any friction found in that downstream run becomes DGE backlog. This keeps the pl
 | `/dge-review` | Review implementation, graph state, unresolved risks, and validation coverage | `delivery-graph/reports/` |
 | `/dge-compound` | Capture reusable learning for future loops | `delivery-graph/learnings/` |
 | `/dge-status` | Render the current graph as a board/status view | terminal report, Linear view, markdown status |
+| `/dge-execute-graph` | Drive the ready queue end to end, evidence-gated, stop-on-failure | code changes, node evidence, updated `graph.json` |
 
 ## Workflow diagram
 
