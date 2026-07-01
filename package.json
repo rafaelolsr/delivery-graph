@@ -1,0 +1,25 @@
+{
+  "name": "delivery-graph-engineering",
+  "version": "0.1.0",
+  "description": "Turn demands into validated delivery graphs across agent harnesses and task trackers.",
+  "type": "module",
+  "private": true,
+  "license": "MIT",
+  "scripts": {
+    "validate": "node scripts/validate-graph.mjs examples/delivery-graph.example.json",
+    "status": "node scripts/render-status.mjs examples/delivery-graph.example.json",
+    "check": "npm run validate && npm run status"
+  },
+  "keywords": [
+    "agentic-workflow",
+    "delivery-graph",
+    "linear",
+    "azure-devops",
+    "multi-harness",
+    "skills"
+  ],
+  "engines": {
+    "node": ">=20"
+  }
+}
+

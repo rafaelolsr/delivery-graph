@@ -1,0 +1,197 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://datageek.dev/schemas/delivery-graph.schema.json",
+  "title": "Delivery Graph Engineering Graph",
+  "type": "object",
+  "required": ["graph", "demands", "requirements", "tracks", "nodes"],
+  "additionalProperties": false,
+  "properties": {
+    "graph": {
+      "type": "object",
+      "required": ["id", "title", "status"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "pattern": "^DGE-[0-9]{3,}$" },
+        "title": { "type": "string", "minLength": 1 },
+        "status": {
+          "type": "string",
+          "enum": ["draft", "active", "blocked", "review", "done"]
+        },
+        "source": { "type": "string" },
+        "created_at": { "type": "string" },
+        "updated_at": { "type": "string" }
+      }
+    },
+    "demands": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/demand" }
+    },
+    "requirements": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/requirement" }
+    },
+    "gaps": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/gap" },
+      "default": []
+    },
+    "tracks": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/track" }
+    },
+    "nodes": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/node" }
+    }
+  },
+  "$defs": {
+    "demand": {
+      "type": "object",
+      "required": ["id", "title", "source", "outcome"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "pattern": "^DEM-[0-9]{3,}$" },
+        "title": { "type": "string", "minLength": 1 },
+        "source": { "type": "string", "minLength": 1 },
+        "requester": { "type": "string" },
+        "problem": { "type": "string" },
+        "outcome": { "type": "string", "minLength": 1 },
+        "constraints": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": []
+        },
+        "non_goals": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": []
+        }
+      }
+    },
+    "requirement": {
+      "type": "object",
+      "required": ["id", "demand_id", "statement", "acceptance", "validation"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "pattern": "^REQ-[0-9]{3,}$" },
+        "demand_id": { "type": "string", "pattern": "^DEM-[0-9]{3,}$" },
+        "statement": { "type": "string", "minLength": 1 },
+        "priority": {
+          "type": "string",
+          "enum": ["must", "should", "could", "wont"],
+          "default": "must"
+        },
+        "acceptance": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string" }
+        },
+        "validation": {
+          "type": "object",
+          "required": ["method", "required_evidence"],
+          "additionalProperties": false,
+          "properties": {
+            "method": {
+              "type": "string",
+              "enum": ["automated-test", "eval", "manual-review", "ci-check", "artifact-review"]
+            },
+            "required_evidence": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "gap": {
+      "type": "object",
+      "required": ["id", "type", "severity", "question", "blocks"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "pattern": "^GAP-[0-9]{3,}$" },
+        "type": {
+          "type": "string",
+          "enum": ["problem", "success", "scope", "stakeholder", "validation", "constraint", "dependency", "contradiction"]
+        },
+        "severity": {
+          "type": "string",
+          "enum": ["blocker", "warning", "note"]
+        },
+        "question": { "type": "string", "minLength": 1 },
+        "blocks": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "resolution": {
+          "type": ["string", "null"],
+          "default": null
+        }
+      }
+    },
+    "track": {
+      "type": "object",
+      "required": ["id", "title"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "pattern": "^TRK-[a-z0-9-]+$" },
+        "title": { "type": "string", "minLength": 1 },
+        "description": { "type": "string" },
+        "owner": { "type": "string" }
+      }
+    },
+    "node": {
+      "type": "object",
+      "required": ["id", "title", "type", "track", "requirement_ids", "depends_on", "status", "validation", "sync"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "pattern": "^NODE-[0-9]{3,}$" },
+        "title": { "type": "string", "minLength": 1 },
+        "type": {
+          "type": "string",
+          "enum": ["research", "implementation", "test", "eval", "docs", "release", "review"]
+        },
+        "track": { "type": "string", "pattern": "^TRK-[a-z0-9-]+$" },
+        "requirement_ids": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "pattern": "^REQ-[0-9]{3,}$" }
+        },
+        "depends_on": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^NODE-[0-9]{3,}$" }
+        },
+        "status": {
+          "type": "string",
+          "enum": ["proposed", "ready", "in_progress", "blocked", "review", "verified", "done"]
+        },
+        "validation": {
+          "type": "object",
+          "required": ["required", "evidence_path"],
+          "additionalProperties": false,
+          "properties": {
+            "required": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "type": "string" }
+            },
+            "evidence_path": {
+              "type": "string",
+              "pattern": "^delivery-graph/evidence/NODE-[0-9]{3,}/$"
+            }
+          }
+        },
+        "sync": {
+          "type": "object",
+          "required": ["linear_issue_id", "ado_task_id"],
+          "additionalProperties": false,
+          "properties": {
+            "linear_issue_id": { "type": ["string", "null"] },
+            "ado_task_id": { "type": ["string", "number", "null"] }
+          }
+        }
+      }
+    }
+  }
+}
+

@@ -1,0 +1,73 @@
+{
+  "graph": {
+    "id": "DGE-001",
+    "title": "Add advisor eval regression gate",
+    "status": "active",
+    "source": "example"
+  },
+  "demands": [
+    {
+      "id": "DEM-001",
+      "title": "Add advisor eval regression gate",
+      "source": "user",
+      "requester": "Rafael",
+      "problem": "Advisor quality can regress without a blocking PR signal.",
+      "outcome": "Prevent advisor eval regressions before pull request merge.",
+      "constraints": ["Must run in CI", "Must summarize failed metrics"],
+      "non_goals": ["Do not redesign the eval framework"]
+    }
+  ],
+  "requirements": [
+    {
+      "id": "REQ-001",
+      "demand_id": "DEM-001",
+      "statement": "Pull requests must fail when the advisor eval pass rate drops below the accepted threshold.",
+      "priority": "must",
+      "acceptance": [
+        "CI runs the advisor eval subset.",
+        "Failure output includes grouped metric summaries."
+      ],
+      "validation": {
+        "method": "automated-test",
+        "required_evidence": ["eval run output", "CI check link"]
+      }
+    }
+  ],
+  "gaps": [
+    {
+      "id": "GAP-001",
+      "type": "validation",
+      "severity": "blocker",
+      "question": "What pass-rate threshold should block a pull request?",
+      "blocks": ["REQ-001"],
+      "resolution": "Use the current baseline threshold until a stronger release gate is agreed."
+    }
+  ],
+  "tracks": [
+    {
+      "id": "TRK-validation",
+      "title": "Validation and CI",
+      "description": "Add the automated regression gate and evidence path."
+    }
+  ],
+  "nodes": [
+    {
+      "id": "NODE-001",
+      "title": "Add eval CI command",
+      "type": "implementation",
+      "track": "TRK-validation",
+      "requirement_ids": ["REQ-001"],
+      "depends_on": [],
+      "status": "verified",
+      "validation": {
+        "required": ["uv run pytest -m eval", "uv run ruff check"],
+        "evidence_path": "delivery-graph/evidence/NODE-001/"
+      },
+      "sync": {
+        "linear_issue_id": "DGE-1",
+        "ado_task_id": null
+      }
+    }
+  ]
+}
+

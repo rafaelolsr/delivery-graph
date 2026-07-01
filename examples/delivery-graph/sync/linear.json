@@ -1,0 +1,11 @@
+{
+  "source_graph": "DGE-001",
+  "updated_at": "2026-06-30T00:00:00Z",
+  "nodes": {
+    "NODE-001": {
+      "linear_issue_id": "DGE-1",
+      "last_synced_status": "verified"
+    }
+  }
+}
+

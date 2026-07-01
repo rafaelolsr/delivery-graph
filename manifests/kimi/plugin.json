@@ -1,0 +1,7 @@
+{
+  "name": "delivery-graph-engineering",
+  "version": "0.1.0",
+  "description": "Turn demands into validated delivery graphs across agent harnesses and task trackers.",
+  "skills": "../../skills"
+}
+
