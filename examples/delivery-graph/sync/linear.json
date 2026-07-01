@@ -1,11 +1,78 @@
 {
   "source_graph": "DGE-001",
-  "updated_at": "2026-06-30T00:00:00Z",
+  "target": "linear",
+  "mode": "dry-run",
+  "updated_at": "2026-07-01T02:21:02.657Z",
+  "team_id": "EXAMPLE-TEAM",
+  "project_id": "EXAMPLE-PROJECT",
   "nodes": {
     "NODE-001": {
+      "action": "update",
       "linear_issue_id": "DGE-1",
-      "last_synced_status": "verified"
+      "last_synced_status": "verified",
+      "title": "[NODE-001] Add eval CI command",
+      "dependency_issue_ids": [],
+      "payload": {
+        "title": "[NODE-001] Add eval CI command",
+        "description": "DGE graph: DGE-001 - Add advisor eval regression gate\nNode: NODE-001\nTrack: TRK-validation\nRequirements: REQ-001\n\n## Dependencies\n- none\n\n## Linear dependency issue ids\n- none mapped yet\n\n## Validation contract\n- uv run pytest -m eval\n- uv run ruff check\n\nEvidence path: delivery-graph/evidence/NODE-001/\n\n<!-- dge:managed -->",
+        "team_id": "EXAMPLE-TEAM",
+        "project_id": "EXAMPLE-PROJECT",
+        "labels": [
+          "dge",
+          "track:TRK-validation",
+          "type:implementation",
+          "status:verified",
+          "requirement:REQ-001"
+        ],
+        "external_id": "DGE-001:NODE-001",
+        "dge": {
+          "graph_id": "DGE-001",
+          "node_id": "NODE-001",
+          "track": "TRK-validation",
+          "requirement_ids": [
+            "REQ-001"
+          ],
+          "dependency_node_ids": [],
+          "evidence_path": "delivery-graph/evidence/NODE-001/"
+        },
+        "dependency_issue_ids": [],
+        "status": "done",
+        "requirement_summary": "REQ-001"
+      }
     }
-  }
+  },
+  "operations": [
+    {
+      "action": "update",
+      "node_id": "NODE-001",
+      "linear_issue_id": "DGE-1",
+      "payload": {
+        "title": "[NODE-001] Add eval CI command",
+        "description": "DGE graph: DGE-001 - Add advisor eval regression gate\nNode: NODE-001\nTrack: TRK-validation\nRequirements: REQ-001\n\n## Dependencies\n- none\n\n## Linear dependency issue ids\n- none mapped yet\n\n## Validation contract\n- uv run pytest -m eval\n- uv run ruff check\n\nEvidence path: delivery-graph/evidence/NODE-001/\n\n<!-- dge:managed -->",
+        "team_id": "EXAMPLE-TEAM",
+        "project_id": "EXAMPLE-PROJECT",
+        "labels": [
+          "dge",
+          "track:TRK-validation",
+          "type:implementation",
+          "status:verified",
+          "requirement:REQ-001"
+        ],
+        "external_id": "DGE-001:NODE-001",
+        "dge": {
+          "graph_id": "DGE-001",
+          "node_id": "NODE-001",
+          "track": "TRK-validation",
+          "requirement_ids": [
+            "REQ-001"
+          ],
+          "dependency_node_ids": [],
+          "evidence_path": "delivery-graph/evidence/NODE-001/"
+        },
+        "dependency_issue_ids": [],
+        "status": "done",
+        "requirement_summary": "REQ-001"
+      }
+    }
+  ]
 }
-

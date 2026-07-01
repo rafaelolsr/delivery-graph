@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import fs from "node:fs";
+import path from "node:path";
 import {
   readGraph,
   transitionNode,
@@ -7,6 +8,10 @@ import {
   writeGraph
 } from "../src/graph-engine.mjs";
 import { renderStatus } from "../src/status-renderer.mjs";
+import {
+  createLinearSyncPlan,
+  defaultLinearSyncPath
+} from "../src/adapters/linear.mjs";
 import {
   addDemand,
   addGap,
@@ -45,6 +50,9 @@ function main() {
         break;
       case "transition":
         runTransition(graphPath, args);
+        break;
+      case "sync":
+        runSync(graphPath, args);
         break;
       case "add-demand":
         runMutation(graphPath, (graph) => addDemand(graph, mapDemandArgs(args)));
@@ -105,6 +113,26 @@ function runTransition(graphPath, args) {
   const nextGraph = transitionNode(readGraph(graphPath), nodeId, nextStatus);
   writeGraph(graphPath, nextGraph);
   console.log(`${nodeId} -> ${nextStatus}`);
+}
+
+function runSync(graphPath, args) {
+  const [target] = args._;
+  if (target !== "linear") {
+    throw new Error("Usage: dge sync linear [--graph path] [--out path] [--team-id id] [--project-id id]");
+  }
+
+  const outputPath = args.out ?? defaultLinearSyncPath(graphPath);
+  const graph = readGraph(graphPath);
+  const existingSync = readOptionalJson(outputPath);
+  const syncPlan = createLinearSyncPlan(graph, {
+    existingSync,
+    teamId: args["team-id"] ?? args.teamId,
+    projectId: args["project-id"] ?? args.projectId
+  });
+
+  fs.mkdirSync(path.dirname(path.resolve(outputPath)), { recursive: true });
+  fs.writeFileSync(path.resolve(outputPath), `${JSON.stringify(syncPlan, null, 2)}\n`);
+  console.log(`linear sync dry-run: ${syncPlan.operations.length} operation${syncPlan.operations.length === 1 ? "" : "s"} -> ${outputPath}`);
 }
 
 function runMutation(graphPath, mutate) {
@@ -200,6 +228,11 @@ function parseArgs(rawArgs) {
   return parsed;
 }
 
+function readOptionalJson(filePath) {
+  if (!fs.existsSync(filePath)) return {};
+  return JSON.parse(fs.readFileSync(filePath, "utf8"));
+}
+
 function appendArgValue(parsed, key, value) {
   if (parsed[key] === undefined) {
     parsed[key] = value;
@@ -224,6 +257,7 @@ Usage:
   dge init --title "Graph title" [--graph delivery-graph/graph.json]
   dge validate [--graph path]
   dge status [--graph path]
+  dge sync linear [--graph path] [--out delivery-graph/sync/linear.json]
   dge transition NODE-001 review [--graph path]
   dge add-demand --title "..." --source "..." --outcome "..." [--graph path]
   dge add-requirement --demand DEM-001 --statement "..." --acceptance "..." --evidence "..."

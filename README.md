@@ -84,9 +84,14 @@ npm run dge -- add-node --title "Add eval CI command" --type implementation --tr
 # Inspect and move work
 npm run dge -- status
 npm run dge -- transition NODE-001 in_progress
+
+# Project ready nodes to Linear as a dry-run sync map
+npm run dge -- sync linear --team-id "<linear-team-id>"
 ```
 
 By default, `dge` reads and writes `delivery-graph/graph.json`. Pass `--graph <path>` to target another graph file.
+
+Linear sync writes `delivery-graph/sync/linear.json`. The current adapter is intentionally dry-run: it creates deterministic issue payloads and sync state without requiring credentials.
 
 ## Skill loop
 

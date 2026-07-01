@@ -32,6 +32,12 @@ Scripts under `scripts/` call the engine instead of duplicating graph rules.
 
 The unified CLI lives in `bin/dge.mjs` and is the preferred command surface for skills and humans.
 
+## Linear projection
+
+The first tracker adapter lives in `src/adapters/linear.mjs`.
+
+It creates dry-run Linear issue payloads and writes `delivery-graph/sync/linear.json`. API-backed sync can build on this payload contract without changing the graph model.
+
 ## Canonical store
 
 The consuming repository owns the runtime graph under:

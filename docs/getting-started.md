@@ -61,3 +61,11 @@ npm run dge -- status
 ```
 
 The default graph path is `delivery-graph/graph.json`.
+
+## Linear dry-run sync
+
+```bash
+npm run dge -- sync linear --team-id "<linear-team-id>"
+```
+
+This writes `delivery-graph/sync/linear.json` with planned issue payloads. It does not call the Linear API yet.

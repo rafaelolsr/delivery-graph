@@ -48,8 +48,18 @@ Project the canonical delivery graph into external systems. Trackers are project
 6. Save sync map under `delivery-graph/sync/`.
 7. Report created, updated, skipped, and conflicted records.
 
+## CLI contract
+
+For Linear, use the local dry-run adapter first:
+
+```bash
+npm run dge -- sync linear --team-id "<linear-team-id>"
+```
+
+This writes `delivery-graph/sync/linear.json` with planned issue payloads. Treat that file as the reviewable projection before enabling any API-backed sync.
+
 ## Safety
 
 If credentials or tracker tools are unavailable, write a dry-run plan instead of failing silently:
 
-- `delivery-graph/sync/<target>-dry-run.json`
+- `delivery-graph/sync/<target>.json`
