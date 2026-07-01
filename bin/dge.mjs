@@ -172,9 +172,10 @@ function runVerify(graphPath, args) {
     throw new Error("Usage: dge verify NODE-### [--graph path]");
   }
 
-  const { graph, evidenceStatus } = verifyNode(graphPath, readGraph(graphPath), nodeId);
+  const { graph, evidenceStatus, verificationPath } = verifyNode(graphPath, readGraph(graphPath), nodeId);
   writeGraph(graphPath, graph);
   console.log(`${nodeId} verified`);
+  console.log(`verification report: ${verificationPath}`);
   console.log(JSON.stringify(evidenceStatus, null, 2));
 }
 

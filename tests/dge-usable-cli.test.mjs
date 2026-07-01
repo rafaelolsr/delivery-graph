@@ -72,6 +72,7 @@ test("CLI supports usable local loop through evidence, verify, status, and revie
 
   const verifiedOutput = run("verify", "NODE-001", "--graph", graphPath);
   assert.match(verifiedOutput, /NODE-001 verified/);
+  assert.match(verifiedOutput, /verification report:/);
 
   const graph = JSON.parse(fs.readFileSync(graphPath, "utf8"));
   assert.equal(graph.nodes[0].status, "verified");
@@ -79,6 +80,10 @@ test("CLI supports usable local loop through evidence, verify, status, and revie
   run("transition", "NODE-001", "done", "--graph", graphPath);
   const doneGraph = JSON.parse(fs.readFileSync(graphPath, "utf8"));
   assert.equal(doneGraph.nodes[0].status, "done");
+  assert.match(
+    fs.readFileSync(path.join(tempDir, "delivery-graph", "evidence", "NODE-001", "verification.md"), "utf8"),
+    /npm test: satisfied/
+  );
 
   const reviewOutput = run("review", "--graph", graphPath);
   assert.match(reviewOutput, /review report:/);

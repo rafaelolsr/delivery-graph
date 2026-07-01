@@ -3,11 +3,33 @@
   "version": "0.1.0",
   "description": "Turn demands into validated delivery graphs across agent harnesses and task trackers.",
   "type": "module",
-  "private": true,
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rafaelolsr/delivery-graph.git"
+  },
+  "homepage": "https://github.com/rafaelolsr/delivery-graph#readme",
+  "bugs": {
+    "url": "https://github.com/rafaelolsr/delivery-graph/issues"
+  },
   "bin": {
     "dge": "./bin/dge.mjs"
   },
+  "files": [
+    "adapters/",
+    "assets/",
+    "bin/",
+    "docs/",
+    "examples/",
+    "manifests/",
+    "schemas/",
+    "scripts/",
+    "skills/",
+    "src/",
+    "AGENTS.md",
+    "LICENSE",
+    "README.md"
+  ],
   "scripts": {
     "validate": "node scripts/validate-graph.mjs examples/delivery-graph.example.json",
     "status": "node scripts/render-status.mjs examples/delivery-graph.example.json",

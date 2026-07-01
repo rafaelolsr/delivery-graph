@@ -1,5 +1,16 @@
 # Getting Started
 
+## Install in a consuming repository
+
+Install DGE where the canonical `delivery-graph/` folder should live:
+
+```bash
+npm install --save-dev github:rafaelolsr/delivery-graph
+npx dge init --title "My first DGE graph"
+```
+
+Inside the DGE source repository, use `npm run dge -- ...` for development. In consuming repositories, use `npx dge ...`.
+
 ## 1. Intake a demand
 
 ```text
@@ -52,12 +63,12 @@ This runs graph validation, renders status, and executes the engine tests.
 The public skills define the agent workflow. The local CLI provides the machine contract those skills can use.
 
 ```bash
-npm run dge -- init --title "My first DGE graph"
-npm run dge -- add-demand --title "Improve delivery" --source "user" --outcome "Validated graph nodes"
-npm run dge -- add-requirement --demand DEM-001 --statement "A requirement exists" --acceptance "Requirement is in graph" --evidence "Graph validation passes"
-npm run dge -- add-track --title "Implementation"
-npm run dge -- add-node --title "Create the first node" --type implementation --track TRK-implementation --requirements REQ-001 --validation "npm run check"
-npm run dge -- status
+npx dge init --title "My first DGE graph"
+npx dge add-demand --title "Improve delivery" --source "user" --outcome "Validated graph nodes"
+npx dge add-requirement --demand DEM-001 --statement "A requirement exists" --acceptance "Requirement is in graph" --evidence "Graph validation passes"
+npx dge add-track --title "Implementation"
+npx dge add-node --title "Create the first node" --type implementation --track TRK-implementation --requirements REQ-001 --validation "npm run check"
+npx dge status
 ```
 
 The default graph path is `delivery-graph/graph.json`.
@@ -67,16 +78,16 @@ The default graph path is `delivery-graph/graph.json`.
 Evidence is the core completion gate:
 
 ```bash
-npm run dge -- evidence add NODE-001 --satisfies "npm run check" --summary "All checks passed"
-npm run dge -- verify NODE-001
+npx dge evidence add NODE-001 --satisfies "npm run check" --summary "All checks passed"
+npx dge verify NODE-001
 ```
 
-`verify` fails until every `validation.required[]` item on the node has matching evidence.
+`verify` fails until every `validation.required[]` item on the node has matching evidence. When it succeeds, it writes `delivery-graph/evidence/NODE-001/verification.md`.
 
 ## Local review
 
 ```bash
-npm run dge -- review
+npx dge review
 ```
 
 This writes `delivery-graph/reports/review-<timestamp>.md` and reports graph consistency, blocker gaps, requirement coverage, and missing evidence.
@@ -84,7 +95,7 @@ This writes `delivery-graph/reports/review-<timestamp>.md` and reports graph con
 ## Linear dry-run sync
 
 ```bash
-npm run dge -- sync linear --team-id "<linear-team-id>"
+npx dge sync linear --team-id "<linear-team-id>"
 ```
 
 This writes `delivery-graph/sync/linear.json` with planned issue payloads. It does not call the Linear API yet.

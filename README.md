@@ -37,11 +37,20 @@ The loop compounds because every completed node leaves behind validation evidenc
 
 ## Quick start
 
+Install DGE in the repository that should own the canonical `delivery-graph/` store:
+
+```bash
+npm install --save-dev github:rafaelolsr/delivery-graph
+npx dge init --title "My delivery graph"
+```
+
+For local DGE development, run:
+
 ```bash
 npm run check
 ```
 
-This validates the example graph and renders a status report.
+This validates the example graph, renders a status report, and runs the tests.
 
 ## Local engine commands
 
@@ -69,24 +78,24 @@ Use the `dge` CLI to create and edit a local graph without hand-writing JSON.
 
 ```bash
 # Create the canonical graph
-npm run dge -- init --title "Advisor eval regression gate"
+npx dge init --title "Advisor eval regression gate"
 
 # Add intake outputs
-npm run dge -- add-demand --title "Safer eval gates" --source "user" --outcome "Block quality regressions before merge"
-npm run dge -- add-requirement --demand DEM-001 --statement "PRs fail when eval quality drops" --acceptance "CI fails below threshold" --evidence "CI check output"
-npm run dge -- add-gap --type validation --severity blocker --question "What threshold blocks a PR?" --blocks REQ-001
-npm run dge -- resolve-gap GAP-001 --resolution "Use the current baseline threshold"
+npx dge add-demand --title "Safer eval gates" --source "user" --outcome "Block quality regressions before merge"
+npx dge add-requirement --demand DEM-001 --statement "PRs fail when eval quality drops" --acceptance "CI fails below threshold" --evidence "CI check output"
+npx dge add-gap --type validation --severity blocker --question "What threshold blocks a PR?" --blocks REQ-001
+npx dge resolve-gap GAP-001 --resolution "Use the current baseline threshold"
 
 # Add plan graph outputs
-npm run dge -- add-track --title "Validation"
-npm run dge -- add-node --title "Add eval CI command" --type implementation --track TRK-validation --requirements REQ-001 --validation "npm test"
+npx dge add-track --title "Validation"
+npx dge add-node --title "Add eval CI command" --type implementation --track TRK-validation --requirements REQ-001 --validation "npm test"
 
 # Inspect and move work
-npm run dge -- status
-npm run dge -- transition NODE-001 in_progress
+npx dge status
+npx dge transition NODE-001 in_progress
 
 # Project ready nodes to Linear as a dry-run sync map
-npm run dge -- sync linear --team-id "<linear-team-id>"
+npx dge sync linear --team-id "<linear-team-id>"
 ```
 
 By default, `dge` reads and writes `delivery-graph/graph.json`. Pass `--graph <path>` to target another graph file.
@@ -98,15 +107,15 @@ Linear sync writes `delivery-graph/sync/linear.json`. The current adapter is int
 The local loop works without Linear, Azure DevOps, or any external tracker:
 
 ```bash
-npm run dge -- init --title "My delivery graph"
-npm run dge -- add-demand --title "Safer releases" --source "user" --outcome "Every completed node has proof"
-npm run dge -- add-requirement --demand DEM-001 --statement "Nodes require validation evidence" --acceptance "Verify fails without evidence" --evidence "Evidence manifest"
-npm run dge -- add-track --title "Validation"
-npm run dge -- add-node --title "Add evidence gate" --type test --track TRK-validation --requirements REQ-001 --validation "npm test"
-npm run dge -- evidence add NODE-001 --satisfies "npm test" --summary "npm test passed"
-npm run dge -- verify NODE-001
-npm run dge -- status
-npm run dge -- review
+npx dge init --title "My delivery graph"
+npx dge add-demand --title "Safer releases" --source "user" --outcome "Every completed node has proof"
+npx dge add-requirement --demand DEM-001 --statement "Nodes require validation evidence" --acceptance "Verify fails without evidence" --evidence "Evidence manifest"
+npx dge add-track --title "Validation"
+npx dge add-node --title "Add evidence gate" --type test --track TRK-validation --requirements REQ-001 --validation "npm test"
+npx dge evidence add NODE-001 --satisfies "npm test" --summary "npm test passed"
+npx dge verify NODE-001
+npx dge status
+npx dge review
 ```
 
 This creates:
@@ -118,6 +127,7 @@ delivery-graph/
 ├── requirements/REQ-001.md
 ├── evidence/NODE-001/evidence.json
 ├── evidence/NODE-001/summary.md
+├── evidence/NODE-001/verification.md
 └── reports/review-<timestamp>.md
 ```
 

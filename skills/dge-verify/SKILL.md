@@ -48,8 +48,8 @@ Return:
 When local tooling is available, use:
 
 ```bash
-npm run dge -- evidence add NODE-001 --satisfies "..." --summary "..."
-npm run dge -- verify NODE-001
+npx dge evidence add NODE-001 --satisfies "..." --summary "..."
+npx dge verify NODE-001
 ```
 
 Do not mark a node `verified` or `done` by editing `graph.json` directly.

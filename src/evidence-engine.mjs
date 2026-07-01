@@ -104,7 +104,10 @@ export function verifyNode(graphPath, graph, nodeId, options = {}) {
   };
 
   assertValidGraph(nextGraph);
-  return { graph: nextGraph, evidenceStatus };
+  const verificationPath = writeVerificationReport(graphPath, node, evidenceStatus, {
+    verifiedAt: options.updatedAt ?? nextGraph.graph.updated_at
+  });
+  return { graph: nextGraph, evidenceStatus, verificationPath };
 }
 
 export function findNode(graph, nodeId) {
@@ -161,10 +164,36 @@ function writeEvidenceSummary(graphPath, node, manifest) {
   fs.writeFileSync(path.join(evidenceDir, "summary.md"), `${lines.join("\n")}\n`);
 }
 
+function writeVerificationReport(graphPath, node, evidenceStatus, options = {}) {
+  const evidenceDir = resolveRuntimePath(graphPath, node.validation.evidence_path);
+  const reportPath = path.join(evidenceDir, "verification.md");
+  const lines = [
+    `# ${node.id} Verification`,
+    "",
+    `Node: ${node.title}`,
+    `Verified: ${options.verifiedAt}`,
+    "",
+    "## Required evidence",
+    ""
+  ];
+
+  for (const required of evidenceStatus.required) {
+    const matchingItems = evidenceStatus.items.filter((item) => item.satisfies === required);
+    lines.push(`- ${required}: ${matchingItems.length > 0 ? "satisfied" : "missing"}`);
+    for (const item of matchingItems) {
+      lines.push(`  - ${item.id} [${item.kind}]: ${item.summary}`);
+      if (item.artifact) lines.push(`    - Artifact: ${item.artifact}`);
+    }
+  }
+
+  fs.mkdirSync(evidenceDir, { recursive: true });
+  fs.writeFileSync(reportPath, `${lines.join("\n")}\n`);
+  return reportPath;
+}
+
 function requireText(value, field) {
   if (typeof value !== "string" || value.trim() === "") {
     throw new Error(`${field} is required`);
   }
   return value.trim();
 }
-

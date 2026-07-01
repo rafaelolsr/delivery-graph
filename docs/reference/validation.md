@@ -27,6 +27,7 @@ Evidence is stored per node:
 delivery-graph/evidence/NODE-001/
 ├── evidence.json
 ├── summary.md
+├── verification.md
 └── artifacts/
 ```
 
@@ -51,6 +52,8 @@ Example:
 Use:
 
 ```bash
-npm run dge -- evidence add NODE-001 --satisfies "npm test" --summary "npm test passed"
-npm run dge -- verify NODE-001
+npx dge evidence add NODE-001 --satisfies "npm test" --summary "npm test passed"
+npx dge verify NODE-001
 ```
+
+Successful verification writes `verification.md`, which gives the user-visible proof that each required validation item was satisfied by recorded evidence.

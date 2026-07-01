@@ -28,7 +28,7 @@ Show the current operational state of a delivery graph without changing it.
 When local tooling is available, use:
 
 ```bash
-npm run dge -- status
+npx dge status
 ```
 
 The status output must include missing validation evidence.

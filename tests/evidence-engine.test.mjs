@@ -28,6 +28,7 @@ test("adds evidence and verifies a node", () => {
     updatedAt: "2026-06-30T00:00:00Z"
   });
   assert.equal(verified.graph.nodes[0].status, "verified");
+  assert.match(fs.readFileSync(verified.verificationPath, "utf8"), /npm test: satisfied/);
 });
 
 test("verify fails when evidence is missing", () => {
@@ -110,4 +111,3 @@ function makeGraph() {
     ]
   };
 }
-
