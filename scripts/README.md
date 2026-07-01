@@ -2,6 +2,19 @@
 
 Dependency-free local tooling for DGE development.
 
+## DGE CLI
+
+Prefer the unified CLI for new workflows:
+
+```bash
+node bin/dge.mjs init --title "My delivery graph"
+node bin/dge.mjs add-demand --title "Demand" --source "user" --outcome "Outcome"
+node bin/dge.mjs add-requirement --demand DEM-001 --statement "Requirement" --acceptance "Acceptance" --evidence "Evidence"
+node bin/dge.mjs add-track --title "Implementation"
+node bin/dge.mjs add-node --title "Node" --type implementation --track TRK-implementation --requirements REQ-001 --validation "npm test"
+node bin/dge.mjs status
+```
+
 ## Validate graph
 
 ```bash

@@ -22,6 +22,12 @@ This validates the example graph and renders a status report.
 
 The check also runs the Node test suite for the graph engine.
 
+Use the unified CLI for local graph authoring:
+
+```bash
+npm run dge -- status
+```
+
 ## Skill authoring
 
 Public skills live under `skills/<skill-name>/SKILL.md`.

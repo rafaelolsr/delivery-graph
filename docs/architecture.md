@@ -26,8 +26,11 @@ It owns:
 - ready-node selection
 - node lifecycle transitions
 - status summarization
+- graph authoring operations for demands, requirements, gaps, tracks, and nodes
 
 Scripts under `scripts/` call the engine instead of duplicating graph rules.
+
+The unified CLI lives in `bin/dge.mjs` and is the preferred command surface for skills and humans.
 
 ## Canonical store
 

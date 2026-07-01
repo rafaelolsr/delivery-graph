@@ -89,3 +89,13 @@ Report:
 - blocked nodes
 - requirements without nodes, if any
 - next command: `/dge-sync` or `/dge-work-node NODE-###`
+
+## CLI contract
+
+When local tooling is available, prefer the DGE CLI over manual JSON edits:
+
+```bash
+npm run dge -- add-track ...
+npm run dge -- add-node ...
+npm run dge -- status
+```

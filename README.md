@@ -63,6 +63,31 @@ npm run transition -- examples/delivery-graph.example.json NODE-001 done
 
 The transition command enforces the node state machine, dependency readiness, and validation evidence requirements.
 
+## Authoring commands
+
+Use the `dge` CLI to create and edit a local graph without hand-writing JSON.
+
+```bash
+# Create the canonical graph
+npm run dge -- init --title "Advisor eval regression gate"
+
+# Add intake outputs
+npm run dge -- add-demand --title "Safer eval gates" --source "user" --outcome "Block quality regressions before merge"
+npm run dge -- add-requirement --demand DEM-001 --statement "PRs fail when eval quality drops" --acceptance "CI fails below threshold" --evidence "CI check output"
+npm run dge -- add-gap --type validation --severity blocker --question "What threshold blocks a PR?" --blocks REQ-001
+npm run dge -- resolve-gap GAP-001 --resolution "Use the current baseline threshold"
+
+# Add plan graph outputs
+npm run dge -- add-track --title "Validation"
+npm run dge -- add-node --title "Add eval CI command" --type implementation --track TRK-validation --requirements REQ-001 --validation "npm test"
+
+# Inspect and move work
+npm run dge -- status
+npm run dge -- transition NODE-001 in_progress
+```
+
+By default, `dge` reads and writes `delivery-graph/graph.json`. Pass `--graph <path>` to target another graph file.
+
 ## Skill loop
 
 | Skill | Purpose | Primary output |

@@ -5,10 +5,14 @@
   "type": "module",
   "private": true,
   "license": "MIT",
+  "bin": {
+    "dge": "./bin/dge.mjs"
+  },
   "scripts": {
     "validate": "node scripts/validate-graph.mjs examples/delivery-graph.example.json",
     "status": "node scripts/render-status.mjs examples/delivery-graph.example.json",
     "transition": "node scripts/transition-node.mjs",
+    "dge": "node bin/dge.mjs",
     "test": "node --test",
     "check": "npm run validate && npm run status && npm test"
   },

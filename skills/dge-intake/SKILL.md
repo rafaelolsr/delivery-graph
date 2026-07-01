@@ -107,3 +107,14 @@ Return `ready_for_graph: true` only when:
 7. No blocker gaps remain unresolved.
 
 If blocker gaps remain, stop and report them instead of invoking `/dge-plan-graph`.
+
+## CLI contract
+
+When local tooling is available, prefer the DGE CLI over manual JSON edits:
+
+```bash
+npm run dge -- add-demand ...
+npm run dge -- add-requirement ...
+npm run dge -- add-gap ...
+npm run dge -- resolve-gap ...
+```
