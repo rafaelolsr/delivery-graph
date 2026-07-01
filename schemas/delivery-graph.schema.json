@@ -112,11 +112,11 @@
         "id": { "type": "string", "pattern": "^GAP-[0-9]{3,}$" },
         "type": {
           "type": "string",
-          "enum": ["problem", "success", "scope", "stakeholder", "validation", "constraint", "dependency", "contradiction"]
+          "enum": ["problem", "success", "scope", "stakeholder", "validation", "constraint", "dependency", "contradiction", "privacy", "architecture", "ownership"]
         },
         "severity": {
           "type": "string",
-          "enum": ["blocker", "warning", "note"]
+          "enum": ["blocker", "major", "warning", "note"]
         },
         "question": { "type": "string", "minLength": 1 },
         "blocks": {
