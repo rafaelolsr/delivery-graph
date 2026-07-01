@@ -1,0 +1,5 @@
+#!/usr/bin/env node
+// Extensionless entry point so the plugin's bin/ PATH entry runs as the bare
+// `dge` command (Claude Code / Copilot CLI expose bin/ files by filename).
+// It simply loads the real CLI, which reads process.argv and runs main().
+import "./dge.mjs";

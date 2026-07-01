@@ -26,6 +26,23 @@ Turn a raw demand into testable requirements without designing the implementatio
 
 If no demand is provided, ask the user what demand, problem, or request they want to shape.
 
+## Preflight: require the DGE CLI
+
+Before writing anything, confirm the `dge` CLI is available:
+
+```bash
+dge --help >/dev/null 2>&1 || npx --no-install dge --help >/dev/null 2>&1
+```
+
+If neither resolves, **stop** and tell the user to install DGE first — do not proceed:
+
+> DGE CLI not found. Install the plugin (which ships `dge` on the PATH) or run
+> `npm install --save-dev github:rafaelolsr/delivery-graph`, then re-run `/dge-intake`.
+
+The `dge` CLI is the **only** writer of `delivery-graph/graph.json`. Never hand-write or
+hand-edit `graph.json` — doing so drifts from the engine schema and breaks every other
+`dge` command. If the CLI is missing, the correct action is to install it, not to emulate it.
+
 ## Workflow
 
 ### 1. Capture the raw demand
@@ -86,13 +103,14 @@ Each requirement must be testable:
 
 ### 5. Save outputs
 
-In the consuming repository, write:
+Author the canonical store **only through the `dge` CLI** (see CLI contract below). The CLI
+writes `delivery-graph/graph.json` and the `demands/` and `requirements/` markdown for you:
 
-- `delivery-graph/demands/DEM-###.md`
-- `delivery-graph/requirements/REQ-###.md`
-- `delivery-graph/graph.json` with `demands`, `requirements`, and `gaps`
+- `dge add-demand ...` writes `delivery-graph/demands/DEM-###.md` and the graph entry
+- `dge add-requirement ...` writes `delivery-graph/requirements/REQ-###.md` and the graph entry
+- `dge add-gap ...` / `dge resolve-gap ...` record gaps in the graph
 
-Create directories if needed.
+Do not write `graph.json` yourself. The CLI owns its schema.
 
 ## Readiness gate
 
@@ -110,11 +128,14 @@ If blocker gaps remain, stop and report them instead of invoking `/dge-plan-grap
 
 ## CLI contract
 
-When local tooling is available, prefer the DGE CLI over manual JSON edits:
+The DGE CLI is required (see Preflight) and is the only writer of the canonical store. Use
+`dge` if it is on the PATH (the plugin ships it), otherwise `npx dge`:
 
 ```bash
-npx dge add-demand ...
-npx dge add-requirement ...
-npx dge add-gap ...
-npx dge resolve-gap ...
+dge add-demand ...       # or: npx dge add-demand ...
+dge add-requirement ...
+dge add-gap ...
+dge resolve-gap ...
 ```
+
+Never edit `graph.json` by hand. If the CLI is unavailable, stop and install it (Preflight).

@@ -20,6 +20,18 @@ Create the executable delivery graph: tracks, nodes, dependency edges, and valid
 4. Split large nodes until each node has one clear validation contract.
 5. Preserve dependency edges explicitly; do not flatten into a checklist.
 
+## Preflight: require the DGE CLI
+
+Before planning, confirm the `dge` CLI is available:
+
+```bash
+dge --help >/dev/null 2>&1 || npx --no-install dge --help >/dev/null 2>&1
+```
+
+If neither resolves, **stop** and tell the user to install DGE first (the plugin ships `dge`
+on the PATH, or `npm install --save-dev github:rafaelolsr/delivery-graph`). The `dge` CLI is
+the **only** writer of `delivery-graph/graph.json`; never hand-write or hand-edit it.
+
 ## Workflow
 
 ### 1. Load intake artifacts
@@ -76,7 +88,8 @@ Check:
 
 ### 5. Save graph
 
-Update `delivery-graph/graph.json`.
+Create tracks and nodes through the CLI (`dge add-track`, `dge add-node`); it updates
+`delivery-graph/graph.json` for you. Do not write `graph.json` yourself.
 
 ## Output
 
@@ -92,10 +105,13 @@ Report:
 
 ## CLI contract
 
-When local tooling is available, prefer the DGE CLI over manual JSON edits:
+The DGE CLI is required (see Preflight) and is the only writer of the canonical store. Use
+`dge` if it is on the PATH (the plugin ships it), otherwise `npx dge`:
 
 ```bash
-npx dge add-track ...
-npx dge add-node ...
-npx dge status
+dge add-track ...        # or: npx dge add-track ...
+dge add-node ...
+dge status
 ```
+
+Never edit `graph.json` by hand. If the CLI is unavailable, stop and install it (Preflight).
