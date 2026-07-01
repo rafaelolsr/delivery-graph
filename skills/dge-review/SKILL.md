@@ -15,6 +15,7 @@ Review both the implementation and the delivery graph. Code can pass tests while
 ## Review lenses
 
 - requirement coverage
+- over-build check: does any node or requirement lack a traceable stated need, or add abstraction/robustness beyond the outcome?
 - dependency correctness
 - validation completeness
 - code or artifact changes

@@ -58,7 +58,17 @@ Record:
 - non-goals
 - known stakeholders
 
-### 2. Grill the demand
+### 2. Survey what already exists
+
+Before writing any requirement, read the relevant parts of the existing codebase. Do not design against a blank slate.
+
+- Locate code, modules, config, or prior demands that already address part of this demand (`grep`/`find`/read; check `delivery-graph/demands/` and `requirements/` for overlap).
+- For each candidate, decide: **reuse as-is**, **extend**, or **replace with justification**.
+- Record findings as a short prior-art note in the demand's problem/constraints capture. If the survey reveals an unknown that blocks scoping, emit it as a `GAP` of `type: scope`.
+
+Default position: the simplest change that reuses existing code beats a new abstraction. If nothing exists to reuse, say so explicitly — that statement is the evidence you looked.
+
+### 3. Grill the demand
 
 Act like a structured version of `grill-me`. Challenge:
 
@@ -68,10 +78,14 @@ Act like a structured version of `grill-me`. Challenge:
 - hidden dependency
 - untestable requirement
 - scope creep
+- speculative feature (actually asked for, or only imagined?)
+- premature abstraction or robustness beyond the stated outcome
+- requirement with no traceable need — which stated outcome does it serve?
+- everything defaulting to `must` when it is really `should`/`could`
 - contradiction
 - validation ambiguity
 
-### 3. Emit gaps
+### 4. Emit gaps
 
 Represent each unresolved issue as:
 
@@ -84,15 +98,17 @@ Represent each unresolved issue as:
   resolution: null
 ```
 
-### 4. Write requirements
+### 5. Write requirements
 
-Each requirement must be testable:
+Each requirement must be testable.
+
+Assign priority honestly: `must` only for what the stated outcome fails without. Push nice-to-haves to `should`/`could`, and record anything deliberately excluded as a `wont` priority or a demand non-goal. Every requirement must trace to a stated outcome; if it cannot, drop it or demote it.
 
 ```yaml
 - id: REQ-001
   demand_id: DEM-001
   statement: "..."
-  priority: must
+  priority: should
   acceptance:
     - "..."
   validation:
@@ -101,7 +117,7 @@ Each requirement must be testable:
       - "..."
 ```
 
-### 5. Save outputs
+### 6. Save outputs
 
 Author the canonical store **only through the `dge` CLI** (see CLI contract below). The CLI
 writes `delivery-graph/graph.json` and the `demands/` and `requirements/` markdown for you:
@@ -123,6 +139,8 @@ Return `ready_for_graph: true` only when:
 5. Requirements are testable.
 6. Acceptance criteria exist.
 7. No blocker gaps remain unresolved.
+8. Existing code was surveyed; each requirement either reuses/extends prior art or states why new work is needed.
+9. Priorities are differentiated (not everything is `must`) and speculative scope is either justified or recorded as a non-goal / `wont`.
 
 If blocker gaps remain, stop and report them instead of invoking `/dge-plan-graph`.
 

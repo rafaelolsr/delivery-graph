@@ -19,6 +19,7 @@ Create the executable delivery graph: tracks, nodes, dependency edges, and valid
 3. Every node must include validation before it can be synced or executed.
 4. Split large nodes until each node has one clear validation contract.
 5. Preserve dependency edges explicitly; do not flatten into a checklist.
+6. Prefer the fewest tracks and nodes that cover the `must` requirements; add a track or node only when a requirement or validation contract demands it. `should`/`could` requirements do not need their own track.
 
 ## Preflight: require the DGE CLI
 
@@ -45,7 +46,7 @@ Read `delivery-graph/graph.json` or the user-provided graph path. Confirm:
 
 ### 2. Create tracks
 
-Use tracks to group related nodes. Common tracks:
+Use tracks to group related nodes. Most demands need only `implementation` + `validation`; add others only when a requirement demands them. Common tracks:
 
 - product-contract
 - research
