@@ -44,17 +44,29 @@ npm install --save-dev github:rafaelolsr/delivery-graph
 npx dge init --title "My delivery graph"
 ```
 
+The shortest end-to-end loop is:
+
+```bash
+npx dge add-demand --title "Safer releases" --source "user" --outcome "Every completed node has proof"
+npx dge add-requirement --demand DEM-001 --statement "Nodes require validation evidence" --acceptance "Verify fails without evidence" --evidence "Evidence manifest"
+npx dge add-track --title "Validation"
+npx dge add-node --title "Add evidence gate" --type test --track TRK-validation --requirements REQ-001 --validation "npm test"
+npx dge evidence run NODE-001 --satisfies "npm test" -- npm test
+npx dge done NODE-001
+npx dge status --save
+```
+
 For local DGE development, run:
 
 ```bash
 npm run check
 ```
 
-This validates the example graph, renders a status report, and runs the tests.
+This validates the example graph against the JSON Schema and semantic graph rules, renders a status report, and runs the tests.
 
 ## Local engine commands
 
-The MVP includes a dependency-free local graph engine.
+The MVP includes a local graph engine and CLI.
 
 ```bash
 # Validate a graph
@@ -62,6 +74,10 @@ npm run validate
 
 # Render graph status
 npm run status
+
+# Save graph status for handoff or review
+npx dge status --save
+npx dge status --out delivery-graph/reports/status.md
 
 # Run engine tests
 npm test
@@ -116,7 +132,7 @@ npx dge evidence run NODE-001 --satisfies "npm test" -- npm test
 # Browser/UX evidence can be captured with Playwright:
 # npx dge evidence playwright NODE-001 --satisfies "checkout works" --url http://localhost:3000 --script tests/e2e/checkout.spec.ts
 npx dge done NODE-001
-npx dge status
+npx dge status --save
 ```
 
 This creates:
@@ -129,8 +145,12 @@ delivery-graph/
 ├── evidence/NODE-001/evidence.json
 ├── evidence/NODE-001/summary.md
 ├── evidence/NODE-001/verification.md
-└── reports/review-<timestamp>.md
+└── reports/
+    ├── review-<timestamp>.md
+    └── status-<timestamp>.md
 ```
+
+`dge validate` runs both the published JSON Schema and the semantic graph checks: cross references, unresolved blocker gaps, dependency cycles, dependency readiness, and validation evidence rules.
 
 ## Downstream battle test
 
@@ -157,6 +177,7 @@ npx dge add-node --title "..." --type implementation --track TRK-validation --re
 npx dge evidence run NODE-001 --satisfies "..." -- <validation-command>
 # or: npx dge evidence playwright NODE-001 --satisfies "..." --url http://localhost:3000 --script tests/e2e/app.spec.ts
 npx dge done NODE-001
+npx dge status --save
 ```
 
 Any friction found in that downstream run becomes DGE backlog. This keeps the plugin repository focused on the harness while real project work validates the methodology.
@@ -276,7 +297,7 @@ A node can only move to `done` when:
 
 ## Repository layout
 
-This repository will contain the plugin source and shared contracts:
+This repository contains the plugin source and shared contracts:
 
 ```text
 .
@@ -293,14 +314,15 @@ This repository will contain the plugin source and shared contracts:
 └── skills/                    # Multi-harness skill definitions
 ```
 
-## MVP scope
+## Current end-to-end scope
 
-The first deliverable should prove one complete loop:
+DGE now supports one complete local loop:
 
-1. `/dge-intake` creates one demand with requirements and gaps.
-2. `/dge-plan-graph` creates a graph with tracks, nodes, dependencies, and validation contracts.
-3. `/dge-sync` creates Linear issues from ready nodes.
-4. `/dge-work-node` executes one node.
-5. `/dge-verify` attaches evidence and blocks completion if validation is missing.
+1. `dge init` creates the canonical graph store.
+2. `dge add-demand`, `dge add-requirement`, `dge add-track`, and `dge add-node` create a graph with validation contracts.
+3. `dge sync linear` creates a dry-run Linear projection from ready nodes.
+4. `dge evidence run` and `dge evidence playwright` capture validation proof.
+5. `dge done` verifies evidence, writes a review report, and marks the node done only when gates pass.
+6. `dge status --save` writes a durable board/status handoff.
 
-After that loop works, add ADO sync, review automation, compounding, and additional harness manifests.
+Future tracker work can add real Linear/ADO API writes without changing the canonical store.

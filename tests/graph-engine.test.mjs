@@ -10,6 +10,35 @@ test("validates the example graph", () => {
   assert.deepEqual(validateGraph(makeGraph()), []);
 });
 
+test("enforces the delivery graph JSON schema", () => {
+  const graph = makeGraph({
+    graph: {
+      id: "DGE-001",
+      title: "Example graph",
+      status: "active",
+      unexpected: true
+    }
+  });
+
+  assert.match(validateGraph(graph).join("\n"), /schema \/graph: must NOT have additional properties/);
+});
+
+test("requires node evidence paths to match the owning node", () => {
+  const graph = makeGraph({
+    nodes: [
+      makeNode("NODE-001"),
+      makeNode("NODE-002", {
+        validation: {
+          required: ["npm test"],
+          evidence_path: "delivery-graph/evidence/NODE-001/"
+        }
+      })
+    ]
+  });
+
+  assert.match(validateGraph(graph).join("\n"), /NODE-002\.validation\.evidence_path must be delivery-graph\/evidence\/NODE-002\//);
+});
+
 test("blocks unresolved blocker gaps", () => {
   const graph = makeGraph({
     gaps: [

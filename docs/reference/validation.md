@@ -19,6 +19,15 @@ A node is not complete until:
 3. Review findings are resolved or explicitly deferred.
 4. Tracker state is synchronized.
 
+## Graph validation
+
+`dge validate` enforces two layers:
+
+1. `schemas/delivery-graph.schema.json` for shape, enums, required fields, and unexpected properties.
+2. Semantic graph checks for cross references, unresolved blocker gaps, dependency cycles, dependency readiness, and evidence gates.
+
+Use `dge status --save` to persist the current board view under `delivery-graph/reports/status-<timestamp>.md`, or `dge status --out <path>` to write a stable handoff file.
+
 ## Evidence manifest
 
 Evidence is stored per node:

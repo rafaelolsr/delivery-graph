@@ -46,6 +46,15 @@ test("CLI authors a graph end-to-end", () => {
   const status = run("status", "--graph", graphPath);
   assert.match(status, /NODE-001 Implement CLI/);
 
+  const explicitStatusPath = path.join(tempDir, "delivery-graph", "reports", "status.md");
+  const statusWithOut = run("status", "--graph", graphPath, "--out", explicitStatusPath);
+  assert.match(statusWithOut, /status report:/);
+  assert.match(fs.readFileSync(explicitStatusPath, "utf8"), /NODE-001 Implement CLI/);
+
+  const statusWithSave = run("status", "--graph", graphPath, "--save");
+  assert.match(statusWithSave, /status report:/);
+  assert.equal(fs.readdirSync(path.join(tempDir, "delivery-graph", "reports")).filter((file) => file.startsWith("status-")).length, 1);
+
   const graph = JSON.parse(fs.readFileSync(graphPath, "utf8"));
   assert.equal(graph.demands.length, 1);
   assert.equal(graph.requirements.length, 1);

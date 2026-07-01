@@ -16,7 +16,11 @@ export function readEvidenceManifest(graphPath, node) {
     };
   }
 
-  return JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+  const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+  if (manifest.node_id !== node.id) {
+    throw new Error(`${node.id} evidence manifest belongs to ${manifest.node_id}`);
+  }
+  return manifest;
 }
 
 export function writeEvidenceManifest(graphPath, node, manifest) {

@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { validateGraphSchema } from "./schema-validator.mjs";
 
 export const NODE_STATUSES = [
   "proposed",
@@ -39,7 +40,7 @@ export function writeGraph(graphPath, graph) {
 }
 
 export function validateGraph(graph, options = {}) {
-  const errors = [];
+  const errors = validateGraphSchema(graph);
 
   requireObject(graph, "root", errors);
   requireObject(graph?.graph, "graph", errors);
@@ -58,6 +59,7 @@ export function validateGraph(graph, options = {}) {
   const requirementIds = new Set();
   const trackIds = new Set();
   const nodeIds = new Set();
+  const evidencePaths = new Set();
 
   for (const demand of graph.demands) {
     requirePattern(demand.id, /^DEM-\d{3,}$/, "demand.id", errors);
@@ -113,6 +115,10 @@ export function validateGraph(graph, options = {}) {
     requireObject(node.validation, `${node.id}.validation`, errors);
     requireNonEmptyArray(node.validation?.required, `${node.id}.validation.required`, errors);
     requireText(node.validation?.evidence_path, `${node.id}.validation.evidence_path`, errors);
+    if (node.validation?.evidence_path !== `delivery-graph/evidence/${node.id}/`) {
+      errors.push(`${node.id}.validation.evidence_path must be delivery-graph/evidence/${node.id}/`);
+    }
+    addUnique(evidencePaths, node.validation?.evidence_path, "node evidence path", errors);
     requireObject(node.sync, `${node.id}.sync`, errors);
     addUnique(nodeIds, node.id, "node", errors);
   }

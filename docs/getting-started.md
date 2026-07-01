@@ -79,10 +79,10 @@ npx dge add-demand --title "Improve delivery" --source "user" --outcome "Validat
 npx dge add-requirement --demand DEM-001 --statement "A requirement exists" --acceptance "Requirement is in graph" --evidence "Graph validation passes"
 npx dge add-track --title "Implementation"
 npx dge add-node --title "Create the first node" --type implementation --track TRK-implementation --requirements REQ-001 --validation "npm run check"
-npx dge status
+npx dge status --save
 ```
 
-The default graph path is `delivery-graph/graph.json`.
+The default graph path is `delivery-graph/graph.json`. Saved status reports go to `delivery-graph/reports/status-<timestamp>.md`; use `--out <path>` for a stable handoff filename.
 
 ## Evidence and verification
 
@@ -91,6 +91,7 @@ Evidence is the core completion gate:
 ```bash
 npx dge evidence run NODE-001 --satisfies "npm run check" -- npm run check
 npx dge done NODE-001
+npx dge status --save
 ```
 
 `evidence run` executes the validation command and stores stdout/stderr/exit code under `delivery-graph/evidence/NODE-001/artifacts/`. Passing commands are added to `evidence.json`; failed commands are saved as attempt artifacts but are not counted as evidence. Use `evidence add` for manual approvals or external proof the agent cannot capture. `done` fails until every `validation.required[]` item on the node has matching evidence, writes `verification.md`, writes a review report, blocks on review blockers, and then marks the node `done`.

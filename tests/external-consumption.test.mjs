@@ -121,6 +121,10 @@ test("installed package runs DGE intake and evidence loop from another repo", ()
 
   const graph = JSON.parse(fs.readFileSync(graphPath, "utf8"));
   assert.equal(graph.nodes[0].status, "done");
+
+  const statusOutput = runDge(consumerDir, "status", "--save");
+  assert.match(statusOutput, /status report:/);
+  assert.equal(fs.readdirSync(path.join(consumerDir, "delivery-graph", "reports")).some((file) => file.startsWith("status-")), true);
 });
 
 function packPackage(packDir) {

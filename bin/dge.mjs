@@ -8,7 +8,11 @@ import {
   validateGraph,
   writeGraph
 } from "../src/graph-engine.mjs";
-import { renderStatus } from "../src/status-renderer.mjs";
+import {
+  defaultStatusPath,
+  renderStatus,
+  writeStatusReport
+} from "../src/status-renderer.mjs";
 import {
   addCommandEvidence,
   addEvidence,
@@ -62,7 +66,7 @@ function main() {
         runValidate(graphPath);
         break;
       case "status":
-        runStatus(graphPath);
+        runStatus(graphPath, args);
         break;
       case "transition":
         runTransition(graphPath, args);
@@ -132,9 +136,24 @@ function runValidate(graphPath) {
   console.log(`Delivery graph valid: ${graph.graph.id} - ${graph.graph.title}`);
 }
 
-function runStatus(graphPath) {
+function runStatus(graphPath, args = {}) {
   const graph = readGraph(graphPath);
-  process.stdout.write(renderStatus(graph, { evidenceStatuses: getAllEvidenceStatuses(graphPath, graph) }));
+  const shouldWriteReport = args.out !== undefined || args.save;
+  const generatedAt = shouldWriteReport ? new Date() : null;
+  const markdown = renderStatus(graph, {
+    evidenceStatuses: getAllEvidenceStatuses(graphPath, graph),
+    generatedAt: generatedAt?.toISOString()
+  });
+  process.stdout.write(markdown);
+
+  if (shouldWriteReport) {
+    if (args.out !== undefined && typeof args.out !== "string") {
+      throw new Error("Missing value for --out");
+    }
+    const outputPath = typeof args.out === "string" ? args.out : defaultStatusPath(graphPath, generatedAt);
+    writeStatusReport(outputPath, markdown);
+    console.log(`status report: ${outputPath}`);
+  }
 }
 
 function runTransition(graphPath, args) {
@@ -465,10 +484,6 @@ function appendArgValue(parsed, key, value) {
     return;
   }
 
-  function removeUndefined(record) {
-    return Object.fromEntries(Object.entries(record).filter(([, value]) => value !== undefined));
-  }
-
   if (!Array.isArray(parsed[key])) {
     parsed[key] = [parsed[key]];
   }
@@ -490,7 +505,7 @@ function printHelp() {
 Usage:
   dge init --title "Graph title" [--graph delivery-graph/graph.json]
   dge validate [--graph path]
-  dge status [--graph path]
+  dge status [--graph path] [--out delivery-graph/reports/status.md | --save]
   dge evidence add NODE-001 --satisfies "npm test" --summary "npm test passed" [--artifact output.txt]
   dge evidence run NODE-001 --satisfies "npm test" -- npm test
   dge evidence playwright NODE-001 --satisfies "checkout works" --url http://localhost:3000 --script tests/e2e/checkout.spec.ts [--artifacts test-results]

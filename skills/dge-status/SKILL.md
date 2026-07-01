@@ -29,6 +29,8 @@ When local tooling is available, use:
 
 ```bash
 npx dge status
+npx dge status --save
+npx dge status --out delivery-graph/reports/status.md
 ```
 
 The status output must include missing validation evidence.

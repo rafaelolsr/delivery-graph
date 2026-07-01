@@ -58,6 +58,20 @@ test("evidence must satisfy the node validation contract", () => {
   );
 });
 
+test("evidence status rejects manifests from another node", () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "dge-evidence-"));
+  const graphPath = path.join(tempDir, "delivery-graph", "graph.json");
+  const graph = makeGraph();
+  const manifestPath = path.join(tempDir, "delivery-graph", "evidence", "NODE-001", "evidence.json");
+  fs.mkdirSync(path.dirname(manifestPath), { recursive: true });
+  fs.writeFileSync(manifestPath, JSON.stringify({ node_id: "NODE-002", items: [] }));
+
+  assert.throws(
+    () => getEvidenceStatus(graphPath, graph, graph.nodes[0]),
+    /NODE-001 evidence manifest belongs to NODE-002/
+  );
+});
+
 test("command evidence records output artifact only when command passes", () => {
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "dge-evidence-"));
   const graphPath = path.join(tempDir, "delivery-graph", "graph.json");

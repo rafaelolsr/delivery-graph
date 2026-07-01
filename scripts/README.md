@@ -16,7 +16,7 @@ node bin/dge.mjs evidence run NODE-001 --satisfies "npm test" -- npm test
 node bin/dge.mjs evidence playwright NODE-001 --satisfies "browser proof" --url http://localhost:3000 --script tests/e2e/app.spec.ts
 node bin/dge.mjs done NODE-001
 node bin/dge.mjs sync linear --team-id "<linear-team-id>"
-node bin/dge.mjs status
+node bin/dge.mjs status --save
 ```
 
 ## Validate graph
@@ -28,7 +28,8 @@ node scripts/validate-graph.mjs examples/delivery-graph.example.json
 ## Render status
 
 ```bash
-node scripts/render-status.mjs examples/delivery-graph.example.json
+node scripts/render-status.mjs examples/delivery-graph.example.json --save
+node scripts/render-status.mjs examples/delivery-graph.example.json --out delivery-graph/reports/status.md
 ```
 
 ## Transition node
