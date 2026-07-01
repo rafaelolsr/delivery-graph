@@ -113,8 +113,8 @@ test("installed package runs DGE intake and evidence loop from another repo", ()
   );
   const doneOutput = runDge(consumerDir, "done", "NODE-001");
   assert.match(doneOutput, /NODE-001 done/);
-  assert.match(doneOutput, /verification report:/);
-  assert.match(doneOutput, /review report:/);
+  assert.match(doneOutput, /delivery-graph\/evidence\/NODE-001\/verification\.md/);
+  assert.match(doneOutput, /delivery-graph\/reports\/review-/);
 
   const verificationPath = path.join(consumerDir, "delivery-graph", "evidence", "NODE-001", "verification.md");
   assert.match(fs.readFileSync(verificationPath, "utf8"), new RegExp(`${REQUIRED_EVIDENCE}: satisfied`));
