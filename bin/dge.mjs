@@ -31,6 +31,7 @@ import {
   writeReviewReport
 } from "../src/review-engine.mjs";
 import { writeRecordArtifact } from "../src/markdown-artifacts.mjs";
+import { glyph, relativePath } from "../src/output.mjs";
 import {
   createLinearSyncPlan,
   defaultLinearSyncPath
@@ -98,22 +99,22 @@ function main() {
         runSync(graphPath, args);
         break;
       case "add-demand":
-        runMutation(graphPath, (graph) => addDemand(graph, mapDemandArgs(args)));
+        runMutation(graphPath, (graph) => addDemand(graph, mapDemandArgs(args)), args);
         break;
       case "add-requirement":
-        runMutation(graphPath, (graph) => addRequirement(graph, mapRequirementArgs(args)));
+        runMutation(graphPath, (graph) => addRequirement(graph, mapRequirementArgs(args)), args);
         break;
       case "add-gap":
-        runMutation(graphPath, (graph) => addGap(graph, mapGapArgs(args)));
+        runMutation(graphPath, (graph) => addGap(graph, mapGapArgs(args)), args);
         break;
       case "resolve-gap":
-        runMutation(graphPath, (graph) => resolveGap(graph, args._[0] ?? args.id, args.resolution));
+        runMutation(graphPath, (graph) => resolveGap(graph, args._[0] ?? args.id, args.resolution), args);
         break;
       case "add-track":
-        runMutation(graphPath, (graph) => addTrack(graph, mapTrackArgs(args)));
+        runMutation(graphPath, (graph) => addTrack(graph, mapTrackArgs(args)), args);
         break;
       case "add-node":
-        runMutation(graphPath, (graph) => addNode(graph, mapNodeArgs(args)));
+        runMutation(graphPath, (graph) => addNode(graph, mapNodeArgs(args)), args);
         break;
       case "install-skills":
         runInstallSkills(args);
@@ -138,7 +139,7 @@ function runInit(graphPath, args) {
     source: args.source
   });
   writeGraph(graphPath, graph);
-  printRecord("graph", graph.graph);
+  printRecord("graph", graph.graph, args);
 }
 
 function runInstallSkills(args) {
@@ -254,7 +255,7 @@ function runEvidence(graphPath, args) {
   }
 
   const { record } = runEvidenceSubcommand(graphPath, graph, nodeId, subcommand, args);
-  printRecord("evidence", record);
+  printRecord("evidence", record, args);
 }
 
 function runEvidenceSubcommand(graphPath, graph, nodeId, subcommand, args) {
@@ -362,9 +363,20 @@ function runVerify(graphPath, args) {
 
   const { graph, evidenceStatus, verificationPath } = verifyNode(graphPath, readGraph(graphPath), nodeId);
   writeGraph(graphPath, graph);
-  console.log(`${nodeId} verified`);
-  console.log(`verification report: ${verificationPath}`);
-  console.log(JSON.stringify(evidenceStatus, null, 2));
+
+  if (args.json) {
+    console.log(JSON.stringify({
+      node: { id: nodeId, status: "verified" },
+      verification_path: relativePath(verificationPath, graphPath),
+      evidence: { ...evidenceStatus, manifest_path: relativePath(evidenceStatus.manifest_path, graphPath) }
+    }, null, 2));
+    return;
+  }
+
+  const g = (name) => glyph(name, args);
+  const count = evidenceStatus.required.length;
+  console.log(`${g("verified")} ${nodeId} verified — evidence ${count}/${count} passed`);
+  console.log(`   ${g("reports")} report  ${relativePath(verificationPath, graphPath)}`);
 }
 
 function runDone(graphPath, args) {
@@ -407,10 +419,43 @@ function runDone(graphPath, args) {
   const verified = verifyNode(graphPath, graph, nodeId);
   const doneGraph = transitionNode(verified.graph, nodeId, "done");
   writeGraph(graphPath, doneGraph);
-  console.log(`${nodeId} done`);
-  console.log(`evidence manifest: ${verified.evidenceStatus.manifest_path}`);
-  console.log(`verification report: ${verified.verificationPath}`);
-  console.log(`review report: ${reviewPath}`);
+
+  const doneNode = findNode(doneGraph, nodeId);
+  const unblocked = newlyUnblockedNodes(doneGraph, nodeId);
+  const doneCount = doneGraph.nodes.filter((candidate) => candidate.status === "done").length;
+  const readyCount = doneGraph.nodes.filter((candidate) => candidate.status === "ready").length;
+  const requiredCount = doneNode.validation.required.length;
+
+  if (args.json) {
+    console.log(JSON.stringify({
+      node: { id: doneNode.id, title: doneNode.title, status: "done" },
+      requirements: doneNode.requirement_ids,
+      evidence: { required: requiredCount, satisfied: requiredCount, manifest_path: relativePath(verified.evidenceStatus.manifest_path, graphPath) },
+      verification_path: relativePath(verified.verificationPath, graphPath),
+      review_path: relativePath(reviewPath, graphPath),
+      unblocked,
+      progress: { done: doneCount, ready: readyCount, total: doneGraph.nodes.length }
+    }, null, 2));
+    return;
+  }
+
+  const g = (name) => glyph(name, args);
+  console.log(`${g("done")} ${nodeId} done — ${doneNode.title}`);
+  console.log(`   ${g("requirements")} requirements  ${doneNode.requirement_ids.join(", ") || "-"}`);
+  console.log(`   ${g("pass")} evidence      ${requiredCount}/${requiredCount} passed`);
+  console.log(`   ${g("unblocked")} unblocked     ${unblocked.length ? unblocked.join(", ") : "none"}`);
+  console.log(`   ${g("progress")} progress      ${doneCount}/${doneGraph.nodes.length} done · ${readyCount} ready`);
+  console.log(`   ${g("reports")} reports       ${relativePath(verified.verificationPath, graphPath)}`);
+  console.log(`                 ${relativePath(reviewPath, graphPath)}`);
+}
+
+// Nodes that become ready because this node just completed: they depend on it
+// and all their dependencies are now done.
+function newlyUnblockedNodes(graph, doneNodeId) {
+  const doneIds = new Set(graph.nodes.filter((n) => n.status === "done").map((n) => n.id));
+  return graph.nodes
+    .filter((n) => n.status === "ready" && n.depends_on.includes(doneNodeId) && n.depends_on.every((d) => doneIds.has(d)))
+    .map((n) => n.id);
 }
 
 function runReview(graphPath, args) {
@@ -419,8 +464,17 @@ function runReview(graphPath, args) {
   const { report, markdown } = reviewGraph(graphPath, graph, { generatedAt: generatedAt.toISOString() });
   const outputPath = args.out ?? defaultReviewPath(graphPath, generatedAt);
   writeReviewReport(outputPath, markdown);
-  console.log(`review report: ${outputPath}`);
-  console.log(JSON.stringify(report, null, 2));
+
+  if (args.json) {
+    console.log(JSON.stringify({ ...report, report_path: relativePath(outputPath, graphPath) }, null, 2));
+    return;
+  }
+
+  const g = (name) => glyph(name, args);
+  const blockers = report.findings.filter((f) => f.severity === "blocker").length;
+  const marker = blockers > 0 ? g("blocked") : g("pass");
+  console.log(`${marker} review — ${report.findings.length} finding${report.findings.length === 1 ? "" : "s"}${blockers ? ` (${blockers} blocker)` : ""}`);
+  console.log(`   ${g("reports")} report  ${relativePath(outputPath, graphPath)}`);
 }
 
 function runSync(graphPath, args) {
@@ -471,13 +525,13 @@ function writeSyncPlan(outputPath, syncPlan) {
   fs.writeFileSync(path.resolve(outputPath), `${JSON.stringify(syncPlan, null, 2)}\n`);
 }
 
-function runMutation(graphPath, mutate) {
+function runMutation(graphPath, mutate, args = {}) {
   const { graph, record } = mutate(readGraph(graphPath));
   writeGraph(graphPath, graph);
   const artifactPath = writeRecordArtifact(graphPath, record);
-  printRecord("record", record);
-  if (artifactPath) {
-    console.log(`artifact: ${artifactPath}`);
+  printRecord("record", record, args);
+  if (artifactPath && !args.json) {
+    console.log(`   ${glyph("reports", args)} ${relativePath(artifactPath, graphPath)}`);
   }
 }
 
@@ -594,9 +648,17 @@ function removeUndefined(record) {
   return Object.fromEntries(Object.entries(record).filter(([, value]) => value !== undefined));
 }
 
-function printRecord(label, record) {
-  console.log(`${label}: ${record.id ?? record.title}`);
-  console.log(JSON.stringify(record, null, 2));
+function printRecord(label, record, args = {}) {
+  if (args.json) {
+    console.log(JSON.stringify(record, null, 2));
+    return;
+  }
+  const g = glyph("added", args);
+  // A concise one-liner: glyph, id/title, and a short type/track/req hint when present.
+  const hint = [record.type, record.track, (record.requirement_ids ?? []).join(", ") || null]
+    .filter(Boolean)
+    .join(" · ");
+  console.log(`${g} ${record.id ?? record.title}  ${record.title ?? ""}${hint ? `  [${hint}]` : ""}`.trimEnd());
 }
 
 function printHelp() {

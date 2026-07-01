@@ -93,10 +93,13 @@ test("CLI supports usable local loop through evidence, verify, status, and revie
   );
 
   const doneOutput = run("done", "NODE-001", "--graph", graphPath);
+  // concise default summary: node line, evidence count, relative report paths, no raw JSON
   assert.match(doneOutput, /NODE-001 done/);
-  assert.match(doneOutput, /evidence manifest:/);
-  assert.match(doneOutput, /verification report:/);
-  assert.match(doneOutput, /review report:/);
+  assert.match(doneOutput, /evidence\s+\d+\/\d+ passed/);
+  assert.match(doneOutput, /delivery-graph\/evidence\/NODE-001\/verification\.md/);
+  assert.match(doneOutput, /delivery-graph\/reports\/review-/);
+  assert.doesNotMatch(doneOutput, /^\{/m); // no raw JSON object in default output
+  assert.doesNotMatch(doneOutput, new RegExp(tempDir.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))); // no absolute path
 
   const doneGraph = JSON.parse(fs.readFileSync(graphPath, "utf8"));
   assert.equal(doneGraph.nodes[0].status, "done");
@@ -154,6 +157,99 @@ test("CLI evidence add --result fail does not satisfy; --result pass does", () =
 
   const graph = JSON.parse(fs.readFileSync(graphPath, "utf8"));
   assert.equal(graph.nodes[0].status, "done");
+});
+
+function seedReviewableNode(graphPath) {
+  run("init", "--graph", graphPath, "--title", "Output graph");
+  run("add-demand", "--graph", graphPath, "--title", "Demand", "--source", "test", "--outcome", "Concise output");
+  run(
+    "add-requirement", "--graph", graphPath, "--demand", "DEM-001",
+    "--statement", "Output is concise", "--acceptance", "Summary, not JSON", "--evidence", "Manual proof"
+  );
+  run("add-track", "--graph", graphPath, "--title", "Validation");
+  run(
+    "add-node", "--graph", graphPath, "--title", "Output node", "--type", "test",
+    "--track", "TRK-validation", "--requirements", "REQ-001", "--validation", "manual proof"
+  );
+  run("transition", "NODE-001", "in_progress", "--graph", graphPath);
+  run("transition", "NODE-001", "review", "--graph", graphPath);
+  run(
+    "evidence", "add", "NODE-001", "--graph", graphPath,
+    "--satisfies", "manual proof", "--summary", "works", "--result", "pass"
+  );
+}
+
+test("output flags (--json/--ascii) change only the terminal, never the persisted files", () => {
+  // Run the same done twice in two identical repos: once default, once --json.
+  // The persisted verification.md and evidence.json must be byte-identical.
+  function completeAndReadFiles(extraArgs) {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "dge-persist-"));
+    const graphPath = path.join(tempDir, "delivery-graph", "graph.json");
+    seedReviewableNode(graphPath);
+    run("done", "NODE-001", "--graph", graphPath, ...extraArgs);
+    const dir = path.join(tempDir, "delivery-graph");
+    return {
+      verification: fs.readFileSync(path.join(dir, "evidence", "NODE-001", "verification.md"), "utf8"),
+      evidence: fs.readFileSync(path.join(dir, "evidence", "NODE-001", "evidence.json"), "utf8"),
+      review: fs.readdirSync(path.join(dir, "reports")).filter((f) => f.startsWith("review-")).length
+    };
+  }
+
+  // The files legitimately embed run timestamps; mask them so the comparison
+  // isolates the effect of the output flags (which must be none).
+  const maskTs = (text) => text.replace(/\d{4}-\d{2}-\d{2}T[\d:.]+Z/g, "<TS>");
+
+  const plain = completeAndReadFiles([]);
+  const json = completeAndReadFiles(["--json"]);
+  const ascii = completeAndReadFiles(["--ascii"]);
+
+  assert.equal(maskTs(json.verification), maskTs(plain.verification));
+  assert.equal(maskTs(ascii.verification), maskTs(plain.verification));
+  assert.equal(maskTs(json.evidence), maskTs(plain.evidence));
+  assert.equal(maskTs(ascii.evidence), maskTs(plain.evidence));
+  assert.equal(plain.review, 1);
+  assert.equal(json.review, 1);
+
+  // verification.md still carries the expected human-visible proof line
+  assert.match(plain.verification, /manual proof: satisfied/);
+});
+
+test("done default output is a concise summary (req ids, evidence N/N, no raw JSON)", () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "dge-out-"));
+  const graphPath = path.join(tempDir, "delivery-graph", "graph.json");
+  seedReviewableNode(graphPath);
+
+  const out = run("done", "NODE-001", "--graph", graphPath);
+  assert.match(out, /NODE-001 done/);
+  assert.match(out, /REQ-001/);
+  assert.match(out, /evidence\s+1\/1 passed/);
+  assert.doesNotMatch(out, /^\{/m); // no raw JSON object
+  assert.doesNotMatch(out, new RegExp(tempDir.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))); // no absolute path
+});
+
+test("done --json emits a single parseable JSON object with relative paths", () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "dge-out-json-"));
+  const graphPath = path.join(tempDir, "delivery-graph", "graph.json");
+  seedReviewableNode(graphPath);
+
+  const out = run("done", "NODE-001", "--graph", graphPath, "--json");
+  const parsed = JSON.parse(out); // throws if not a single JSON object
+  assert.equal(parsed.node.id, "NODE-001");
+  assert.equal(parsed.node.status, "done");
+  assert.equal(parsed.evidence.satisfied, 1);
+  assert.match(parsed.verification_path, /^delivery-graph\//);
+  assert.ok(!parsed.verification_path.includes(tempDir));
+});
+
+test("done --ascii output contains no emoji", () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "dge-out-ascii-"));
+  const graphPath = path.join(tempDir, "delivery-graph", "graph.json");
+  seedReviewableNode(graphPath);
+
+  const out = run("done", "NODE-001", "--graph", graphPath, "--ascii");
+  assert.match(out, /NODE-001 done/);
+  // no characters above the BMP ASCII range
+  assert.doesNotMatch(out, /[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}✅❌]/u);
 });
 
 test("CLI evidence remove deletes a record and re-blocks done", () => {
@@ -389,7 +485,9 @@ test("CLI captures Playwright evidence with browser artifacts", () => {
     "console.log(process.env.DGE_EVIDENCE_URL)"
   );
 
-  assert.match(output, /"kind": "playwright"/);
+  // default output is a concise line (no raw JSON); the persisted manifest holds the kind
+  assert.match(output, /EVD-001/);
+  assert.doesNotMatch(output, /^\{/m);
   const evidence = JSON.parse(fs.readFileSync(path.join(tempDir, "delivery-graph", "evidence", "NODE-001", "evidence.json"), "utf8"));
   assert.equal(evidence.items[0].kind, "playwright");
   assert.equal(evidence.items[0].metadata.url, "http://localhost:3000");
