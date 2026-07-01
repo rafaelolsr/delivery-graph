@@ -1,7 +1,7 @@
 {
   "name": "delivery-graph",
   "description": "Delivery Graph Engineering: turn demands into validated delivery graphs. Ships the /dge-* skills and the dge CLI.",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "author": {
     "name": "Rafael Rodrigues",
     "email": "rafael@datageek.com.br"

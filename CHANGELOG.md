@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.2.1
+
+Authoring-correctness fixes.
+
+### Added
+- **`dge remove-node NODE-###`** — delete a node via the CLI; refuses removal when other nodes depend on it.
+- **`dge set-validation NODE-### --validation "..."`** — replace a node's validation contract via the CLI instead of hand-editing `graph.json`.
+
+### Fixed
+- **`--validation` items are no longer comma-split** — each flag is exactly one contract item, so validation prose can contain commas.
+- **Relative-path doubling** — output no longer emits `delivery-graph/delivery-graph/...` when the repo path itself contains `delivery-graph`.
+
 ## 0.2.0
 
 Marketplace distribution, a coupled CLI, and evidence/output hardening.
