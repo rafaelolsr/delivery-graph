@@ -23,6 +23,16 @@ Show the current operational state of a delivery graph without changing it.
 7. Print a concise terminal report.
 8. If requested, save to `delivery-graph/reports/status-<timestamp>.md`.
 
+## CLI contract
+
+When local tooling is available, use:
+
+```bash
+npm run dge -- status
+```
+
+The status output must include missing validation evidence.
+
 ## Output sections
 
 - graph summary

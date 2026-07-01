@@ -12,6 +12,9 @@ node bin/dge.mjs add-demand --title "Demand" --source "user" --outcome "Outcome"
 node bin/dge.mjs add-requirement --demand DEM-001 --statement "Requirement" --acceptance "Acceptance" --evidence "Evidence"
 node bin/dge.mjs add-track --title "Implementation"
 node bin/dge.mjs add-node --title "Node" --type implementation --track TRK-implementation --requirements REQ-001 --validation "npm test"
+node bin/dge.mjs evidence add NODE-001 --satisfies "npm test" --summary "npm test passed"
+node bin/dge.mjs verify NODE-001
+node bin/dge.mjs review
 node bin/dge.mjs sync linear --team-id "<linear-team-id>"
 node bin/dge.mjs status
 ```

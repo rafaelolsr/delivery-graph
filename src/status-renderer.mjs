@@ -1,7 +1,8 @@
 import { NODE_STATUSES, summarizeGraph } from "./graph-engine.mjs";
 
-export function renderStatus(graph) {
+export function renderStatus(graph, options = {}) {
   const summary = summarizeGraph(graph);
+  const evidenceStatuses = options.evidenceStatuses ?? [];
   const lines = [];
 
   lines.push(`# ${summary.graph.id}: ${summary.graph.title}`);
@@ -22,6 +23,17 @@ export function renderStatus(graph) {
   } else {
     for (const node of summary.readyNodes) {
       lines.push(`- ${node.id}: ${node.title}`);
+    }
+  }
+
+  lines.push("");
+  lines.push("## Missing validation evidence");
+  const missingEvidence = evidenceStatuses.filter((status) => !status.complete);
+  if (missingEvidence.length === 0) {
+    lines.push("- none");
+  } else {
+    for (const status of missingEvidence) {
+      lines.push(`- ${status.node_id}: ${status.missing.join(", ")}`);
     }
   }
 

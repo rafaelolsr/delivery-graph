@@ -28,6 +28,13 @@ Use the unified CLI for local graph authoring:
 npm run dge -- status
 ```
 
+Do not mark a node done without evidence. Use:
+
+```bash
+npm run dge -- evidence add NODE-001 --satisfies "..." --summary "..."
+npm run dge -- verify NODE-001
+```
+
 ## Skill authoring
 
 Public skills live under `skills/<skill-name>/SKILL.md`.

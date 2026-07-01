@@ -1,0 +1,21 @@
+{
+  "node_id": "NODE-001",
+  "items": [
+    {
+      "id": "EVD-001",
+      "kind": "command",
+      "summary": "Example eval and lint checks passed.",
+      "satisfies": "uv run pytest -m eval",
+      "artifact": null,
+      "created_at": "2026-06-30T00:00:00Z"
+    },
+    {
+      "id": "EVD-002",
+      "kind": "command",
+      "summary": "Example ruff check passed.",
+      "satisfies": "uv run ruff check",
+      "artifact": null,
+      "created_at": "2026-06-30T00:00:00Z"
+    }
+  ]
+}

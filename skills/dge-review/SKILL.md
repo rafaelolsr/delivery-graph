@@ -39,3 +39,12 @@ Review both the implementation and the delivery graph. Code can pass tests while
 - `minor`: safe to defer with rationale
 - `note`: informational
 
+## CLI contract
+
+When local tooling is available, use:
+
+```bash
+npm run dge -- review
+```
+
+The command writes `delivery-graph/reports/review-<timestamp>.md`.

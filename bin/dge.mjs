@@ -9,6 +9,19 @@ import {
 } from "../src/graph-engine.mjs";
 import { renderStatus } from "../src/status-renderer.mjs";
 import {
+  addEvidence,
+  getAllEvidenceStatuses,
+  getEvidenceStatus,
+  findNode,
+  verifyNode
+} from "../src/evidence-engine.mjs";
+import {
+  defaultReviewPath,
+  reviewGraph,
+  writeReviewReport
+} from "../src/review-engine.mjs";
+import { writeRecordArtifact } from "../src/markdown-artifacts.mjs";
+import {
   createLinearSyncPlan,
   defaultLinearSyncPath
 } from "../src/adapters/linear.mjs";
@@ -46,10 +59,19 @@ function main() {
         runValidate(graphPath);
         break;
       case "status":
-        process.stdout.write(renderStatus(readGraph(graphPath)));
+        runStatus(graphPath);
         break;
       case "transition":
         runTransition(graphPath, args);
+        break;
+      case "evidence":
+        runEvidence(graphPath, args);
+        break;
+      case "verify":
+        runVerify(graphPath, args);
+        break;
+      case "review":
+        runReview(graphPath, args);
         break;
       case "sync":
         runSync(graphPath, args);
@@ -104,15 +126,66 @@ function runValidate(graphPath) {
   console.log(`Delivery graph valid: ${graph.graph.id} - ${graph.graph.title}`);
 }
 
+function runStatus(graphPath) {
+  const graph = readGraph(graphPath);
+  process.stdout.write(renderStatus(graph, { evidenceStatuses: getAllEvidenceStatuses(graphPath, graph) }));
+}
+
 function runTransition(graphPath, args) {
   const [nodeId, nextStatus] = args._;
   if (!nodeId || !nextStatus) {
     throw new Error("Usage: dge transition NODE-### <status> [--graph path]");
   }
 
-  const nextGraph = transitionNode(readGraph(graphPath), nodeId, nextStatus);
+  const graph = readGraph(graphPath);
+  if (["verified", "done"].includes(nextStatus)) {
+    const evidenceStatus = getEvidenceStatus(graphPath, graph, findNode(graph, nodeId));
+    if (!evidenceStatus.complete) {
+      throw new Error(`${nodeId} is missing validation evidence: ${evidenceStatus.missing.join(", ")}`);
+    }
+  }
+
+  const nextGraph = transitionNode(graph, nodeId, nextStatus);
   writeGraph(graphPath, nextGraph);
   console.log(`${nodeId} -> ${nextStatus}`);
+}
+
+function runEvidence(graphPath, args) {
+  const [subcommand, nodeId] = args._;
+  if (subcommand !== "add" || !nodeId) {
+    throw new Error("Usage: dge evidence add NODE-### --satisfies \"...\" --summary \"...\" [--kind command] [--artifact path]");
+  }
+
+  const graph = readGraph(graphPath);
+  const { record } = addEvidence(graphPath, graph, nodeId, {
+    kind: args.kind,
+    summary: args.summary,
+    satisfies: args.satisfies,
+    artifact: args.artifact
+  });
+  printRecord("evidence", record);
+}
+
+function runVerify(graphPath, args) {
+  const [nodeId] = args._;
+  if (!nodeId) {
+    throw new Error("Usage: dge verify NODE-### [--graph path]");
+  }
+
+  const { graph, evidenceStatus } = verifyNode(graphPath, readGraph(graphPath), nodeId);
+  writeGraph(graphPath, graph);
+  console.log(`${nodeId} verified`);
+  console.log(JSON.stringify(evidenceStatus, null, 2));
+}
+
+function runReview(graphPath, args) {
+  const graph = readGraph(graphPath);
+  const generatedAt = new Date();
+  const { report, markdown } = reviewGraph(graphPath, graph, { generatedAt: generatedAt.toISOString() });
+  const outputPath = args.out ?? defaultReviewPath(graphPath, generatedAt);
+  writeReviewReport(outputPath, markdown);
+  console.log(`review report: ${outputPath}`);
+  console.log(JSON.stringify(report, null, 2));
 }
 
 function runSync(graphPath, args) {
@@ -138,7 +211,11 @@ function runSync(graphPath, args) {
 function runMutation(graphPath, mutate) {
   const { graph, record } = mutate(readGraph(graphPath));
   writeGraph(graphPath, graph);
+  const artifactPath = writeRecordArtifact(graphPath, record);
   printRecord("record", record);
+  if (artifactPath) {
+    console.log(`artifact: ${artifactPath}`);
+  }
 }
 
 function mapDemandArgs(args) {
@@ -257,6 +334,9 @@ Usage:
   dge init --title "Graph title" [--graph delivery-graph/graph.json]
   dge validate [--graph path]
   dge status [--graph path]
+  dge evidence add NODE-001 --satisfies "npm test" --summary "npm test passed" [--artifact output.txt]
+  dge verify NODE-001 [--graph path]
+  dge review [--graph path] [--out path]
   dge sync linear [--graph path] [--out delivery-graph/sync/linear.json]
   dge transition NODE-001 review [--graph path]
   dge add-demand --title "..." --source "..." --outcome "..." [--graph path]

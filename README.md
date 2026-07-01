@@ -93,6 +93,34 @@ By default, `dge` reads and writes `delivery-graph/graph.json`. Pass `--graph <p
 
 Linear sync writes `delivery-graph/sync/linear.json`. The current adapter is intentionally dry-run: it creates deterministic issue payloads and sync state without requiring credentials.
 
+## Usable local loop
+
+The local loop works without Linear, Azure DevOps, or any external tracker:
+
+```bash
+npm run dge -- init --title "My delivery graph"
+npm run dge -- add-demand --title "Safer releases" --source "user" --outcome "Every completed node has proof"
+npm run dge -- add-requirement --demand DEM-001 --statement "Nodes require validation evidence" --acceptance "Verify fails without evidence" --evidence "Evidence manifest"
+npm run dge -- add-track --title "Validation"
+npm run dge -- add-node --title "Add evidence gate" --type test --track TRK-validation --requirements REQ-001 --validation "npm test"
+npm run dge -- evidence add NODE-001 --satisfies "npm test" --summary "npm test passed"
+npm run dge -- verify NODE-001
+npm run dge -- status
+npm run dge -- review
+```
+
+This creates:
+
+```text
+delivery-graph/
+├── graph.json
+├── demands/DEM-001.md
+├── requirements/REQ-001.md
+├── evidence/NODE-001/evidence.json
+├── evidence/NODE-001/summary.md
+└── reports/review-<timestamp>.md
+```
+
 ## Skill loop
 
 | Skill | Purpose | Primary output |

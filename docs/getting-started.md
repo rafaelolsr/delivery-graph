@@ -62,6 +62,25 @@ npm run dge -- status
 
 The default graph path is `delivery-graph/graph.json`.
 
+## Evidence and verification
+
+Evidence is the core completion gate:
+
+```bash
+npm run dge -- evidence add NODE-001 --satisfies "npm run check" --summary "All checks passed"
+npm run dge -- verify NODE-001
+```
+
+`verify` fails until every `validation.required[]` item on the node has matching evidence.
+
+## Local review
+
+```bash
+npm run dge -- review
+```
+
+This writes `delivery-graph/reports/review-<timestamp>.md` and reports graph consistency, blocker gaps, requirement coverage, and missing evidence.
+
 ## Linear dry-run sync
 
 ```bash
