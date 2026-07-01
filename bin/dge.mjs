@@ -73,6 +73,9 @@ function main() {
       case "verify":
         runVerify(graphPath, args);
         break;
+      case "done":
+        runDone(graphPath, args);
+        break;
       case "review":
         runReview(graphPath, args);
         break;
@@ -219,6 +222,52 @@ function runVerify(graphPath, args) {
   console.log(`${nodeId} verified`);
   console.log(`verification report: ${verificationPath}`);
   console.log(JSON.stringify(evidenceStatus, null, 2));
+}
+
+function runDone(graphPath, args) {
+  const [nodeId] = args._;
+  if (!nodeId) {
+    throw new Error("Usage: dge done NODE-### [--graph path] [--out review-report.md]");
+  }
+
+  const graph = readGraph(graphPath);
+  const node = findNode(graph, nodeId);
+  if (node.status === "done") {
+    console.log(`${nodeId} already done`);
+    return;
+  }
+  if (!["ready", "in_progress", "review", "verified"].includes(node.status)) {
+    throw new Error(`${nodeId} must be ready, in_progress, review, or verified before it can be done`);
+  }
+
+  const incompleteDependencies = node.depends_on.filter((dependencyId) =>
+    graph.nodes.find((candidate) => candidate.id === dependencyId)?.status !== "done"
+  );
+  if (incompleteDependencies.length > 0) {
+    throw new Error(`${nodeId} cannot be done; incomplete dependencies: ${incompleteDependencies.join(", ")}`);
+  }
+
+  const evidenceStatus = getEvidenceStatus(graphPath, graph, node);
+  if (!evidenceStatus.complete) {
+    throw new Error(`${nodeId} is missing validation evidence: ${evidenceStatus.missing.join(", ")}`);
+  }
+
+  const generatedAt = new Date();
+  const { report, markdown } = reviewGraph(graphPath, graph, { generatedAt: generatedAt.toISOString() });
+  const reviewPath = args.out ?? defaultReviewPath(graphPath, generatedAt);
+  writeReviewReport(reviewPath, markdown);
+  const blockers = report.findings.filter((finding) => finding.severity === "blocker");
+  if (blockers.length > 0) {
+    throw new Error(`Review blockers prevent done: ${blockers.map((finding) => finding.message).join("; ")}\nreview report: ${reviewPath}`);
+  }
+
+  const verified = verifyNode(graphPath, graph, nodeId);
+  const doneGraph = transitionNode(verified.graph, nodeId, "done");
+  writeGraph(graphPath, doneGraph);
+  console.log(`${nodeId} done`);
+  console.log(`evidence manifest: ${verified.evidenceStatus.manifest_path}`);
+  console.log(`verification report: ${verified.verificationPath}`);
+  console.log(`review report: ${reviewPath}`);
 }
 
 function runReview(graphPath, args) {
@@ -385,6 +434,7 @@ Usage:
   dge evidence add NODE-001 --satisfies "npm test" --summary "npm test passed" [--artifact output.txt]
   dge evidence run NODE-001 --satisfies "npm test" -- npm test
   dge verify NODE-001 [--graph path]
+  dge done NODE-001 [--graph path]
   dge review [--graph path] [--out path]
   dge sync linear [--graph path] [--out delivery-graph/sync/linear.json]
   dge transition NODE-001 review [--graph path]

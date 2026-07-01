@@ -32,7 +32,7 @@ Do not mark a node done without evidence. Use:
 
 ```bash
 npm run dge -- evidence run NODE-001 --satisfies "..." -- <validation-command>
-npm run dge -- verify NODE-001
+npm run dge -- done NODE-001
 ```
 
 ## Skill authoring

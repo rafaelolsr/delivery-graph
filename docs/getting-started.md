@@ -11,6 +11,17 @@ npx dge init --title "My first DGE graph"
 
 Inside the DGE source repository, use `npm run dge -- ...` for development. In consuming repositories, use `npx dge ...`.
 
+### Install the skills into your harness
+
+The `npm install` above gives you the `dge` CLI. The `/dge-*` slash commands used in the numbered steps below are a separate surface: your harness must discover the skills that ship at `node_modules/delivery-graph-engineering/skills/`. Copy or symlink the `dge-*` skill directories into the skills folder your harness reads:
+
+- **GitHub Copilot CLI** → `.github/skills/`
+- **Claude Code** → `.claude/skills/`
+
+For the full copy/symlink commands, verification steps, and caveats (permission prompts and argument passing), see [Install in GitHub Copilot CLI](../README.md#install-in-github-copilot-cli) in the README.
+
+> The numbered steps below assume the skills are installed. Without them, run the equivalent `npx dge ...` commands shown in each section directly.
+
 ## 1. Intake a demand
 
 ```text
@@ -79,10 +90,10 @@ Evidence is the core completion gate:
 
 ```bash
 npx dge evidence run NODE-001 --satisfies "npm run check" -- npm run check
-npx dge verify NODE-001
+npx dge done NODE-001
 ```
 
-`evidence run` executes the validation command and stores stdout/stderr/exit code under `delivery-graph/evidence/NODE-001/artifacts/`. Passing commands are added to `evidence.json`; failed commands are saved as attempt artifacts but are not counted as evidence. Use `evidence add` for manual approvals or external proof the agent cannot capture. `verify` fails until every `validation.required[]` item on the node has matching evidence. When it succeeds, it writes `delivery-graph/evidence/NODE-001/verification.md`.
+`evidence run` executes the validation command and stores stdout/stderr/exit code under `delivery-graph/evidence/NODE-001/artifacts/`. Passing commands are added to `evidence.json`; failed commands are saved as attempt artifacts but are not counted as evidence. Use `evidence add` for manual approvals or external proof the agent cannot capture. `done` fails until every `validation.required[]` item on the node has matching evidence, writes `verification.md`, writes a review report, blocks on review blockers, and then marks the node `done`.
 
 ## Local review
 

@@ -53,9 +53,9 @@ Use:
 
 ```bash
 npx dge evidence run NODE-001 --satisfies "npm test" -- npm test
-npx dge verify NODE-001
+npx dge done NODE-001
 ```
 
 `evidence run` stores command output, error output, and exit code as a JSON artifact under the node evidence directory. Successful commands are recorded in `evidence.json`; failed commands are saved as attempt artifacts but do not satisfy the validation contract.
 
-Successful verification writes `verification.md`, which gives the user-visible proof that each required validation item was satisfied by recorded evidence.
+Successful completion writes `verification.md`, writes a review report, and marks the node `done`. `verification.md` gives the user-visible proof that each required validation item was satisfied by recorded evidence.

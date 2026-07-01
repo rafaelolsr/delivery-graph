@@ -54,7 +54,7 @@ test("CLI supports usable local loop through evidence, verify, status, and revie
   run("transition", "NODE-001", "review", "--graph", graphPath);
 
   assert.throws(
-    () => run("verify", "NODE-001", "--graph", graphPath),
+    () => run("done", "NODE-001", "--graph", graphPath),
     /missing validation evidence/
   );
 
@@ -92,14 +92,12 @@ test("CLI supports usable local loop through evidence, verify, status, and revie
     "console.log('proof')"
   );
 
-  const verifiedOutput = run("verify", "NODE-001", "--graph", graphPath);
-  assert.match(verifiedOutput, /NODE-001 verified/);
-  assert.match(verifiedOutput, /verification report:/);
+  const doneOutput = run("done", "NODE-001", "--graph", graphPath);
+  assert.match(doneOutput, /NODE-001 done/);
+  assert.match(doneOutput, /evidence manifest:/);
+  assert.match(doneOutput, /verification report:/);
+  assert.match(doneOutput, /review report:/);
 
-  const graph = JSON.parse(fs.readFileSync(graphPath, "utf8"));
-  assert.equal(graph.nodes[0].status, "verified");
-
-  run("transition", "NODE-001", "done", "--graph", graphPath);
   const doneGraph = JSON.parse(fs.readFileSync(graphPath, "utf8"));
   assert.equal(doneGraph.nodes[0].status, "done");
   assert.match(
@@ -107,11 +105,141 @@ test("CLI supports usable local loop through evidence, verify, status, and revie
     /node proof command: satisfied/
   );
 
-  const reviewOutput = run("review", "--graph", graphPath);
-  assert.match(reviewOutput, /review report:/);
-
   const reportsDir = path.join(tempDir, "delivery-graph", "reports");
   assert.equal(fs.readdirSync(reportsDir).filter((file) => file.startsWith("review-")).length, 1);
+});
+
+test("CLI done blocks unresolved review blockers", () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "dge-done-blocked-"));
+  const graphPath = path.join(tempDir, "delivery-graph", "graph.json");
+
+  run("init", "--graph", graphPath, "--title", "Done blocked graph");
+  run("add-demand", "--graph", graphPath, "--title", "Demand", "--source", "test", "--outcome", "Blockers stop done");
+  run(
+    "add-requirement",
+    "--graph",
+    graphPath,
+    "--demand",
+    "DEM-001",
+    "--statement",
+    "Done requires clean review",
+    "--acceptance",
+    "Done fails when blocker gaps remain",
+    "--evidence",
+    "proof"
+  );
+  run("add-track", "--graph", graphPath, "--title", "Validation");
+  run(
+    "add-node",
+    "--graph",
+    graphPath,
+    "--title",
+    "Blocked done",
+    "--type",
+    "test",
+    "--track",
+    "TRK-validation",
+    "--requirements",
+    "REQ-001",
+    "--validation",
+    "proof"
+  );
+  run("transition", "NODE-001", "in_progress", "--graph", graphPath);
+  run("transition", "NODE-001", "review", "--graph", graphPath);
+  run(
+    "evidence",
+    "run",
+    "NODE-001",
+    "--graph",
+    graphPath,
+    "--satisfies",
+    "proof",
+    "--",
+    process.execPath,
+    "-e",
+    "console.log('proof')"
+  );
+  run("add-gap", "--graph", graphPath, "--type", "validation", "--severity", "blocker", "--question", "Still blocked?", "--blocks", "REQ-001");
+
+  assert.throws(
+    () => run("done", "NODE-001", "--graph", graphPath),
+    /Review blockers prevent done: GAP-001: Still blocked\?/
+  );
+  const graph = JSON.parse(fs.readFileSync(graphPath, "utf8"));
+  assert.equal(graph.nodes[0].status, "review");
+  assert.equal(fs.readdirSync(path.join(tempDir, "delivery-graph", "reports")).filter((file) => file.startsWith("review-")).length, 1);
+});
+
+test("CLI done requires dependencies to be done", () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "dge-done-deps-"));
+  const graphPath = path.join(tempDir, "delivery-graph", "graph.json");
+
+  run("init", "--graph", graphPath, "--title", "Dependency graph");
+  run("add-demand", "--graph", graphPath, "--title", "Demand", "--source", "test", "--outcome", "Dependencies block done");
+  run(
+    "add-requirement",
+    "--graph",
+    graphPath,
+    "--demand",
+    "DEM-001",
+    "--statement",
+    "Done honors dependencies",
+    "--acceptance",
+    "Dependent node cannot be done first",
+    "--evidence",
+    "proof"
+  );
+  run("add-track", "--graph", graphPath, "--title", "Validation");
+  run(
+    "add-node",
+    "--graph",
+    graphPath,
+    "--title",
+    "Parent",
+    "--type",
+    "test",
+    "--track",
+    "TRK-validation",
+    "--requirements",
+    "REQ-001",
+    "--validation",
+    "parent proof"
+  );
+  run(
+    "add-node",
+    "--graph",
+    graphPath,
+    "--title",
+    "Child",
+    "--type",
+    "test",
+    "--track",
+    "TRK-validation",
+    "--requirements",
+    "REQ-001",
+    "--depends-on",
+    "NODE-001",
+    "--validation",
+    "child proof"
+  );
+  run(
+    "evidence",
+    "run",
+    "NODE-002",
+    "--graph",
+    graphPath,
+    "--satisfies",
+    "child proof",
+    "--",
+    process.execPath,
+    "-e",
+    "console.log('child proof')"
+  );
+
+  assert.throws(
+    () => run("done", "NODE-002", "--graph", graphPath),
+    /NODE-002 cannot be done; incomplete dependencies: NODE-001/
+  );
 });
 
 function run(...args) {

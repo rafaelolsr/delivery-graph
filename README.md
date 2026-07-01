@@ -113,9 +113,8 @@ npx dge add-requirement --demand DEM-001 --statement "Nodes require validation e
 npx dge add-track --title "Validation"
 npx dge add-node --title "Add evidence gate" --type test --track TRK-validation --requirements REQ-001 --validation "npm test"
 npx dge evidence run NODE-001 --satisfies "npm test" -- npm test
-npx dge verify NODE-001
+npx dge done NODE-001
 npx dge status
-npx dge review
 ```
 
 This creates:
@@ -154,8 +153,7 @@ npx dge add-requirement --demand DEM-001 --statement "..." --acceptance "..." --
 npx dge add-track --title "Validation"
 npx dge add-node --title "..." --type implementation --track TRK-validation --requirements REQ-001 --validation "..."
 npx dge evidence run NODE-001 --satisfies "..." -- <validation-command>
-npx dge verify NODE-001
-npx dge review
+npx dge done NODE-001
 ```
 
 Any friction found in that downstream run becomes DGE backlog. This keeps the plugin repository focused on the harness while real project work validates the methodology.

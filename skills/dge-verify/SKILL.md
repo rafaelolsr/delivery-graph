@@ -49,9 +49,9 @@ When local tooling is available, use:
 
 ```bash
 npx dge evidence run NODE-001 --satisfies "..." -- <validation-command>
-npx dge verify NODE-001
+npx dge done NODE-001
 ```
 
 Use `npx dge evidence add ...` only for manual approvals or external evidence the agent cannot capture directly.
 
-Do not mark a node `verified` or `done` by editing `graph.json` directly.
+Use `npx dge verify NODE-001` when you only need to mark evidence verified without closing the node. Do not mark a node `verified` or `done` by editing `graph.json` directly.
