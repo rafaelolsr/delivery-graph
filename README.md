@@ -131,6 +131,35 @@ delivery-graph/
 └── reports/review-<timestamp>.md
 ```
 
+## Downstream battle test
+
+DGE should be proven from a real consuming repository, not by creating all runtime artifacts inside this tool repository. Install DGE as a dev dependency in a separate project and use it to manage one real delivery demand end to end.
+
+The battle test should prove:
+
+- `/dge-intake` replaces ad hoc `grill-me` behavior by turning raw asks into explicit demands, testable requirements, and blocker gaps.
+- `/dge-plan-graph` converts requirements into tracks, nodes, dependencies, and validation contracts.
+- `/dge-work-node` keeps implementation scoped to one ready node.
+- `/dge-verify` blocks completion until evidence exists and writes user-visible proof under `delivery-graph/evidence/NODE-<id>/verification.md`.
+- `/dge-review` produces a durable review report under `delivery-graph/reports/`.
+
+Run the battle test from the consuming repository:
+
+```bash
+cd /path/to/consuming-project
+npm install --save-dev github:rafaelolsr/delivery-graph
+npx dge init --title "Project delivery graph"
+npx dge add-demand --title "..." --source "user" --outcome "..."
+npx dge add-requirement --demand DEM-001 --statement "..." --acceptance "..." --evidence "..."
+npx dge add-track --title "Validation"
+npx dge add-node --title "..." --type implementation --track TRK-validation --requirements REQ-001 --validation "..."
+npx dge evidence add NODE-001 --satisfies "..." --summary "..."
+npx dge verify NODE-001
+npx dge review
+```
+
+Any friction found in that downstream run becomes DGE backlog. This keeps the plugin repository focused on the harness while real project work validates the methodology.
+
 ## Skill loop
 
 | Skill | Purpose | Primary output |
