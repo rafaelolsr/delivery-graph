@@ -7,7 +7,7 @@ Delivery Graph Engineering is organized around one invariant:
 ## Layers
 
 ```text
-Skills
+Skills (incl. the /dge-execute-graph loop over the read-only dge next accessor)
   -> Graph operations
     -> Canonical store
       -> Adapters

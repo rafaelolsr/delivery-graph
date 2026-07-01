@@ -59,6 +59,15 @@ For the full copy/symlink commands, verification steps, and caveats (permission 
 /dge-compound NODE-001
 ```
 
+## Automate steps 4-6 (optional)
+
+Instead of driving each node by hand, run the autonomous harness loop. `/dge-execute-graph` walks the dependency-aware ready queue (`dge next`), and for each ready node it applies `/dge-work-node`, captures evidence, and closes it through the evidence-gated `dge done` — re-querying after every node so completing one can unblock the next. It is sequential, evidence-gated, and stops on the first failure.
+
+```text
+/dge-execute-graph
+/dge-execute-graph --max 5 --max-retries 2
+```
+
 ## Local engine check
 
 Before integrating a tracker, verify the local graph engine:
