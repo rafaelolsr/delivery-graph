@@ -8,3 +8,8 @@ coverage/
 dist/
 tmp/
 
+# DGE runtime store: the consuming repo owns delivery-graph/, not this tool repo
+# (see AGENTS.md and README "Downstream battle test"). Local dogfooding artifacts
+# are kept out of version control here.
+delivery-graph/
+

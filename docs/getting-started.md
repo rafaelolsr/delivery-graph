@@ -13,12 +13,24 @@ Inside the DGE source repository, use `npm run dge -- ...` for development. In c
 
 ### Install the skills into your harness
 
-The `npm install` above gives you the `dge` CLI. The `/dge-*` slash commands used in the numbered steps below are a separate surface: your harness must discover the skills that ship at `node_modules/delivery-graph-engineering/skills/`. Copy or symlink the `dge-*` skill directories into the skills folder your harness reads:
+The `npm install` above gives you the `dge` CLI. The `/dge-*` slash commands used in the numbered steps below are a separate surface: your harness must discover the skills that ship at `node_modules/delivery-graph-engineering/skills/`. Install them in one step:
 
-- **GitHub Copilot CLI** → `.github/skills/`
+```bash
+npx dge install-skills
+```
+
+This detects your harness and copies the `dge-*` skill directories into the folder it reads:
+
 - **Claude Code** → `.claude/skills/`
+- **GitHub Copilot CLI** → `.github/skills/`
 
-For the full copy/symlink commands, verification steps, and caveats (permission prompts and argument passing), see [Install in GitHub Copilot CLI](../README.md#install-in-github-copilot-cli) in the README.
+Auto-detection looks for `.claude/` or `.github/` in the repository. Options:
+
+- `--harness claude|copilot` — choose the target explicitly (required if both harness folders exist, or if neither exists yet).
+- `--symlink` — symlink the skills instead of copying, so `npm update` keeps them current.
+- `--force` — overwrite skills that are already installed.
+
+Re-running is safe: existing skills are skipped unless you pass `--force`.
 
 > The numbered steps below assume the skills are installed. Without them, run the equivalent `npx dge ...` commands shown in each section directly.
 

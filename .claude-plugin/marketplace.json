@@ -1,0 +1,15 @@
+{
+  "name": "dge-tools",
+  "description": "Delivery Graph Engineering tools — install the delivery-graph plugin (the /dge-* skills and the dge CLI).",
+  "owner": {
+    "name": "Rafael Rodrigues",
+    "email": "rafael@datageek.com.br"
+  },
+  "plugins": [
+    {
+      "name": "delivery-graph",
+      "source": "./",
+      "description": "Delivery Graph Engineering: the /dge-* skills and the dge CLI."
+    }
+  ]
+}

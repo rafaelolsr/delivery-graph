@@ -25,6 +25,35 @@ But DGE adds stronger operational requirements:
 
 The result is a workflow that is general enough to become a public methodology, but specific enough to support graph execution, evidence-gated completion, and task-tracker synchronization.
 
+## 60-second quickstart
+
+Add DGE to any repo and drive one node from demand to evidence-gated `done`:
+
+```bash
+# 1. Install the CLI and the /dge-* slash commands
+npm install --save-dev github:rafaelolsr/delivery-graph
+npx dge install-skills                 # auto-detects .claude/ or .github/
+
+# 2. Create the canonical graph store
+npx dge init --title "My delivery graph"
+
+# 3. Author one demand -> requirement -> node
+npx dge add-demand --title "Safer releases" --source "user" --outcome "Every completed node has proof"
+npx dge add-requirement --demand DEM-001 --statement "Nodes require validation evidence" --acceptance "Verify fails without evidence" --evidence "Evidence manifest"
+npx dge add-track --title "Validation"
+npx dge add-node --title "Add evidence gate" --type test --track TRK-validation --requirements REQ-001 --validation "npm test"
+
+# 4. Capture proof and close the node (fails without passing evidence)
+npx dge evidence run NODE-001 --satisfies "npm test" -- npm test
+npx dge done NODE-001
+npx dge status --save
+```
+
+This runs **fully locally** — no Linear, Azure DevOps, or credentials required. Tracker sync
+(`dge sync linear|ado`) is dry-run only today: it writes a reviewable payload under
+`delivery-graph/sync/` and never calls an external API. New here? Read
+[docs/getting-started.md](docs/getting-started.md) for the guided walkthrough.
+
 ## Core idea
 
 ```text
@@ -44,11 +73,57 @@ validation evidence, decisions, reusable patterns, and follow-up context for the
 
 ## Quick start
 
-Install DGE in the repository that should own the canonical `delivery-graph/` store:
+### Install the skills from the marketplace (recommended)
+
+DGE ships a plugin marketplace, so Claude Code and GitHub Copilot CLI can install the
+`/dge-*` skills directly from GitHub — no npm publish required.
+
+**Claude Code:**
+
+```text
+/plugin marketplace add rafaelolsr/delivery-graph
+/plugin install delivery-graph@dge-tools
+/reload-plugins
+```
+
+**GitHub Copilot CLI** (the standalone `copilot`, installed via `npm install -g @github/copilot`) —
+manage plugins with the `/plugin` slash command **inside the `copilot` prompt** (note the leading
+`/`; without it the text is sent to the model as a normal prompt). Open the plugin UI with:
+
+```text
+/plugin
+```
+
+then add `rafaelolsr/delivery-graph` from the marketplace UI. If your version supports inline
+args, this also works:
+
+```text
+/plugin marketplace add rafaelolsr/delivery-graph
+```
+
+Both harnesses read the same `.claude-plugin/plugin.json` at the repo root and auto-scan the
+top-level `skills/` directory. Skills appear namespaced (e.g. `/delivery-graph:dge-intake`).
+
+### Install the CLI
+
+The `dge` CLI (evidence gates, `init`, `status`, `next`, `done`, …) is a separate surface —
+add it as a dev dependency in the repo that should own the canonical `delivery-graph/` store:
 
 ```bash
 npm install --save-dev github:rafaelolsr/delivery-graph
 npx dge init --title "My delivery graph"
+```
+
+### Alternative: copy the skills without the marketplace
+
+If you are not using a marketplace-capable harness, `dge install-skills` auto-detects your
+harness (`.claude/` or `.github/`) and copies the `/dge-*` skills into it. Pass
+`--harness claude|copilot` to choose explicitly, `--symlink` to keep them tracking
+`node_modules`, or `--force` to overwrite. The CLI works without this step; only the slash
+commands need it.
+
+```bash
+npx dge install-skills
 ```
 
 The shortest end-to-end loop is:
@@ -209,6 +284,7 @@ Run the battle test from the consuming repository:
 ```bash
 cd /path/to/consuming-project
 npm install --save-dev github:rafaelolsr/delivery-graph
+npx dge install-skills
 npx dge init --title "Project delivery graph"
 npx dge add-demand --title "..." --source "user" --outcome "..."
 npx dge add-requirement --demand DEM-001 --statement "..." --acceptance "..." --evidence "..."
@@ -365,6 +441,7 @@ This repository contains the plugin source and shared contracts:
 
 DGE now supports one complete local loop:
 
+0. `dge install-skills` installs the `/dge-*` slash commands into the consuming repo's harness.
 1. `dge init` creates the canonical graph store.
 2. `dge add-demand`, `dge add-requirement`, `dge add-track`, and `dge add-node` create a graph with validation contracts.
 3. `dge sync linear` or `dge sync ado` creates a dry-run tracker projection from ready nodes.
