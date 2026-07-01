@@ -158,29 +158,68 @@ function runTransition(graphPath, args) {
 
 function runEvidence(graphPath, args) {
   const [subcommand, nodeId] = args._;
-  if (!nodeId || !["add", "run"].includes(subcommand)) {
-    throw new Error("Usage: dge evidence add NODE-### --satisfies \"...\" --summary \"...\" [--kind command] [--artifact path]\n       dge evidence run NODE-### --satisfies \"...\" [--summary \"...\"] -- <command>");
+  if (!nodeId || !["add", "run", "playwright"].includes(subcommand)) {
+    throw new Error("Usage: dge evidence add NODE-### --satisfies \"...\" --summary \"...\" [--kind command] [--artifact path]\n       dge evidence run NODE-### --satisfies \"...\" [--summary \"...\"] -- <command>\n       dge evidence playwright NODE-### --satisfies \"...\" [--url URL] [--script test.spec.ts] [--artifacts test-results] -- <command>");
   }
 
   const graph = readGraph(graphPath);
-  const { record } = subcommand === "add"
-    ? addEvidence(graphPath, graph, nodeId, {
+  const { record } = runEvidenceSubcommand(graphPath, graph, nodeId, subcommand, args);
+  printRecord("evidence", record);
+}
+
+function runEvidenceSubcommand(graphPath, graph, nodeId, subcommand, args) {
+  if (subcommand === "add") {
+    return addEvidence(graphPath, graph, nodeId, {
       kind: args.kind,
       summary: args.summary,
       satisfies: args.satisfies,
       artifact: args.artifact
-    })
-    : runCommandEvidence(graphPath, graph, nodeId, args);
-  printRecord("evidence", record);
+    });
+  }
+  if (subcommand === "playwright") {
+    return runPlaywrightEvidence(graphPath, graph, nodeId, args);
+  }
+  return runCommandEvidence(graphPath, graph, nodeId, args);
 }
 
 function runCommandEvidence(graphPath, graph, nodeId, args) {
-  if (!Array.isArray(args.command) || args.command.length === 0) {
+  return runCapturedEvidence(graphPath, graph, nodeId, {
+    kind: "command",
+    command: args.command,
+    satisfies: args.satisfies,
+    summary: args.summary
+  });
+}
+
+function runPlaywrightEvidence(graphPath, graph, nodeId, args) {
+  return runCapturedEvidence(graphPath, graph, nodeId, {
+    kind: "playwright",
+    command: buildPlaywrightCommand(args),
+    satisfies: args.satisfies,
+    summary: args.summary,
+    artifacts: args.artifacts ?? args.artifact,
+    metadata: removeUndefined({
+      url: args.url,
+      script: args.script
+    }),
+    env: removeUndefined({
+      DGE_EVIDENCE_URL: args.url,
+      DGE_EVIDENCE_SCRIPT: args.script
+    })
+  });
+}
+
+function runCapturedEvidence(graphPath, graph, nodeId, input) {
+  if (!Array.isArray(input.command) || input.command.length === 0) {
     throw new Error("Usage: dge evidence run NODE-### --satisfies \"...\" [--summary \"...\"] -- <command>");
   }
 
-  const result = spawnSync(args.command[0], args.command.slice(1), {
+  const result = spawnSync(input.command[0], input.command.slice(1), {
     cwd: process.cwd(),
+    env: {
+      ...process.env,
+      ...(input.env ?? {})
+    },
     encoding: "utf8",
     maxBuffer: 10 * 1024 * 1024
   });
@@ -192,23 +231,36 @@ function runCommandEvidence(graphPath, graph, nodeId, args) {
   const exitCode = result.status ?? 1;
   if (exitCode !== 0) {
     const { artifactPath } = writeCommandAttemptArtifact(graphPath, graph, nodeId, {
-      satisfies: args.satisfies,
-      command: args.command,
+      kind: input.kind,
+      satisfies: input.satisfies,
+      command: input.command,
       exitCode,
       stdout: result.stdout,
-      stderr: result.stderr
+      stderr: result.stderr,
+      metadata: input.metadata,
+      artifacts: input.artifacts
     });
     throw new Error(`Command failed with exit code ${exitCode}; output artifact: ${artifactPath}`);
   }
 
   return addCommandEvidence(graphPath, graph, nodeId, {
-    satisfies: args.satisfies,
-    summary: args.summary,
-    command: args.command,
+    kind: input.kind,
+    satisfies: input.satisfies,
+    summary: input.summary,
+    command: input.command,
     exitCode,
     stdout: result.stdout,
-    stderr: result.stderr
+    stderr: result.stderr,
+    metadata: input.metadata,
+    artifacts: input.artifacts
   });
+}
+
+function buildPlaywrightCommand(args) {
+  if (Array.isArray(args.command) && args.command.length > 0) return args.command;
+  const command = ["npx", "playwright", "test"];
+  if (args.script) command.push(args.script);
+  return command;
 }
 
 function runVerify(graphPath, args) {
@@ -413,10 +465,18 @@ function appendArgValue(parsed, key, value) {
     return;
   }
 
+  function removeUndefined(record) {
+    return Object.fromEntries(Object.entries(record).filter(([, value]) => value !== undefined));
+  }
+
   if (!Array.isArray(parsed[key])) {
     parsed[key] = [parsed[key]];
   }
   parsed[key].push(value);
+}
+
+function removeUndefined(record) {
+  return Object.fromEntries(Object.entries(record).filter(([, value]) => value !== undefined));
 }
 
 function printRecord(label, record) {
@@ -433,6 +493,7 @@ Usage:
   dge status [--graph path]
   dge evidence add NODE-001 --satisfies "npm test" --summary "npm test passed" [--artifact output.txt]
   dge evidence run NODE-001 --satisfies "npm test" -- npm test
+  dge evidence playwright NODE-001 --satisfies "checkout works" --url http://localhost:3000 --script tests/e2e/checkout.spec.ts [--artifacts test-results]
   dge verify NODE-001 [--graph path]
   dge done NODE-001 [--graph path]
   dge review [--graph path] [--out path]

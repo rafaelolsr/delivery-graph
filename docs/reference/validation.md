@@ -53,9 +53,12 @@ Use:
 
 ```bash
 npx dge evidence run NODE-001 --satisfies "npm test" -- npm test
+npx dge evidence playwright NODE-001 --satisfies "user can complete checkout" --url http://localhost:3000 --script tests/e2e/checkout.spec.ts
 npx dge done NODE-001
 ```
 
 `evidence run` stores command output, error output, and exit code as a JSON artifact under the node evidence directory. Successful commands are recorded in `evidence.json`; failed commands are saved as attempt artifacts but do not satisfy the validation contract.
+
+`evidence playwright` is the browser/UX evidence path. It runs a Playwright command directly, passes `DGE_EVIDENCE_URL` and `DGE_EVIDENCE_SCRIPT` to the process when provided, copies configured artifacts with `--artifacts`, and only records evidence when the command exits successfully. If no command is supplied after `--`, it defaults to `npx playwright test [script]`.
 
 Successful completion writes `verification.md`, writes a review report, and marks the node `done`. `verification.md` gives the user-visible proof that each required validation item was satisfied by recorded evidence.

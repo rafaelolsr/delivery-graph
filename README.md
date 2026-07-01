@@ -113,6 +113,8 @@ npx dge add-requirement --demand DEM-001 --statement "Nodes require validation e
 npx dge add-track --title "Validation"
 npx dge add-node --title "Add evidence gate" --type test --track TRK-validation --requirements REQ-001 --validation "npm test"
 npx dge evidence run NODE-001 --satisfies "npm test" -- npm test
+# Browser/UX evidence can be captured with Playwright:
+# npx dge evidence playwright NODE-001 --satisfies "checkout works" --url http://localhost:3000 --script tests/e2e/checkout.spec.ts
 npx dge done NODE-001
 npx dge status
 ```
@@ -153,6 +155,7 @@ npx dge add-requirement --demand DEM-001 --statement "..." --acceptance "..." --
 npx dge add-track --title "Validation"
 npx dge add-node --title "..." --type implementation --track TRK-validation --requirements REQ-001 --validation "..."
 npx dge evidence run NODE-001 --satisfies "..." -- <validation-command>
+# or: npx dge evidence playwright NODE-001 --satisfies "..." --url http://localhost:3000 --script tests/e2e/app.spec.ts
 npx dge done NODE-001
 ```
 

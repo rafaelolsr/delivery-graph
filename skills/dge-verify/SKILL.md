@@ -49,9 +49,10 @@ When local tooling is available, use:
 
 ```bash
 npx dge evidence run NODE-001 --satisfies "..." -- <validation-command>
+npx dge evidence playwright NODE-001 --satisfies "..." --url http://localhost:3000 --script tests/e2e/app.spec.ts
 npx dge done NODE-001
 ```
 
-Use `npx dge evidence add ...` only for manual approvals or external evidence the agent cannot capture directly.
+Use `npx dge evidence playwright ...` for browser flows, screenshots, traces, and UX checks. Use `npx dge evidence add ...` only for manual approvals or external evidence the agent cannot capture directly.
 
 Use `npx dge verify NODE-001` when you only need to mark evidence verified without closing the node. Do not mark a node `verified` or `done` by editing `graph.json` directly.

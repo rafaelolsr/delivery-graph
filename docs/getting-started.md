@@ -95,6 +95,14 @@ npx dge done NODE-001
 
 `evidence run` executes the validation command and stores stdout/stderr/exit code under `delivery-graph/evidence/NODE-001/artifacts/`. Passing commands are added to `evidence.json`; failed commands are saved as attempt artifacts but are not counted as evidence. Use `evidence add` for manual approvals or external proof the agent cannot capture. `done` fails until every `validation.required[]` item on the node has matching evidence, writes `verification.md`, writes a review report, blocks on review blockers, and then marks the node `done`.
 
+For browser or UX validation, use Playwright evidence:
+
+```bash
+npx dge evidence playwright NODE-001 --satisfies "user can submit the form" --url http://localhost:3000 --script tests/e2e/form.spec.ts --artifacts test-results
+```
+
+This captures Playwright output and copies configured screenshots, traces, videos, or reports into the node evidence directory.
+
 ## Local review
 
 ```bash

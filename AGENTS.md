@@ -32,6 +32,7 @@ Do not mark a node done without evidence. Use:
 
 ```bash
 npm run dge -- evidence run NODE-001 --satisfies "..." -- <validation-command>
+npm run dge -- evidence playwright NODE-001 --satisfies "..." --url http://localhost:3000 --script tests/e2e/app.spec.ts
 npm run dge -- done NODE-001
 ```
 

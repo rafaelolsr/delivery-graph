@@ -64,6 +64,7 @@ export function addCommandEvidence(graphPath, graph, nodeId, input) {
   const satisfies = requireText(input.satisfies, "satisfies");
   const command = requireCommand(input.command);
   const exitCode = Number(input.exitCode);
+  const kind = input.kind ?? "command";
 
   if (exitCode !== 0) {
     throw new Error(`${node.id} command evidence failed with exit code ${exitCode}`);
@@ -75,16 +76,22 @@ export function addCommandEvidence(graphPath, graph, nodeId, input) {
 
   const manifest = readEvidenceManifest(graphPath, node);
   const evidenceId = input.id ?? nextEvidenceId(manifest.items);
+  const copiedArtifacts = copyEvidenceArtifacts(graphPath, node, evidenceId, kind, splitList(input.artifacts), {
+    requireAll: true
+  });
   const artifact = writeCommandArtifact(graphPath, node, evidenceId, {
+    kind,
     command,
     exitCode,
     stdout: input.stdout ?? "",
     stderr: input.stderr ?? "",
-    createdAt: input.createdAt ?? new Date().toISOString()
+    createdAt: input.createdAt ?? new Date().toISOString(),
+    metadata: input.metadata,
+    artifacts: copiedArtifacts
   });
   const item = {
     id: evidenceId,
-    kind: "command",
+    kind,
     summary: input.summary ?? `${command.join(" ")} passed`,
     satisfies,
     artifact,
@@ -92,6 +99,8 @@ export function addCommandEvidence(graphPath, graph, nodeId, input) {
     exit_code: exitCode,
     created_at: input.createdAt ?? new Date().toISOString()
   };
+  if (copiedArtifacts.length > 0) item.artifacts = copiedArtifacts;
+  if (input.metadata) item.metadata = input.metadata;
 
   const nextManifest = {
     node_id: node.id,
@@ -108,6 +117,7 @@ export function writeCommandAttemptArtifact(graphPath, graph, nodeId, input) {
   const satisfies = requireText(input.satisfies, "satisfies");
   const command = requireCommand(input.command);
   const createdAt = input.createdAt ?? new Date().toISOString();
+  const kind = input.kind ?? "command";
 
   if (!node.validation.required.includes(satisfies)) {
     throw new Error(`${node.id} validation contract does not include: ${satisfies}`);
@@ -115,16 +125,22 @@ export function writeCommandAttemptArtifact(graphPath, graph, nodeId, input) {
 
   const evidenceDir = resolveRuntimePath(graphPath, node.validation.evidence_path);
   const artifactDir = path.join(evidenceDir, "artifacts");
-  const artifactFileName = `ATTEMPT-${safeFilePart(createdAt)}-command.json`;
+  const artifactFileName = `ATTEMPT-${safeFilePart(createdAt)}-${safeFilePart(kind)}.json`;
   const artifactPath = path.join(artifactDir, artifactFileName);
+  const copiedArtifacts = copyEvidenceArtifacts(graphPath, node, `ATTEMPT-${safeFilePart(createdAt)}`, kind, splitList(input.artifacts), {
+    requireAll: false
+  });
   const artifact = {
+    kind,
     command,
     satisfies,
     exit_code: input.exitCode,
     stdout: input.stdout ?? "",
     stderr: input.stderr ?? "",
-    created_at: createdAt
+    created_at: createdAt,
+    artifacts: copiedArtifacts
   };
+  if (input.metadata) artifact.metadata = input.metadata;
 
   fs.mkdirSync(artifactDir, { recursive: true });
   fs.writeFileSync(artifactPath, `${JSON.stringify(artifact, null, 2)}\n`);
@@ -216,18 +232,48 @@ function copyArtifact(graphPath, node, evidenceId, artifactPath) {
 function writeCommandArtifact(graphPath, node, evidenceId, result) {
   const evidenceDir = resolveRuntimePath(graphPath, node.validation.evidence_path);
   const artifactDir = path.join(evidenceDir, "artifacts");
-  const artifactFileName = `${evidenceId}-command.json`;
+  const artifactFileName = `${evidenceId}-${safeFilePart(result.kind ?? "command")}.json`;
   const artifact = {
+    kind: result.kind ?? "command",
     command: result.command,
     exit_code: result.exitCode,
     stdout: result.stdout,
     stderr: result.stderr,
-    created_at: result.createdAt
+    created_at: result.createdAt,
+    artifacts: result.artifacts ?? []
   };
+  if (result.metadata) artifact.metadata = result.metadata;
 
   fs.mkdirSync(artifactDir, { recursive: true });
   fs.writeFileSync(path.join(artifactDir, artifactFileName), `${JSON.stringify(artifact, null, 2)}\n`);
   return `artifacts/${artifactFileName}`;
+}
+
+function copyEvidenceArtifacts(graphPath, node, evidenceId, kind, artifactPaths, options = {}) {
+  if (artifactPaths.length === 0) return [];
+
+  const evidenceDir = resolveRuntimePath(graphPath, node.validation.evidence_path);
+  const artifactDir = path.join(evidenceDir, "artifacts");
+  const collectionDirName = `${safeFilePart(evidenceId)}-${safeFilePart(kind)}-artifacts`;
+  const collectionDir = path.join(artifactDir, collectionDirName);
+  const copied = [];
+
+  for (const artifactPath of artifactPaths) {
+    const absoluteArtifactPath = path.resolve(artifactPath);
+    if (!fs.existsSync(absoluteArtifactPath)) {
+      if (options.requireAll) {
+        throw new Error(`Artifact not found: ${artifactPath}`);
+      }
+      continue;
+    }
+
+    const destination = path.join(collectionDir, path.basename(absoluteArtifactPath));
+    fs.mkdirSync(path.dirname(destination), { recursive: true });
+    fs.cpSync(absoluteArtifactPath, destination, { recursive: true });
+    copied.push(path.relative(evidenceDir, destination));
+  }
+
+  return copied;
 }
 
 function writeEvidenceSummary(graphPath, node, manifest) {
@@ -297,4 +343,13 @@ function requireCommand(command) {
 
 function safeFilePart(value) {
   return String(value).replace(/[^A-Za-z0-9-]/g, "-");
+}
+
+function splitList(value) {
+  if (value === undefined || value === null || value === "") return [];
+  if (Array.isArray(value)) return value.flatMap(splitList).filter(Boolean);
+  return String(value)
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
 }

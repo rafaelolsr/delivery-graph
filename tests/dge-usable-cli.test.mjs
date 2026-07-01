@@ -242,6 +242,135 @@ test("CLI done requires dependencies to be done", () => {
   );
 });
 
+test("CLI captures Playwright evidence with browser artifacts", () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "dge-playwright-"));
+  const graphPath = path.join(tempDir, "delivery-graph", "graph.json");
+  const artifactDir = path.join(tempDir, "playwright-results");
+  fs.mkdirSync(artifactDir, { recursive: true });
+  fs.writeFileSync(path.join(artifactDir, "screenshot.png"), "png");
+
+  run("init", "--graph", graphPath, "--title", "Playwright graph");
+  run("add-demand", "--graph", graphPath, "--title", "Demand", "--source", "test", "--outcome", "Browser evidence exists");
+  run(
+    "add-requirement",
+    "--graph",
+    graphPath,
+    "--demand",
+    "DEM-001",
+    "--statement",
+    "Browser proof is captured",
+    "--acceptance",
+    "Playwright evidence has artifacts",
+    "--evidence",
+    "browser proof"
+  );
+  run("add-track", "--graph", graphPath, "--title", "Validation");
+  run(
+    "add-node",
+    "--graph",
+    graphPath,
+    "--title",
+    "Capture browser proof",
+    "--type",
+    "test",
+    "--track",
+    "TRK-validation",
+    "--requirements",
+    "REQ-001",
+    "--validation",
+    "browser proof"
+  );
+
+  const output = run(
+    "evidence",
+    "playwright",
+    "NODE-001",
+    "--graph",
+    graphPath,
+    "--satisfies",
+    "browser proof",
+    "--summary",
+    "browser flow passed",
+    "--url",
+    "http://localhost:3000",
+    "--script",
+    "tests/e2e/app.spec.ts",
+    "--artifacts",
+    artifactDir,
+    "--",
+    process.execPath,
+    "-e",
+    "console.log(process.env.DGE_EVIDENCE_URL)"
+  );
+
+  assert.match(output, /"kind": "playwright"/);
+  const evidence = JSON.parse(fs.readFileSync(path.join(tempDir, "delivery-graph", "evidence", "NODE-001", "evidence.json"), "utf8"));
+  assert.equal(evidence.items[0].kind, "playwright");
+  assert.equal(evidence.items[0].metadata.url, "http://localhost:3000");
+
+  const evidenceDir = path.join(tempDir, "delivery-graph", "evidence", "NODE-001");
+  const commandArtifact = JSON.parse(fs.readFileSync(path.join(evidenceDir, evidence.items[0].artifact), "utf8"));
+  assert.match(commandArtifact.stdout, /http:\/\/localhost:3000/);
+  assert.equal(fs.readFileSync(path.join(evidenceDir, commandArtifact.artifacts[0], "screenshot.png"), "utf8"), "png");
+});
+
+test("CLI captures failed Playwright attempts without satisfying evidence", () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "dge-playwright-fail-"));
+  const graphPath = path.join(tempDir, "delivery-graph", "graph.json");
+
+  run("init", "--graph", graphPath, "--title", "Playwright failed graph");
+  run("add-demand", "--graph", graphPath, "--title", "Demand", "--source", "test", "--outcome", "Browser evidence can fail");
+  run(
+    "add-requirement",
+    "--graph",
+    graphPath,
+    "--demand",
+    "DEM-001",
+    "--statement",
+    "Browser proof must pass",
+    "--acceptance",
+    "Failed Playwright does not count",
+    "--evidence",
+    "browser proof"
+  );
+  run("add-track", "--graph", graphPath, "--title", "Validation");
+  run(
+    "add-node",
+    "--graph",
+    graphPath,
+    "--title",
+    "Fail browser proof",
+    "--type",
+    "test",
+    "--track",
+    "TRK-validation",
+    "--requirements",
+    "REQ-001",
+    "--validation",
+    "browser proof"
+  );
+
+  assert.throws(
+    () => run(
+      "evidence",
+      "playwright",
+      "NODE-001",
+      "--graph",
+      graphPath,
+      "--satisfies",
+      "browser proof",
+      "--",
+      process.execPath,
+      "-e",
+      "process.exit(9)"
+    ),
+    /Command failed with exit code 9; output artifact:/
+  );
+
+  assert.equal(fs.existsSync(path.join(tempDir, "delivery-graph", "evidence", "NODE-001", "evidence.json")), false);
+  assert.equal(fs.readdirSync(path.join(tempDir, "delivery-graph", "evidence", "NODE-001", "artifacts")).filter((file) => file.includes("playwright")).length, 1);
+});
+
 function run(...args) {
   return execFileSync(process.execPath, [cliPath, ...args], {
     encoding: "utf8",
