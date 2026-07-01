@@ -1,0 +1,13 @@
+{
+  "name": "delivery-graph",
+  "description": "Delivery Graph Engineering: turn demands into validated delivery graphs. Ships the /dge-* skills and the dge CLI.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Rafael Rodrigues",
+    "email": "rafael@datageek.com.br"
+  },
+  "homepage": "https://github.com/rafaelolsr/delivery-graph",
+  "repository": "https://github.com/rafaelolsr/delivery-graph",
+  "license": "MIT",
+  "keywords": ["delivery-graph", "dge", "planning", "evidence", "workflow"]
+}
