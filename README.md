@@ -425,6 +425,8 @@ This repository contains the plugin source and shared contracts:
 ```text
 .
 ├── README.md                  # Project overview and workflow contract
+├── plugin.json                # Plugin manifest at root (Copilot CLI reads this first)
+├── .claude-plugin/            # plugin.json (copy) + marketplace.json (Claude Code reads these)
 ├── assets/                    # Plugin icons, diagrams, and public assets
 ├── adapters/                  # Linear, ADO, GitHub, and local-store adapters
 ├── docs/                      # Design notes, ADRs, and usage guides
@@ -436,6 +438,13 @@ This repository contains the plugin source and shared contracts:
 ├── tests/                     # Engine tests
 └── skills/                    # Multi-harness skill definitions
 ```
+
+> **Two identical plugin manifests, on purpose.** Claude Code reads
+> `.claude-plugin/plugin.json`; Copilot CLI checks a **root-level** `plugin.json` first and
+> [silently fails to load a plugin whose manifest lives only in `.claude-plugin/`](https://github.com/github/copilot-cli/issues/2010).
+> So `plugin.json` and `.claude-plugin/plugin.json` are kept byte-identical (guarded by
+> `tests/plugin-manifest.test.mjs`). Neither may add a `skills` field — Copilot auto-scans
+> `skills/`, and Claude Code rejects a manifest that declares `skills`.
 
 ## Current end-to-end scope
 
