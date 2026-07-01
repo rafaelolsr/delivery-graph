@@ -86,11 +86,19 @@ DGE ships a plugin marketplace, so Claude Code and GitHub Copilot CLI can instal
 /reload-plugins
 ```
 
-**GitHub Copilot CLI** (the standalone `copilot`, installed via `npm install -g @github/copilot`):
+**GitHub Copilot CLI** (the standalone `copilot`, installed via `npm install -g @github/copilot`) —
+manage plugins with the `/plugin` slash command **inside the `copilot` prompt** (note the leading
+`/`; without it the text is sent to the model as a normal prompt). Open the plugin UI with:
 
-```bash
-copilot plugin marketplace add rafaelolsr/delivery-graph
-copilot plugin install delivery-graph
+```text
+/plugin
+```
+
+then add `rafaelolsr/delivery-graph` from the marketplace UI. If your version supports inline
+args, this also works:
+
+```text
+/plugin marketplace add rafaelolsr/delivery-graph
 ```
 
 Both harnesses read the same `.claude-plugin/plugin.json` at the repo root and auto-scan the
