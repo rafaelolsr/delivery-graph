@@ -41,6 +41,8 @@ export function addEvidence(graphPath, graph, nodeId, input) {
     throw new Error(`${node.id} validation contract does not include: ${satisfies}`);
   }
 
+  const result = normalizeResult(input.result);
+
   const manifest = readEvidenceManifest(graphPath, node);
   const evidenceId = input.id ?? nextEvidenceId(manifest.items);
   const artifact = input.artifact ? copyArtifact(graphPath, node, evidenceId, input.artifact) : null;
@@ -49,6 +51,7 @@ export function addEvidence(graphPath, graph, nodeId, input) {
     kind,
     summary,
     satisfies,
+    result,
     artifact,
     created_at: input.createdAt ?? new Date().toISOString()
   };
@@ -60,6 +63,47 @@ export function addEvidence(graphPath, graph, nodeId, input) {
 
   writeEvidenceManifest(graphPath, node, nextManifest);
   return { manifest: nextManifest, record: item };
+}
+
+// Remove one evidence item by id so a mistaken/superseded record can be
+// corrected through the CLI instead of hand-editing evidence.json. Artifact
+// files are left in place (harmless; only the manifest gates completeness).
+export function removeEvidence(graphPath, graph, nodeId, evidenceId) {
+  assertValidGraph(graph);
+  const node = findNode(graph, nodeId);
+  const id = requireText(evidenceId, "evidence id");
+
+  const manifest = readEvidenceManifest(graphPath, node);
+  const removed = manifest.items.find((item) => item.id === id);
+  if (!removed) {
+    throw new Error(`${node.id} has no evidence item ${id}`);
+  }
+
+  const nextManifest = {
+    node_id: node.id,
+    items: manifest.items.filter((item) => item.id !== id)
+  };
+
+  writeEvidenceManifest(graphPath, node, nextManifest);
+  return { manifest: nextManifest, record: removed };
+}
+
+// Manual evidence carries an explicit pass/fail result. Missing/legacy result
+// is treated as "pass" for backward compatibility; only "fail" is rejected.
+function normalizeResult(result) {
+  if (result === undefined || result === null) return "pass";
+  const value = String(result).toLowerCase();
+  if (value !== "pass" && value !== "fail") {
+    throw new Error(`evidence result must be "pass" or "fail", got: ${result}`);
+  }
+  return value;
+}
+
+// An evidence item counts toward completeness unless it is explicitly a failure.
+// Legacy items (no result field) and command evidence (recorded only on success)
+// count as passing.
+function isPassing(item) {
+  return item.result !== "fail";
 }
 
 export function addCommandEvidence(graphPath, graph, nodeId, input) {
@@ -153,7 +197,7 @@ export function writeCommandAttemptArtifact(graphPath, graph, nodeId, input) {
 
 export function getEvidenceStatus(graphPath, graph, node) {
   const manifest = readEvidenceManifest(graphPath, node);
-  const satisfied = new Set(manifest.items.map((item) => item.satisfies));
+  const satisfied = new Set(manifest.items.filter(isPassing).map((item) => item.satisfies));
   const missing = node.validation.required.filter((required) => !satisfied.has(required));
 
   return {

@@ -109,6 +109,92 @@ test("CLI supports usable local loop through evidence, verify, status, and revie
   assert.equal(fs.readdirSync(reportsDir).filter((file) => file.startsWith("review-")).length, 1);
 });
 
+test("CLI evidence add --result fail does not satisfy; --result pass does", () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "dge-result-"));
+  const graphPath = path.join(tempDir, "delivery-graph", "graph.json");
+
+  run("init", "--graph", graphPath, "--title", "Result graph");
+  run("add-demand", "--graph", graphPath, "--title", "Demand", "--source", "test", "--outcome", "Result gates completion");
+  run(
+    "add-requirement", "--graph", graphPath, "--demand", "DEM-001",
+    "--statement", "Only passing evidence completes", "--acceptance", "Fail evidence does not satisfy",
+    "--evidence", "Manual proof"
+  );
+  run("add-track", "--graph", graphPath, "--title", "Validation");
+  run(
+    "add-node", "--graph", graphPath, "--title", "Manual node", "--type", "test",
+    "--track", "TRK-validation", "--requirements", "REQ-001", "--validation", "manual proof"
+  );
+  run("transition", "NODE-001", "in_progress", "--graph", graphPath);
+  run("transition", "NODE-001", "review", "--graph", graphPath);
+
+  // usage string advertises --result (triggered when the subcommand/node is missing)
+  assert.match(
+    (() => { try { run("evidence", "--graph", graphPath); return ""; } catch (e) { return e.stderr || e.message; } })(),
+    /--result pass\|fail/
+  );
+
+  // fail result: recorded but does NOT satisfy -> done stays blocked, names the item
+  run(
+    "evidence", "add", "NODE-001", "--graph", graphPath,
+    "--satisfies", "manual proof", "--summary", "did not work", "--result", "fail"
+  );
+  assert.throws(
+    () => run("done", "NODE-001", "--graph", graphPath),
+    /missing validation evidence: manual proof/
+  );
+
+  // pass result: satisfies -> done succeeds
+  run(
+    "evidence", "add", "NODE-001", "--graph", graphPath,
+    "--satisfies", "manual proof", "--summary", "works now", "--result", "pass"
+  );
+  const doneOutput = run("done", "NODE-001", "--graph", graphPath);
+  assert.match(doneOutput, /NODE-001 done/);
+
+  const graph = JSON.parse(fs.readFileSync(graphPath, "utf8"));
+  assert.equal(graph.nodes[0].status, "done");
+});
+
+test("CLI evidence remove deletes a record and re-blocks done", () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "dge-remove-"));
+  const graphPath = path.join(tempDir, "delivery-graph", "graph.json");
+
+  run("init", "--graph", graphPath, "--title", "Remove graph");
+  run("add-demand", "--graph", graphPath, "--title", "Demand", "--source", "test", "--outcome", "Records are correctable");
+  run(
+    "add-requirement", "--graph", graphPath, "--demand", "DEM-001",
+    "--statement", "Evidence is correctable", "--acceptance", "Remove re-blocks done", "--evidence", "Manual proof"
+  );
+  run("add-track", "--graph", graphPath, "--title", "Validation");
+  run(
+    "add-node", "--graph", graphPath, "--title", "Manual node", "--type", "test",
+    "--track", "TRK-validation", "--requirements", "REQ-001", "--validation", "manual proof"
+  );
+  run("transition", "NODE-001", "in_progress", "--graph", graphPath);
+  run("transition", "NODE-001", "review", "--graph", graphPath);
+
+  run(
+    "evidence", "add", "NODE-001", "--graph", graphPath,
+    "--satisfies", "manual proof", "--summary", "recorded by mistake", "--result", "pass"
+  );
+
+  // remove it via CLI (no hand-editing evidence.json)
+  const removeOutput = run("evidence", "remove", "NODE-001", "EVD-001", "--graph", graphPath);
+  assert.match(removeOutput, /removed evidence EVD-001 from NODE-001/);
+
+  const manifest = JSON.parse(
+    fs.readFileSync(path.join(tempDir, "delivery-graph", "evidence", "NODE-001", "evidence.json"), "utf8")
+  );
+  assert.equal(manifest.items.length, 0);
+
+  // completeness recomputed -> done blocked again
+  assert.throws(
+    () => run("done", "NODE-001", "--graph", graphPath),
+    /missing validation evidence: manual proof/
+  );
+});
+
 test("CLI done blocks unresolved review blockers", () => {
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "dge-done-blocked-"));
   const graphPath = path.join(tempDir, "delivery-graph", "graph.json");
