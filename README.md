@@ -28,12 +28,19 @@ The result is a workflow that is general enough to become a public methodology, 
 ## Core idea
 
 ```text
-Intake -> Requirements -> Graph -> Sync -> Work Node -> Verify -> Review -> Compound
-   ^                                                                        |
-   |------------------------------------------------------------------------|
+                                           /dge-execute-graph  (drives the inner loop, on dge next)
+                                           |---------------------------------|
+                                           v                                 v
+Intake -> Requirements -> Graph -> Sync -> Work Node -> Verify -> Review -> done
+   ^                                                                          |
+   |------------------------------ Compound ----------------------------------|
 ```
 
-The loop compounds because every completed node leaves behind validation evidence, decisions, reusable patterns, and follow-up context for the next demand.
+Two loops compound the work. The **inner loop** — `/dge-execute-graph`, built on the
+read-only `dge next` accessor — drives `Work Node -> Verify -> Review -> done` one ready
+node at a time, re-querying `dge next` after each node so completing one can unblock the
+next. The **outer loop** compounds across demands: every completed node leaves behind
+validation evidence, decisions, reusable patterns, and follow-up context for the next demand.
 
 ## Quick start
 
@@ -231,6 +238,8 @@ Any friction found in that downstream run becomes DGE backlog. This keeps the pl
 
 ## Workflow diagram
 
+The manual skill-by-skill flow is shown below; `/dge-execute-graph` (built on `dge next`) automates the inner Work Node -> Verify -> Review -> done cycle inside it.
+
 ```mermaid
 flowchart TD
     A[Raw demand] --> B["/dge-intake"]
@@ -250,7 +259,9 @@ flowchart TD
     K --> M[Azure DevOps tasks]
     K --> N[Sync map]
 
-    I --> O["/dge-work-node"]
+    I --> EG["/dge-execute-graph (harness loop)"]
+    EG --> NX["dge next: pick ready node"]
+    NX --> O["/dge-work-node"]
     O --> P[Implementation changes]
     O --> Q[Node evidence]
 
@@ -263,7 +274,9 @@ flowchart TD
     T --> U["/dge-review"]
     U --> V{Review passed?}
     V -- no --> O
-    V -- yes --> W[Ready to close / merge]
+    V -- yes --> W["Ready to close / dge done"]
+
+    W -. re-query next node .-> NX
 
     W --> X["/dge-compound"]
     X --> Y[Reusable learning]
