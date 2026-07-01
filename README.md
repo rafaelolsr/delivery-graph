@@ -4,6 +4,27 @@ Delivery Graph Engineering (DGE) turns raw demands into validated delivery graph
 
 Instead of treating work as a linear checklist, DGE models delivery as a graph: demands become requirements, requirements become tracks and nodes, nodes carry dependencies and validation contracts, and external tools such as Linear or Azure DevOps stay synchronized as projections.
 
+DGE is a **delivery operating system for coding agents**. It includes the general discipline every serious agentic workflow needs:
+
+- clarify before coding
+- plan before execution
+- work in isolated units
+- validate before completion
+- review before merge
+- capture learnings
+
+But DGE adds stronger operational requirements:
+
+- tasks become **nodes**
+- nodes have **dependencies**
+- nodes sync to **Linear or Azure DevOps**
+- every node has a **validation contract**
+- done requires **evidence**
+- status is managed through a **state machine**
+- the canonical artifact is **machine-readable**
+
+The result is a workflow that is general enough to become a public methodology, but specific enough to support graph execution, evidence-gated completion, and task-tracker synchronization.
+
 ## Core idea
 
 ```text
