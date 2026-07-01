@@ -16,6 +16,7 @@ node bin/dge.mjs evidence run NODE-001 --satisfies "npm test" -- npm test
 node bin/dge.mjs evidence playwright NODE-001 --satisfies "browser proof" --url http://localhost:3000 --script tests/e2e/app.spec.ts
 node bin/dge.mjs done NODE-001
 node bin/dge.mjs sync linear --team-id "<linear-team-id>"
+node bin/dge.mjs sync ado --org "<ado-org>" --project "<ado-project>" --area "<area-path>" --iteration "<iteration-path>"
 node bin/dge.mjs status --save
 ```
 

@@ -33,6 +33,10 @@ import {
   defaultLinearSyncPath
 } from "../src/adapters/linear.mjs";
 import {
+  createAdoSyncPlan,
+  defaultAdoSyncPath
+} from "../src/adapters/ado.mjs";
+import {
   addDemand,
   addGap,
   addNode,
@@ -353,10 +357,18 @@ function runReview(graphPath, args) {
 
 function runSync(graphPath, args) {
   const [target] = args._;
-  if (target !== "linear") {
-    throw new Error("Usage: dge sync linear [--graph path] [--out path] [--team-id id] [--project-id id]");
+  if (target === "linear") {
+    runLinearSync(graphPath, args);
+    return;
   }
+  if (target === "ado") {
+    runAdoSync(graphPath, args);
+    return;
+  }
+  throw new Error("Usage: dge sync linear [--graph path] [--out path] [--team-id id] [--project-id id]\n       dge sync ado [--graph path] [--out path] [--org name] [--project name] [--area path] [--iteration path]");
+}
 
+function runLinearSync(graphPath, args) {
   const outputPath = args.out ?? defaultLinearSyncPath(graphPath);
   const graph = readGraph(graphPath);
   const existingSync = readOptionalJson(outputPath);
@@ -366,9 +378,29 @@ function runSync(graphPath, args) {
     projectId: args["project-id"] ?? args.projectId
   });
 
+  writeSyncPlan(outputPath, syncPlan);
+  console.log(`linear sync dry-run: ${syncPlan.operations.length} operation${syncPlan.operations.length === 1 ? "" : "s"} -> ${outputPath}`);
+}
+
+function runAdoSync(graphPath, args) {
+  const outputPath = args.out ?? defaultAdoSyncPath(graphPath);
+  const graph = readGraph(graphPath);
+  const existingSync = readOptionalJson(outputPath);
+  const syncPlan = createAdoSyncPlan(graph, {
+    existingSync,
+    organization: args.org ?? args.organization,
+    project: args.project,
+    areaPath: args.area ?? args.areaPath,
+    iterationPath: args.iteration ?? args.iterationPath
+  });
+
+  writeSyncPlan(outputPath, syncPlan);
+  console.log(`ado sync dry-run: ${syncPlan.operations.length} operation${syncPlan.operations.length === 1 ? "" : "s"} -> ${outputPath}`);
+}
+
+function writeSyncPlan(outputPath, syncPlan) {
   fs.mkdirSync(path.dirname(path.resolve(outputPath)), { recursive: true });
   fs.writeFileSync(path.resolve(outputPath), `${JSON.stringify(syncPlan, null, 2)}\n`);
-  console.log(`linear sync dry-run: ${syncPlan.operations.length} operation${syncPlan.operations.length === 1 ? "" : "s"} -> ${outputPath}`);
 }
 
 function runMutation(graphPath, mutate) {
@@ -513,6 +545,7 @@ Usage:
   dge done NODE-001 [--graph path]
   dge review [--graph path] [--out path]
   dge sync linear [--graph path] [--out delivery-graph/sync/linear.json]
+  dge sync ado [--graph path] [--out delivery-graph/sync/ado.json] [--org name] [--project name] [--area path] [--iteration path]
   dge transition NODE-001 review [--graph path]
   dge add-demand --title "..." --source "..." --outcome "..." [--graph path]
   dge add-requirement --demand DEM-001 --statement "..." --acceptance "..." --evidence "..."

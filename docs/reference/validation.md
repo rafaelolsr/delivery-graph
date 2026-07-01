@@ -28,6 +28,8 @@ A node is not complete until:
 
 Use `dge status --save` to persist the current board view under `delivery-graph/reports/status-<timestamp>.md`, or `dge status --out <path>` to write a stable handoff file.
 
+Tracker sync is a projection, not a completion substitute. Use `dge sync linear` or `dge sync ado` to write reviewable dry-run sync maps under `delivery-graph/sync/` while keeping `delivery-graph/graph.json` canonical.
+
 ## Evidence manifest
 
 Evidence is stored per node:

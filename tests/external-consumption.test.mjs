@@ -125,6 +125,10 @@ test("installed package runs DGE intake and evidence loop from another repo", ()
   const statusOutput = runDge(consumerDir, "status", "--save");
   assert.match(statusOutput, /status report:/);
   assert.equal(fs.readdirSync(path.join(consumerDir, "delivery-graph", "reports")).some((file) => file.startsWith("status-")), true);
+
+  const adoOutput = runDge(consumerDir, "sync", "ado", "--org", "ORG", "--project", "PROJECT");
+  assert.match(adoOutput, /ado sync dry-run:/);
+  assert.equal(fs.existsSync(path.join(consumerDir, "delivery-graph", "sync", "ado.json")), true);
 });
 
 function packPackage(packDir) {

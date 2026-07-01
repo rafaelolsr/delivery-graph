@@ -62,6 +62,66 @@ test("CLI authors a graph end-to-end", () => {
   assert.equal(graph.nodes.length, 1);
 });
 
+test("CLI writes Azure DevOps dry-run sync map", () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "dge-cli-"));
+  const graphPath = path.join(tempDir, "delivery-graph", "graph.json");
+
+  run("init", "--graph", graphPath, "--title", "ADO graph");
+  run("add-demand", "--graph", graphPath, "--title", "Demand", "--source", "test", "--outcome", "ADO sync exists");
+  run(
+    "add-requirement",
+    "--graph",
+    graphPath,
+    "--demand",
+    "DEM-001",
+    "--statement",
+    "CLI can sync ADO tasks",
+    "--acceptance",
+    "ADO sync map exists",
+    "--evidence",
+    "Sync output"
+  );
+  run("add-track", "--graph", graphPath, "--title", "Implementation");
+  run(
+    "add-node",
+    "--graph",
+    graphPath,
+    "--title",
+    "Implement ADO sync",
+    "--type",
+    "implementation",
+    "--track",
+    "TRK-implementation",
+    "--requirements",
+    "REQ-001",
+    "--validation",
+    "npm test"
+  );
+
+  const output = run(
+    "sync",
+    "--graph",
+    graphPath,
+    "ado",
+    "--org",
+    "ORG",
+    "--project",
+    "PROJECT",
+    "--area",
+    "PROJECT\\Area",
+    "--iteration",
+    "PROJECT\\Sprint 1"
+  );
+  assert.match(output, /ado sync dry-run: 1 operation/);
+
+  const sync = JSON.parse(fs.readFileSync(path.join(tempDir, "delivery-graph", "sync", "ado.json"), "utf8"));
+  assert.equal(sync.target, "ado");
+  assert.equal(sync.organization, "ORG");
+  assert.equal(sync.project, "PROJECT");
+  assert.equal(sync.nodes["NODE-001"].ado_task_id, "dry-run:NODE-001");
+  assert.equal(sync.nodes["NODE-001"].payload.fields["System.AreaPath"], "PROJECT\\Area");
+});
+
 function run(...args) {
   return execFileSync(process.execPath, [cliPath, ...args], {
     encoding: "utf8"

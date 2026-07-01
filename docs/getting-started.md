@@ -119,3 +119,11 @@ npx dge sync linear --team-id "<linear-team-id>"
 ```
 
 This writes `delivery-graph/sync/linear.json` with planned issue payloads. It does not call the Linear API yet.
+
+## Azure DevOps dry-run sync
+
+```bash
+npx dge sync ado --org "<ado-org>" --project "<ado-project>" --area "<area-path>" --iteration "<iteration-path>"
+```
+
+This writes `delivery-graph/sync/ado.json` with planned Task payloads and JSON Patch fields. It does not call the Azure DevOps API yet.

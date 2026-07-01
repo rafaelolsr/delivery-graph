@@ -50,13 +50,14 @@ Project the canonical delivery graph into external systems. Trackers are project
 
 ## CLI contract
 
-For Linear, use the local dry-run adapter first:
+Use local dry-run adapters first:
 
 ```bash
 npm run dge -- sync linear --team-id "<linear-team-id>"
+npm run dge -- sync ado --org "<ado-org>" --project "<ado-project>" --area "<area-path>" --iteration "<iteration-path>"
 ```
 
-This writes `delivery-graph/sync/linear.json` with planned issue payloads. Treat that file as the reviewable projection before enabling any API-backed sync.
+These write `delivery-graph/sync/linear.json` or `delivery-graph/sync/ado.json` with planned tracker payloads. Treat those files as the reviewable projection before enabling any API-backed sync.
 
 ## Safety
 

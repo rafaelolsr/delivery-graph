@@ -110,13 +110,14 @@ npx dge add-node --title "Add eval CI command" --type implementation --track TRK
 npx dge status
 npx dge transition NODE-001 in_progress
 
-# Project ready nodes to Linear as a dry-run sync map
+# Project ready nodes to a tracker as a dry-run sync map
 npx dge sync linear --team-id "<linear-team-id>"
+npx dge sync ado --org "<ado-org>" --project "<ado-project>" --area "<area-path>" --iteration "<iteration-path>"
 ```
 
 By default, `dge` reads and writes `delivery-graph/graph.json`. Pass `--graph <path>` to target another graph file.
 
-Linear sync writes `delivery-graph/sync/linear.json`. The current adapter is intentionally dry-run: it creates deterministic issue payloads and sync state without requiring credentials.
+Linear sync writes `delivery-graph/sync/linear.json`; Azure DevOps sync writes `delivery-graph/sync/ado.json`. Both adapters are intentionally dry-run: they create deterministic tracker payloads and sync state without requiring credentials.
 
 ## Usable local loop
 
@@ -320,9 +321,9 @@ DGE now supports one complete local loop:
 
 1. `dge init` creates the canonical graph store.
 2. `dge add-demand`, `dge add-requirement`, `dge add-track`, and `dge add-node` create a graph with validation contracts.
-3. `dge sync linear` creates a dry-run Linear projection from ready nodes.
+3. `dge sync linear` or `dge sync ado` creates a dry-run tracker projection from ready nodes.
 4. `dge evidence run` and `dge evidence playwright` capture validation proof.
 5. `dge done` verifies evidence, writes a review report, and marks the node done only when gates pass.
 6. `dge status --save` writes a durable board/status handoff.
 
-Future tracker work can add real Linear/ADO API writes without changing the canonical store.
+Future tracker work can add real Linear/ADO API writes without changing the canonical store or dry-run review contract.
