@@ -1,6 +1,6 @@
 {
   "name": "delivery-graph-engineering",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Turn demands into validated delivery graphs across agent harnesses and task trackers.",
   "type": "module",
   "license": "MIT",
