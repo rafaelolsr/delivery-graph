@@ -73,18 +73,50 @@ validation evidence, decisions, reusable patterns, and follow-up context for the
 
 ## Quick start
 
-Install DGE in the repository that should own the canonical `delivery-graph/` store:
+### Install the skills from the marketplace (recommended)
+
+DGE ships a plugin marketplace, so Claude Code and GitHub Copilot CLI can install the
+`/dge-*` skills directly from GitHub — no npm publish required.
+
+**Claude Code:**
+
+```text
+/plugin marketplace add rafaelolsr/delivery-graph
+/plugin install delivery-graph@dge-tools
+/reload-plugins
+```
+
+**GitHub Copilot CLI** (the standalone `copilot`, installed via `npm install -g @github/copilot`):
+
+```bash
+copilot plugin marketplace add rafaelolsr/delivery-graph
+copilot plugin install delivery-graph
+```
+
+Both harnesses read the same `.claude-plugin/plugin.json` at the repo root and auto-scan the
+top-level `skills/` directory. Skills appear namespaced (e.g. `/delivery-graph:dge-intake`).
+
+### Install the CLI
+
+The `dge` CLI (evidence gates, `init`, `status`, `next`, `done`, …) is a separate surface —
+add it as a dev dependency in the repo that should own the canonical `delivery-graph/` store:
 
 ```bash
 npm install --save-dev github:rafaelolsr/delivery-graph
-npx dge install-skills          # copy the /dge-* skills into your harness (.claude or .github)
 npx dge init --title "My delivery graph"
 ```
 
-`dge install-skills` auto-detects your harness (`.claude/` or `.github/`) and installs the
-`/dge-*` slash commands. Pass `--harness claude|copilot` to choose explicitly, `--symlink` to
-keep them tracking `node_modules`, or `--force` to overwrite. The CLI works without this step;
-only the slash commands need it.
+### Alternative: copy the skills without the marketplace
+
+If you are not using a marketplace-capable harness, `dge install-skills` auto-detects your
+harness (`.claude/` or `.github/`) and copies the `/dge-*` skills into it. Pass
+`--harness claude|copilot` to choose explicitly, `--symlink` to keep them tracking
+`node_modules`, or `--force` to overwrite. The CLI works without this step; only the slash
+commands need it.
+
+```bash
+npx dge install-skills
+```
 
 The shortest end-to-end loop is:
 
