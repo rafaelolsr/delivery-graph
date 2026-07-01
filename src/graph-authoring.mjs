@@ -149,7 +149,7 @@ export function addNode(graph, input) {
     depends_on: splitList(input.dependsOn),
     status: input.status ?? "ready",
     validation: {
-      required: splitRequiredList(input.validation, "validation"),
+      required: requiredItems(input.validation, "validation"),
       evidence_path: input.evidencePath ?? `delivery-graph/evidence/${id}/`
     },
     sync: {
@@ -165,6 +165,48 @@ export function addNode(graph, input) {
 
   assertValidGraph(nextGraph);
   return { graph: nextGraph, record: node };
+}
+
+// Remove a node by id so an authoring mistake is correctable via the CLI.
+// Refuses removal when other nodes depend on it (would orphan a dependency).
+export function removeNode(graph, nodeId) {
+  requireText(nodeId, "node id");
+  const id = nodeId;
+  const node = (graph.nodes ?? []).find((n) => n.id === id);
+  if (!node) {
+    throw new Error(`${id} not found`);
+  }
+  const dependents = (graph.nodes ?? []).filter((n) => (n.depends_on ?? []).includes(id)).map((n) => n.id);
+  if (dependents.length > 0) {
+    throw new Error(`${id} cannot be removed; these nodes depend on it: ${dependents.join(", ")}`);
+  }
+
+  const nextGraph = {
+    ...touchGraph(graph),
+    nodes: graph.nodes.filter((n) => n.id !== id)
+  };
+  assertValidGraph(nextGraph);
+  return { graph: nextGraph, record: node };
+}
+
+// Replace a node's validation contract (validation.required) via the CLI so a
+// mis-authored contract is fixable without hand-editing graph.json. Items are
+// comma-safe (each flag is one item), matching addNode.
+export function setNodeValidation(graph, nodeId, validation) {
+  requireText(nodeId, "node id");
+  const id = nodeId;
+  const required = requiredItems(validation, "validation");
+  const node = (graph.nodes ?? []).find((n) => n.id === id);
+  if (!node) {
+    throw new Error(`${id} not found`);
+  }
+  const updated = { ...node, validation: { ...node.validation, required } };
+  const nextGraph = {
+    ...touchGraph(graph),
+    nodes: graph.nodes.map((n) => (n.id === id ? updated : n))
+  };
+  assertValidGraph(nextGraph);
+  return { graph: nextGraph, record: updated };
 }
 
 export function nextNumericId(records, prefix) {
@@ -209,6 +251,19 @@ function splitList(value) {
 
 function splitRequiredList(value, field) {
   const list = splitList(value);
+  if (list.length === 0) {
+    throw new Error(`${field} must include at least one value`);
+  }
+  return list;
+}
+
+// For prose items (validation contract lines) each flag is one item. Commas are
+// part of the text, NOT separators — the CLI builds an array from repeated flags,
+// so we trim/keep each element as-is instead of comma-splitting it.
+function requiredItems(value, field) {
+  const list = (Array.isArray(value) ? value : value === undefined || value === null || value === "" ? [] : [value])
+    .map((item) => String(item).trim())
+    .filter(Boolean);
   if (list.length === 0) {
     throw new Error(`${field} must include at least one value`);
   }

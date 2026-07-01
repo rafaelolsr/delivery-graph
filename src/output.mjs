@@ -49,7 +49,9 @@ export function graphRoot(graphPath) {
   if (!graphPath) return process.cwd();
   const resolved = path.resolve(graphPath);
   const marker = `${path.sep}delivery-graph${path.sep}`;
-  const idx = resolved.indexOf(marker);
+  // Use the LAST occurrence: the store's own delivery-graph/ is the boundary,
+  // even when the repo path itself contains "delivery-graph" earlier.
+  const idx = resolved.lastIndexOf(marker);
   if (idx !== -1) return resolved.slice(0, idx);
   // Fallback: parent of the graph file's directory.
   return path.dirname(path.dirname(resolved));
