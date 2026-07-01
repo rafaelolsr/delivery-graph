@@ -20,6 +20,8 @@ npm run check
 
 This validates the example graph and renders a status report.
 
+The check also runs the Node test suite for the graph engine.
+
 ## Skill authoring
 
 Public skills live under `skills/<skill-name>/SKILL.md`.
@@ -38,4 +40,3 @@ Use `dge-` prefixes for every public skill:
 ## Runtime artifact locations
 
 The plugin writes user project artifacts under the consuming repository's `delivery-graph/` directory, not inside this plugin repository.
-

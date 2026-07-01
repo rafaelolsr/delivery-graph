@@ -37,3 +37,12 @@
 /dge-compound NODE-001
 ```
 
+## Local engine check
+
+Before integrating a tracker, verify the local graph engine:
+
+```bash
+npm run check
+```
+
+This runs graph validation, renders status, and executes the engine tests.

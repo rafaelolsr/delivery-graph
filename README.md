@@ -43,6 +43,26 @@ npm run check
 
 This validates the example graph and renders a status report.
 
+## Local engine commands
+
+The MVP includes a dependency-free local graph engine.
+
+```bash
+# Validate a graph
+npm run validate
+
+# Render graph status
+npm run status
+
+# Run engine tests
+npm test
+
+# Transition a node in a graph file
+npm run transition -- examples/delivery-graph.example.json NODE-001 done
+```
+
+The transition command enforces the node state machine, dependency readiness, and validation evidence requirements.
+
 ## Skill loop
 
 | Skill | Purpose | Primary output |
@@ -170,6 +190,8 @@ This repository will contain the plugin source and shared contracts:
 ├── manifests/                 # Draft manifests for supported harnesses
 ├── schemas/                   # Graph schemas and validation contracts
 ├── scripts/                   # Local validation and status tooling
+├── src/                       # Core graph engine and renderers
+├── tests/                     # Engine tests
 └── skills/                    # Multi-harness skill definitions
 ```
 

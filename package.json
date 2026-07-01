@@ -8,7 +8,9 @@
   "scripts": {
     "validate": "node scripts/validate-graph.mjs examples/delivery-graph.example.json",
     "status": "node scripts/render-status.mjs examples/delivery-graph.example.json",
-    "check": "npm run validate && npm run status"
+    "transition": "node scripts/transition-node.mjs",
+    "test": "node --test",
+    "check": "npm run validate && npm run status && npm test"
   },
   "keywords": [
     "agentic-workflow",
@@ -22,4 +24,3 @@
     "node": ">=20"
   }
 }
-
