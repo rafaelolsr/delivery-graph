@@ -7,7 +7,7 @@ validation:
   required:
     - "npm test"
     - "manual review of generated Linear issue"
-  evidence_path: delivery-graph/evidence/NODE-001/
+  evidence_path: delivery-graph/demands/DEM-001/evidence/NODE-001/
 ```
 
 ## Completion gate
@@ -35,7 +35,7 @@ Tracker sync is a projection, not a completion substitute. Use `dge sync linear`
 Evidence is stored per node:
 
 ```text
-delivery-graph/evidence/NODE-001/
+delivery-graph/demands/DEM-001/evidence/NODE-001/
 ├── evidence.json
 ├── summary.md
 ├── verification.md

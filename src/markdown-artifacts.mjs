@@ -12,8 +12,23 @@ export function writeRecordArtifact(graphPath, record) {
   return null;
 }
 
+// Re-emit every demand and requirement markdown artifact from graph.json. Because
+// this reuses writeRecordArtifact, a regenerated tree is byte-for-byte identical to
+// what add-demand/add-requirement wrote — proving the folder tree is a derived
+// projection of graph.json, not a second source of truth.
+export function regenerateArtifacts(graphPath, graph) {
+  const written = [];
+  for (const demand of graph.demands ?? []) {
+    written.push(writeRecordArtifact(graphPath, demand));
+  }
+  for (const requirement of graph.requirements ?? []) {
+    written.push(writeRecordArtifact(graphPath, requirement));
+  }
+  return written.filter(Boolean);
+}
+
 function writeDemandArtifact(graphPath, demand) {
-  const artifactPath = resolveRuntimePath(graphPath, `delivery-graph/demands/${demand.id}.md`);
+  const artifactPath = resolveRuntimePath(graphPath, `delivery-graph/demands/${demand.id}/${demand.id}.md`);
   const lines = [
     `# ${demand.id}: ${demand.title}`,
     "",
@@ -42,7 +57,12 @@ function writeDemandArtifact(graphPath, demand) {
 }
 
 function writeRequirementArtifact(graphPath, requirement) {
-  const artifactPath = resolveRuntimePath(graphPath, `delivery-graph/requirements/${requirement.id}.md`);
+  // Requirements are scoped under their owning demand as a flat list, so everything
+  // a demand generates lives under demands/DEM-###/.
+  const artifactPath = resolveRuntimePath(
+    graphPath,
+    `delivery-graph/demands/${requirement.demand_id}/requirements/${requirement.id}.md`
+  );
   const lines = [
     `# ${requirement.id}`,
     "",

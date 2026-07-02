@@ -173,7 +173,7 @@ test("evidence status rejects manifests from another node", () => {
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "dge-evidence-"));
   const graphPath = path.join(tempDir, "delivery-graph", "graph.json");
   const graph = makeGraph();
-  const manifestPath = path.join(tempDir, "delivery-graph", "evidence", "NODE-001", "evidence.json");
+  const manifestPath = path.join(tempDir, "delivery-graph", "demands", "DEM-001", "evidence", "NODE-001", "evidence.json");
   fs.mkdirSync(path.dirname(manifestPath), { recursive: true });
   fs.writeFileSync(manifestPath, JSON.stringify({ node_id: "NODE-002", items: [] }));
 
@@ -200,7 +200,7 @@ test("command evidence records output artifact only when command passes", () => 
   assert.equal(added.record.kind, "command");
   assert.equal(added.record.artifact, "artifacts/EVD-001-command.json");
 
-  const artifactPath = path.join(tempDir, "delivery-graph", "evidence", "NODE-001", "artifacts", "EVD-001-command.json");
+  const artifactPath = path.join(tempDir, "delivery-graph", "demands", "DEM-001", "evidence", "NODE-001", "artifacts", "EVD-001-command.json");
   const artifact = JSON.parse(fs.readFileSync(artifactPath, "utf8"));
   assert.deepEqual(artifact.command, ["npm", "test"]);
   assert.equal(artifact.exit_code, 0);
@@ -233,10 +233,10 @@ test("playwright evidence can copy browser artifacts and metadata", () => {
   assert.equal(added.record.artifact, "artifacts/EVD-001-playwright.json");
   assert.deepEqual(added.record.artifacts, ["artifacts/EVD-001-playwright-artifacts/screenshot.png"]);
 
-  const artifactPath = path.join(tempDir, "delivery-graph", "evidence", "NODE-001", "artifacts", "EVD-001-playwright.json");
+  const artifactPath = path.join(tempDir, "delivery-graph", "demands", "DEM-001", "evidence", "NODE-001", "artifacts", "EVD-001-playwright.json");
   const artifact = JSON.parse(fs.readFileSync(artifactPath, "utf8"));
   assert.equal(artifact.metadata.url, "http://localhost:3000");
-  assert.equal(fs.readFileSync(path.join(tempDir, "delivery-graph", "evidence", "NODE-001", artifact.artifacts[0]), "utf8"), "png");
+  assert.equal(fs.readFileSync(path.join(tempDir, "delivery-graph", "demands", "DEM-001", "evidence", "NODE-001", artifact.artifacts[0]), "utf8"), "png");
 });
 
 test("command evidence refuses failed commands", () => {
@@ -255,7 +255,7 @@ test("command evidence refuses failed commands", () => {
     /command evidence failed with exit code 1/
   );
 
-  assert.equal(fs.existsSync(path.join(tempDir, "delivery-graph", "evidence", "NODE-001", "evidence.json")), false);
+  assert.equal(fs.existsSync(path.join(tempDir, "delivery-graph", "demands", "DEM-001", "evidence", "NODE-001", "evidence.json")), false);
 });
 
 test("failed command attempts can be saved without adding evidence", () => {
@@ -273,7 +273,7 @@ test("failed command attempts can be saved without adding evidence", () => {
   });
 
   assert.match(artifactPath, /ATTEMPT-2026-06-30T00-00-00Z-command\.json$/);
-  assert.equal(fs.existsSync(path.join(tempDir, "delivery-graph", "evidence", "NODE-001", "evidence.json")), false);
+  assert.equal(fs.existsSync(path.join(tempDir, "delivery-graph", "demands", "DEM-001", "evidence", "NODE-001", "evidence.json")), false);
   assert.equal(JSON.parse(fs.readFileSync(artifactPath, "utf8")).stderr, "failed\n");
 
   const unsafeAttempt = writeCommandAttemptArtifact(graphPath, graph, "NODE-001", {
@@ -282,7 +282,7 @@ test("failed command attempts can be saved without adding evidence", () => {
     exitCode: 1,
     createdAt: "../bad/.."
   });
-  assert.equal(path.dirname(unsafeAttempt.artifactPath), path.join(tempDir, "delivery-graph", "evidence", "NODE-001", "artifacts"));
+  assert.equal(path.dirname(unsafeAttempt.artifactPath), path.join(tempDir, "delivery-graph", "demands", "DEM-001", "evidence", "NODE-001", "artifacts"));
 });
 
 test("failed playwright attempts save output and available artifacts without adding evidence", () => {
@@ -309,7 +309,7 @@ test("failed playwright attempts save output and available artifacts without add
   assert.equal(attempt.kind, "playwright");
   assert.equal(attempt.metadata.url, "http://localhost:3000");
   assert.deepEqual(attempt.artifacts, ["artifacts/ATTEMPT-2026-06-30T00-00-00Z-playwright-artifacts/trace.zip"]);
-  assert.equal(fs.existsSync(path.join(tempDir, "delivery-graph", "evidence", "NODE-001", "evidence.json")), false);
+  assert.equal(fs.existsSync(path.join(tempDir, "delivery-graph", "demands", "DEM-001", "evidence", "NODE-001", "evidence.json")), false);
 });
 
 function makeGraph() {
@@ -357,7 +357,7 @@ function makeGraph() {
         status: "review",
         validation: {
           required: ["npm test"],
-          evidence_path: "delivery-graph/evidence/NODE-001/"
+          evidence_path: "delivery-graph/demands/DEM-001/evidence/NODE-001/"
         },
         sync: {
           linear_issue_id: null,

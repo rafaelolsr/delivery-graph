@@ -43,8 +43,8 @@ test("CLI supports usable local loop through evidence, verify, status, and revie
     "node proof command"
   );
 
-  assert.ok(fs.existsSync(path.join(tempDir, "delivery-graph", "demands", "DEM-001.md")));
-  assert.ok(fs.existsSync(path.join(tempDir, "delivery-graph", "requirements", "REQ-001.md")));
+  assert.ok(fs.existsSync(path.join(tempDir, "delivery-graph", "demands", "DEM-001", "DEM-001.md")));
+  assert.ok(fs.existsSync(path.join(tempDir, "delivery-graph", "demands", "DEM-001", "requirements", "REQ-001.md")));
 
   const missingStatus = run("status", "--graph", graphPath);
   assert.match(missingStatus, /Missing validation evidence/);
@@ -74,7 +74,7 @@ test("CLI supports usable local loop through evidence, verify, status, and revie
     ),
     /Command failed with exit code 7; output artifact:/
   );
-  assert.equal(fs.existsSync(path.join(tempDir, "delivery-graph", "evidence", "NODE-001", "evidence.json")), false);
+  assert.equal(fs.existsSync(path.join(tempDir, "delivery-graph", "demands", "DEM-001", "evidence", "NODE-001", "evidence.json")), false);
 
   run(
     "evidence",
@@ -96,7 +96,7 @@ test("CLI supports usable local loop through evidence, verify, status, and revie
   // concise default summary: node line, evidence count, relative report paths, no raw JSON
   assert.match(doneOutput, /NODE-001 done/);
   assert.match(doneOutput, /evidence\s+\d+\/\d+ passed/);
-  assert.match(doneOutput, /delivery-graph\/evidence\/NODE-001\/verification\.md/);
+  assert.match(doneOutput, /delivery-graph\/demands\/DEM-001\/evidence\/NODE-001\/verification\.md/);
   assert.match(doneOutput, /delivery-graph\/reports\/review-/);
   assert.doesNotMatch(doneOutput, /^\{/m); // no raw JSON object in default output
   assert.doesNotMatch(doneOutput, new RegExp(tempDir.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))); // no absolute path
@@ -104,7 +104,7 @@ test("CLI supports usable local loop through evidence, verify, status, and revie
   const doneGraph = JSON.parse(fs.readFileSync(graphPath, "utf8"));
   assert.equal(doneGraph.nodes[0].status, "done");
   assert.match(
-    fs.readFileSync(path.join(tempDir, "delivery-graph", "evidence", "NODE-001", "verification.md"), "utf8"),
+    fs.readFileSync(path.join(tempDir, "delivery-graph", "demands", "DEM-001", "evidence", "NODE-001", "verification.md"), "utf8"),
     /node proof command: satisfied/
   );
 
@@ -189,8 +189,8 @@ test("output flags (--json/--ascii) change only the terminal, never the persiste
     run("done", "NODE-001", "--graph", graphPath, ...extraArgs);
     const dir = path.join(tempDir, "delivery-graph");
     return {
-      verification: fs.readFileSync(path.join(dir, "evidence", "NODE-001", "verification.md"), "utf8"),
-      evidence: fs.readFileSync(path.join(dir, "evidence", "NODE-001", "evidence.json"), "utf8"),
+      verification: fs.readFileSync(path.join(dir, "demands", "DEM-001", "evidence", "NODE-001", "verification.md"), "utf8"),
+      evidence: fs.readFileSync(path.join(dir, "demands", "DEM-001", "evidence", "NODE-001", "evidence.json"), "utf8"),
       review: fs.readdirSync(path.join(dir, "reports")).filter((f) => f.startsWith("review-")).length
     };
   }
@@ -280,7 +280,7 @@ test("CLI evidence remove deletes a record and re-blocks done", () => {
   assert.match(removeOutput, /removed evidence EVD-001 from NODE-001/);
 
   const manifest = JSON.parse(
-    fs.readFileSync(path.join(tempDir, "delivery-graph", "evidence", "NODE-001", "evidence.json"), "utf8")
+    fs.readFileSync(path.join(tempDir, "delivery-graph", "demands", "DEM-001", "evidence", "NODE-001", "evidence.json"), "utf8")
   );
   assert.equal(manifest.items.length, 0);
 
@@ -488,11 +488,11 @@ test("CLI captures Playwright evidence with browser artifacts", () => {
   // default output is a concise line (no raw JSON); the persisted manifest holds the kind
   assert.match(output, /EVD-001/);
   assert.doesNotMatch(output, /^\{/m);
-  const evidence = JSON.parse(fs.readFileSync(path.join(tempDir, "delivery-graph", "evidence", "NODE-001", "evidence.json"), "utf8"));
+  const evidence = JSON.parse(fs.readFileSync(path.join(tempDir, "delivery-graph", "demands", "DEM-001", "evidence", "NODE-001", "evidence.json"), "utf8"));
   assert.equal(evidence.items[0].kind, "playwright");
   assert.equal(evidence.items[0].metadata.url, "http://localhost:3000");
 
-  const evidenceDir = path.join(tempDir, "delivery-graph", "evidence", "NODE-001");
+  const evidenceDir = path.join(tempDir, "delivery-graph", "demands", "DEM-001", "evidence", "NODE-001");
   const commandArtifact = JSON.parse(fs.readFileSync(path.join(evidenceDir, evidence.items[0].artifact), "utf8"));
   assert.match(commandArtifact.stdout, /http:\/\/localhost:3000/);
   assert.equal(fs.readFileSync(path.join(evidenceDir, commandArtifact.artifacts[0], "screenshot.png"), "utf8"), "png");
@@ -551,8 +551,8 @@ test("CLI captures failed Playwright attempts without satisfying evidence", () =
     /Command failed with exit code 9; output artifact:/
   );
 
-  assert.equal(fs.existsSync(path.join(tempDir, "delivery-graph", "evidence", "NODE-001", "evidence.json")), false);
-  assert.equal(fs.readdirSync(path.join(tempDir, "delivery-graph", "evidence", "NODE-001", "artifacts")).filter((file) => file.includes("playwright")).length, 1);
+  assert.equal(fs.existsSync(path.join(tempDir, "delivery-graph", "demands", "DEM-001", "evidence", "NODE-001", "evidence.json")), false);
+  assert.equal(fs.readdirSync(path.join(tempDir, "delivery-graph", "demands", "DEM-001", "evidence", "NODE-001", "artifacts")).filter((file) => file.includes("playwright")).length, 1);
 });
 
 test("CLI next walks the ready queue as dependencies complete", () => {
