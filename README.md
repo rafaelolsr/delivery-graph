@@ -312,11 +312,11 @@ Any friction found in that downstream run becomes DGE backlog. This keeps the pl
 
 | Skill | Purpose | Primary output |
 | --- | --- | --- |
-| `/dge-intake` | Brainstorm the demand, expose gaps, and create testable requirements | `delivery-graph/demands/`, `delivery-graph/requirements/` |
+| `/dge-intake` | Brainstorm the demand, expose gaps, and create testable requirements | `delivery-graph/demands/DEM-<id>/`, `delivery-graph/demands/DEM-<id>/requirements/` |
 | `/dge-plan-graph` | Break requirements into tracks, nodes, dependencies, and validation contracts | `delivery-graph/graph.json` |
 | `/dge-sync` | Create or update tracker records from graph nodes | Linear issues, ADO tasks, `delivery-graph/sync/` |
 | `/dge-work-node` | Execute one ready atomic node | Code/docs changes plus node evidence |
-| `/dge-verify` | Gate completion on validation evidence | `delivery-graph/evidence/` |
+| `/dge-verify` | Gate completion on validation evidence | `delivery-graph/demands/DEM-<id>/evidence/NODE-<id>/` |
 | `/dge-review` | Review implementation, graph state, unresolved risks, and validation coverage | `delivery-graph/reports/` |
 | `/dge-compound` | Capture reusable learning for future loops | `delivery-graph/learnings/` |
 | `/dge-status` | Render the current graph as a board/status view | terminal report, Linear view, markdown status |
@@ -376,13 +376,19 @@ DGE uses a single canonical store in the consuming repository:
 ```text
 delivery-graph/
 ├── graph.json                 # Canonical graph: demands, requirements, tracks, nodes, edges
-├── demands/                   # Raw demand records and clarified demand summaries
-├── requirements/              # Testable requirements and acceptance criteria
-├── evidence/                  # Validation evidence, grouped by node id
+├── demands/                   # Everything a demand generates lives under demands/DEM-<id>/
+│   └── DEM-<id>/
+│       ├── DEM-<id>.md        # Raw demand record and clarified demand summary
+│       ├── requirements/      # Testable requirements and acceptance criteria (REQ-<id>.md)
+│       └── evidence/          # Validation evidence, scoped per node (NODE-<id>/)
 ├── sync/                      # External tracker ids, sync state, conflict notes
 ├── reports/                   # Status, review, verification, and delivery reports
 └── learnings/                 # Compounded reusable knowledge from completed work
 ```
+
+The store is **demand-centric**: a node belongs to exactly one demand, so its
+requirements and evidence live under that demand's folder. The folder tree is a
+materialized projection of `graph.json` — `dge regenerate` rebuilds it.
 
 Linear, Azure DevOps, GitHub Issues, and markdown boards are projections of this store. They can be updated from the graph, but they should not silently replace the graph as the source of truth.
 

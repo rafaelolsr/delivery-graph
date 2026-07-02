@@ -1,10 +1,15 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import {
   getNextReadyNode,
   getReadyNodes,
+  readGraph,
   transitionNode,
-  validateGraph
+  validateGraph,
+  writeGraph
 } from "../src/graph-engine.mjs";
 
 test("validates the example graph", () => {
@@ -22,6 +27,20 @@ test("enforces the delivery graph JSON schema", () => {
   });
 
   assert.match(validateGraph(graph).join("\n"), /schema \/graph: must NOT have additional properties/);
+});
+
+test("node.sync is open so a new tracker can own its own key", () => {
+  // A novel per-tracker key (e.g. a future GitHub adapter) must validate without
+  // a core-schema change; the two legacy keys are optional, not required.
+  const graph = makeGraph({
+    nodes: [
+      makeNode("NODE-001", {
+        sync: { linear_issue_id: null, github_issue_number: 42 }
+      })
+    ]
+  });
+
+  assert.deepEqual(validateGraph(graph), []);
 });
 
 test("requires node evidence paths to match the owning node", () => {
@@ -123,6 +142,45 @@ test("detects dependency cycles", () => {
   assert.match(validateGraph(graph).join("\n"), /Dependency cycle detected/);
 });
 
+test("reports the cycle path without duplicating the closing node", () => {
+  const graph = makeGraph({
+    nodes: [
+      makeNode("NODE-001", { depends_on: ["NODE-002"] }),
+      makeNode("NODE-002", { depends_on: ["NODE-003"] }),
+      makeNode("NODE-003", { depends_on: ["NODE-001"] })
+    ]
+  });
+
+  const cycleError = validateGraph(graph).find((error) => error.startsWith("Dependency cycle detected"));
+  assert.equal(cycleError, "Dependency cycle detected: NODE-001 -> NODE-002 -> NODE-003 -> NODE-001");
+});
+
+test("getReadyNodes tolerates a node missing depends_on", () => {
+  const graph = makeGraph({
+    nodes: [
+      { ...makeNode("NODE-001", { status: "ready" }), depends_on: undefined }
+    ]
+  });
+
+  assert.doesNotThrow(() => getReadyNodes(graph));
+  assert.deepEqual(getReadyNodes(graph).map((node) => node.id), ["NODE-001"]);
+});
+
+test("writeGraph writes atomically and round-trips through readGraph", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "dge-atomic-"));
+  const graphPath = path.join(dir, "delivery-graph", "graph.json");
+  try {
+    const graph = makeGraph();
+    writeGraph(graphPath, graph);
+    // No leftover temp file beside the target.
+    const siblings = fs.readdirSync(path.dirname(graphPath));
+    assert.deepEqual(siblings.filter((name) => name.endsWith(".tmp")), []);
+    assert.deepEqual(readGraph(graphPath), graph);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test("returns only ready nodes whose dependencies are done", () => {
   const graph = makeGraph({
     nodes: [
@@ -200,6 +258,18 @@ test("requires dependencies to be done before starting work", () => {
   assert.throws(
     () => transitionNode(graph, "NODE-002", "in_progress"),
     /incomplete dependencies: NODE-001/
+  );
+});
+
+test("transitionNode refuses to mint verified (evidence gate lives in verifyNode)", () => {
+  const graph = makeGraph({ nodes: [makeNode("NODE-001", { status: "review" })] });
+
+  // review -> verified is a valid lifecycle edge, but transitionNode cannot read
+  // the evidence manifest, so it must reject the move and point at `dge verify`
+  // rather than silently mark a node verified without proof.
+  assert.throws(
+    () => transitionNode(graph, "NODE-001", "verified"),
+    /cannot be moved to verified via transition/
   );
 });
 

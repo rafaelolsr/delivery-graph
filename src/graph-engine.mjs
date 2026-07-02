@@ -36,7 +36,16 @@ export function readGraph(graphPath) {
 export function writeGraph(graphPath, graph) {
   const absolutePath = path.resolve(graphPath);
   fs.mkdirSync(path.dirname(absolutePath), { recursive: true });
-  fs.writeFileSync(absolutePath, `${JSON.stringify(graph, null, 2)}\n`);
+  writeFileAtomic(absolutePath, `${JSON.stringify(graph, null, 2)}\n`);
+}
+
+// Write to a sibling temp file, then rename onto the target. Rename is atomic on
+// the same filesystem, so an interrupted write (crash, SIGKILL, full disk) can
+// never leave a torn/unparseable canonical file — the old contents survive intact.
+export function writeFileAtomic(targetPath, contents) {
+  const tmpPath = `${targetPath}.${process.pid}.tmp`;
+  fs.writeFileSync(tmpPath, contents);
+  fs.renameSync(tmpPath, targetPath);
 }
 
 export function validateGraph(graph, options = {}) {
@@ -207,7 +216,7 @@ export function getReadyNodes(graph) {
   const nodesById = new Map((graph.nodes ?? []).map((node) => [node.id, node]));
   return (graph.nodes ?? []).filter((node) => {
     if (node.status !== "ready") return false;
-    return node.depends_on.every((dependencyId) => nodesById.get(dependencyId)?.status === "done");
+    return (node.depends_on ?? []).every((dependencyId) => nodesById.get(dependencyId)?.status === "done");
   });
 }
 
@@ -247,7 +256,13 @@ export function transitionNode(graph, nodeId, nextStatus, options = {}) {
   }
 
   if (nextStatus === "verified") {
-    assertEvidencePath(node);
+    // `verified` is an evidence-gated status: reaching it requires proving the
+    // validation contract is satisfied, which needs the evidence manifest on
+    // disk. transitionNode has no graphPath and cannot read the manifest, so it
+    // must not mint `verified` itself — that would bypass the evidence gate.
+    // Route verification through verifyNode (evidence-engine), which checks
+    // completeness before setting the status.
+    throw new Error(`${node.id} cannot be moved to verified via transition; run \`dge verify ${node.id}\` so the evidence gate applies`);
   }
 
   if (nextStatus === "done") {
@@ -288,7 +303,10 @@ function findCycles(nodes) {
 
   function visit(nodeId, stack) {
     if (visiting.has(nodeId)) {
-      cycles.push([...stack.slice(stack.indexOf(nodeId)), nodeId]);
+      // stack already starts at the seed node, so slicing from the first
+      // occurrence of nodeId yields the full cycle path (...-> nodeId) without
+      // re-appending it — appending again would duplicate the closing node.
+      cycles.push([...stack.slice(stack.indexOf(nodeId))]);
       return;
     }
     if (visited.has(nodeId)) return;

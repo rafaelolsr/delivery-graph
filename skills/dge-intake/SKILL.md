@@ -14,11 +14,13 @@ Turn a raw demand into testable requirements without designing the implementatio
 
 ## Core rules
 
-1. Ask one question at a time when clarification is needed.
-2. Expose gaps explicitly; do not hide uncertainty in prose.
-3. Do not produce work nodes or implementation tracks here.
-4. Do not mark the intake ready while blocker gaps are unresolved.
-5. Use the canonical DGE IDs: `DEM-###`, `REQ-###`, `GAP-###`.
+1. Ask exactly one question at a time and wait for the answer. When an answer is vague, incomplete, or contradictory, push back with one follow-up before moving on — do not batch questions and do not proceed on a fuzzy answer.
+2. For every question, offer your own grounded recommendation and let the user confirm or redirect — interrogate, but never leave the user to invent the answer from nothing.
+3. Lock in each concrete answer by restating it before it becomes a requirement.
+4. Expose gaps explicitly; do not hide uncertainty in prose.
+5. Do not produce work nodes or implementation tracks here.
+6. Do not mark the intake ready while blocker gaps are unresolved.
+7. Use the canonical DGE IDs: `DEM-###`, `REQ-###`, `GAP-###`.
 
 ## Inputs
 
@@ -68,22 +70,69 @@ Before writing any requirement, read the relevant parts of the existing codebase
 
 Default position: the simplest change that reuses existing code beats a new abstraction. If nothing exists to reuse, say so explicitly — that statement is the evidence you looked.
 
+#### Read prior learnings (compound loop)
+
+Past demands leave behind learnings — bugs, gotchas, conventions, and failed
+approaches — under `delivery-graph/learnings/`. **Query them before scoping** so
+this demand does not re-solve or re-break something already learned:
+
+```bash
+dge learnings --about "<a few keywords from this demand>" --json   # or: npx dge learnings ...
+dge learnings                                                       # list all when unsure
+```
+
+For each relevant learning: read the file it names, and either fold its guidance
+into a requirement/constraint or record why it does not apply. This is the read
+side of the compound loop that `/dge-compound` feeds — skipping it means the
+toolset stops getting smarter with each demand. If there are no learnings yet,
+say so; that statement is the evidence you looked.
+
 ### 3. Grill the demand
 
-Act like a structured version of `grill-me`. Challenge:
+Run a structured `grill-me`: a relentless but constructive interrogation that
+exposes every unresolved decision before any requirement is written. This is the
+step that turns a fuzzy ask into concrete, testable requirements — do not shortcut it.
 
-- unclear problem
-- vague success criteria
-- missing owner
-- hidden dependency
-- untestable requirement
-- scope creep
-- speculative feature (actually asked for, or only imagined?)
-- premature abstraction or robustness beyond the stated outcome
-- requirement with no traceable need — which stated outcome does it serve?
-- everything defaulting to `must` when it is really `should`/`could`
-- contradiction
-- validation ambiguity
+#### 3a. Map the decision tree, and show it
+
+Pick the branches relevant to this demand from the list below, then **state the map
+to the user** up front: "Here is what I want to pin down. I'll go branch by branch."
+As you work, announce which branch you're on so the user can see progress and steer.
+
+- **Problem** — what problem, for whom, and what are they doing today instead?
+- **Users / stakeholders** — who is the primary user? who signs off?
+- **Scope** — what is explicitly in, and what is explicitly out?
+- **Data** — what does this read, write, and display?
+- **Actions** — what can a user do, and what happens after each?
+- **Edge cases** — empty, loading, error, partial-data, and concurrency states?
+- **Constraints** — tech stack, existing systems to respect, performance, a11y?
+- **Success** — how do we know it works? what evidence proves it?
+
+#### 3b. Walk each branch, one question at a time
+
+Start with the most foundational branch (usually Problem — everything depends on it).
+Within a branch:
+
+1. Ask **one** question and wait.
+2. **Offer a recommendation** grounded in the codebase survey and prior learnings:
+   *"My recommendation: <answer>. <one-sentence rationale, citing prior art where possible>."*
+   Then ask the user to confirm or redirect.
+3. If the answer is **vague, incomplete, or contradictory**, push back with one
+   concrete follow-up — do not accept it and move on. Useful pushes:
+   - "What does that look like specifically?"
+   - "Give me a number — how many is 'a lot'?"
+   - "What's the worst thing that happens if we get this wrong?"
+4. If the answer is **concrete**, lock it in: *"Locked: <decision>."* and move on.
+5. If it depends on an earlier decision, flag it: "This depends on <X> — does that still hold?"
+
+Challenge, as you walk, every: unclear problem · vague success criteria · missing
+owner · hidden dependency · untestable requirement · scope creep · speculative
+feature (actually asked for, or only imagined?) · premature abstraction or
+robustness beyond the stated outcome · requirement with no traceable need · everything
+defaulting to `must` when it is really `should`/`could` · contradiction · validation
+ambiguity · unhandled edge/empty/error state.
+
+Anything the user cannot resolve becomes a `GAP` (Step 4), not a silently-assumed answer.
 
 ### 4. Emit gaps
 
@@ -99,6 +148,11 @@ Represent each unresolved issue as:
 ```
 
 ### 5. Write requirements
+
+Before writing any requirement, replay the **Confirmed decisions** recap: list
+each locked-in decision from Step 3 back to the user and give them a last chance to
+correct a misread. Only then convert decisions into requirements — a requirement
+must trace to a locked decision, not to an assumed answer.
 
 Each requirement must be testable.
 
@@ -141,6 +195,8 @@ Return `ready_for_graph: true` only when:
 7. No blocker gaps remain unresolved.
 8. Existing code was surveyed; each requirement either reuses/extends prior art or states why new work is needed.
 9. Priorities are differentiated (not everything is `must`) and speculative scope is either justified or recorded as a non-goal / `wont`.
+10. Edge cases were probed — empty, error, partial-data, and concurrency states are each either covered by a requirement or explicitly out of scope.
+11. Every locked-in decision was replayed to the user (Confirmed decisions recap) and each requirement traces to one.
 
 If blocker gaps remain, stop and report them instead of invoking `/dge-plan-graph`.
 

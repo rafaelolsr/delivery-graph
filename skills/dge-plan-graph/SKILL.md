@@ -44,6 +44,16 @@ Read `delivery-graph/graph.json` or the user-provided graph path. Confirm:
 - requirements have acceptance criteria
 - requirements have validation methods
 
+Also read prior learnings so the plan does not repeat a known mistake:
+
+```bash
+dge learnings --about "<keywords from these requirements>" --json   # or: npx dge learnings ...
+```
+
+A learning may change how you split nodes or what a validation contract must
+assert (e.g. "substring evidence is weak — gate correctness on a live check").
+Fold any applicable learning into a node's validation contract.
+
 ### 2. Create tracks
 
 Use tracks to group related nodes. Most demands need only `implementation` + `validation`; add others only when a requirement demands them. Common tracks:

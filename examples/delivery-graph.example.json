@@ -61,7 +61,7 @@
       "status": "verified",
       "validation": {
         "required": ["uv run pytest -m eval", "uv run ruff check"],
-        "evidence_path": "delivery-graph/evidence/NODE-001/"
+        "evidence_path": "delivery-graph/demands/DEM-001/evidence/NODE-001/"
       },
       "sync": {
         "linear_issue_id": "DGE-1",
