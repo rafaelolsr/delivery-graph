@@ -141,7 +141,7 @@ function makeGraph() {
         status: "ready",
         validation: {
           required: ["npm test"],
-          evidence_path: "delivery-graph/evidence/NODE-001/"
+          evidence_path: "delivery-graph/demands/DEM-001/evidence/NODE-001/"
         },
         sync: {
           linear_issue_id: null,
@@ -158,7 +158,7 @@ function makeGraph() {
         status: "ready",
         validation: {
           required: ["npm test"],
-          evidence_path: "delivery-graph/evidence/NODE-002/"
+          evidence_path: "delivery-graph/demands/DEM-001/evidence/NODE-002/"
         },
         sync: {
           linear_issue_id: null,

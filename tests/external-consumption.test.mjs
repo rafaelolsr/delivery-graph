@@ -88,8 +88,8 @@ test("installed package runs DGE intake and evidence loop from another repo", ()
 
   const graphPath = path.join(consumerDir, "delivery-graph", "graph.json");
   assert.ok(fs.existsSync(graphPath));
-  assert.ok(fs.existsSync(path.join(consumerDir, "delivery-graph", "demands", "DEM-001.md")));
-  assert.ok(fs.existsSync(path.join(consumerDir, "delivery-graph", "requirements", "REQ-001.md")));
+  assert.ok(fs.existsSync(path.join(consumerDir, "delivery-graph", "demands", "DEM-001", "DEM-001.md")));
+  assert.ok(fs.existsSync(path.join(consumerDir, "delivery-graph", "demands", "DEM-001", "requirements", "REQ-001.md")));
   assert.match(runDge(consumerDir, "status"), new RegExp(`NODE-001: ${REQUIRED_EVIDENCE}`));
 
   assert.throws(
@@ -113,10 +113,10 @@ test("installed package runs DGE intake and evidence loop from another repo", ()
   );
   const doneOutput = runDge(consumerDir, "done", "NODE-001");
   assert.match(doneOutput, /NODE-001 done/);
-  assert.match(doneOutput, /delivery-graph\/evidence\/NODE-001\/verification\.md/);
+  assert.match(doneOutput, /delivery-graph\/demands\/DEM-001\/evidence\/NODE-001\/verification\.md/);
   assert.match(doneOutput, /delivery-graph\/reports\/review-/);
 
-  const verificationPath = path.join(consumerDir, "delivery-graph", "evidence", "NODE-001", "verification.md");
+  const verificationPath = path.join(consumerDir, "delivery-graph", "demands", "DEM-001", "evidence", "NODE-001", "verification.md");
   assert.match(fs.readFileSync(verificationPath, "utf8"), new RegExp(`${REQUIRED_EVIDENCE}: satisfied`));
 
   const graph = JSON.parse(fs.readFileSync(graphPath, "utf8"));

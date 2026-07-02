@@ -177,7 +177,7 @@
             },
             "evidence_path": {
               "type": "string",
-              "pattern": "^delivery-graph/evidence/NODE-[0-9]{3,}/$"
+              "pattern": "^delivery-graph/demands/DEM-[0-9]{3,}/evidence/NODE-[0-9]{3,}/$"
             }
           }
         },

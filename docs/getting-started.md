@@ -115,7 +115,7 @@ npx dge done NODE-001
 npx dge status --save
 ```
 
-`evidence run` executes the validation command and stores stdout/stderr/exit code under `delivery-graph/evidence/NODE-001/artifacts/`. Passing commands are added to `evidence.json`; failed commands are saved as attempt artifacts but are not counted as evidence. Use `evidence add` for manual approvals or external proof the agent cannot capture. `done` fails until every `validation.required[]` item on the node has matching evidence, writes `verification.md`, writes a review report, blocks on review blockers, and then marks the node `done`.
+`evidence run` executes the validation command and stores stdout/stderr/exit code under `delivery-graph/demands/DEM-001/evidence/NODE-001/artifacts/`. Passing commands are added to `evidence.json`; failed commands are saved as attempt artifacts but are not counted as evidence. Use `evidence add` for manual approvals or external proof the agent cannot capture. `done` fails until every `validation.required[]` item on the node has matching evidence, writes `verification.md`, writes a review report, blocks on review blockers, and then marks the node `done`.
 
 For browser or UX validation, use Playwright evidence:
 

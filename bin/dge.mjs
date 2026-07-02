@@ -2,6 +2,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
+import { resolveRuntimePath } from "../src/path-utils.mjs";
 import {
   getNextReadyNode,
   readGraph,
@@ -30,7 +31,7 @@ import {
   reviewGraph,
   writeReviewReport
 } from "../src/review-engine.mjs";
-import { writeRecordArtifact } from "../src/markdown-artifacts.mjs";
+import { regenerateArtifacts, writeRecordArtifact } from "../src/markdown-artifacts.mjs";
 import { glyph, relativePath } from "../src/output.mjs";
 import {
   createLinearSyncPlan,
@@ -47,11 +48,14 @@ import {
   addRequirement,
   addTrack,
   createGraph,
+  removeDemand,
   removeNode,
   resolveGap,
   setNodeValidation
 } from "../src/graph-authoring.mjs";
 import { installSkills } from "../src/skill-installer.mjs";
+import { migrateStore } from "../src/store-migration.mjs";
+import { buildDemandView, renderDemandView } from "../src/show-renderer.mjs";
 
 const DEFAULT_GRAPH_PATH = "delivery-graph/graph.json";
 
@@ -75,6 +79,15 @@ function main() {
         break;
       case "validate":
         runValidate(graphPath);
+        break;
+      case "migrate":
+        runMigrate(graphPath, args);
+        break;
+      case "regenerate":
+        runRegenerate(graphPath, args);
+        break;
+      case "show":
+        runShow(graphPath, args);
         break;
       case "status":
         runStatus(graphPath, args);
@@ -120,6 +133,9 @@ function main() {
         break;
       case "remove-node":
         runMutation(graphPath, (graph) => removeNode(graph, args._[0] ?? args.id), args);
+        break;
+      case "remove-demand":
+        runRemoveDemand(graphPath, args);
         break;
       case "set-validation":
         runMutation(graphPath, (graph) => setNodeValidation(graph, args._[0] ?? args.id, args.validation), args);
@@ -176,6 +192,75 @@ function runValidate(graphPath) {
     throw new Error(`Delivery graph validation failed:\n${errors.map((error) => `- ${error}`).join("\n")}`);
   }
   console.log(`Delivery graph valid: ${graph.graph.id} - ${graph.graph.title}`);
+}
+
+// Relocate a flat store into the demand-centric layout. readGraph does not validate,
+// so this works on a store whose evidence_paths are still flat (the pre-migration state).
+function runMigrate(graphPath, args = {}) {
+  const graph = readGraph(graphPath);
+  const { graph: migrated, moves, removedDirs } = migrateStore(graph, graphPath);
+  writeGraph(graphPath, migrated);
+
+  if (args.json) {
+    console.log(JSON.stringify({ moves, removedDirs }, null, 2));
+    return;
+  }
+  console.log(`${glyph("reports", args)} migrated store to demand-centric layout`);
+  console.log(`   ${moves.length} paths relocated, ${removedDirs.length} empty dirs removed`);
+}
+
+// Re-emit all demand/requirement markdown from graph.json. Proves the folder tree is
+// a derived projection: after `rm`-ing the tree, regenerate reproduces it byte-for-byte.
+function runRegenerate(graphPath, args = {}) {
+  const graph = readGraph(graphPath);
+  const written = regenerateArtifacts(graphPath, graph);
+  if (args.json) {
+    console.log(JSON.stringify({ written: written.map((p) => relativePath(p, graphPath)) }, null, 2));
+    return;
+  }
+  console.log(`${glyph("reports", args)} regenerated ${written.length} markdown artifacts from graph.json`);
+}
+
+// Retire a demand: purge its records from graph.json (with the cross-demand guard),
+// then delete its scoped folder. The graph mutation runs and validates FIRST, so a
+// rejected removal never deletes files.
+function runRemoveDemand(graphPath, args = {}) {
+  const demandId = args._[0] ?? args.id;
+  if (!demandId) {
+    throw new Error("Usage: dge remove-demand DEM-### [--graph path]");
+  }
+  const { graph, record } = removeDemand(readGraph(graphPath), demandId);
+  writeGraph(graphPath, graph);
+
+  const folder = resolveRuntimePath(graphPath, `delivery-graph/demands/${demandId}`);
+  let folderRemoved = false;
+  if (fs.existsSync(folder)) {
+    fs.rmSync(folder, { recursive: true, force: true });
+    folderRemoved = true;
+  }
+
+  if (args.json) {
+    console.log(JSON.stringify({ removed: record.id, folderRemoved }, null, 2));
+    return;
+  }
+  console.log(`${glyph("removed", args)} ${record.id}  ${record.title}`);
+  console.log(`   purged from graph.json${folderRemoved ? ` and deleted demands/${demandId}/` : ""}`);
+}
+
+// Render everything a demand generated (requirements + serving nodes + evidence),
+// derived from graph.json. The demand id is how a demand folder maps to its graph view.
+function runShow(graphPath, args = {}) {
+  const demandId = args._[0] ?? args.demand;
+  if (!demandId) {
+    throw new Error("Usage: dge show DEM-### [--graph path] [--json]");
+  }
+  const graph = readGraph(graphPath);
+  const view = buildDemandView(graphPath, graph, demandId);
+  if (args.json) {
+    console.log(JSON.stringify(view, null, 2));
+    return;
+  }
+  console.log(renderDemandView(view, args));
 }
 
 function runStatus(graphPath, args = {}) {
@@ -676,6 +761,9 @@ Usage:
   dge init --title "Graph title" [--graph delivery-graph/graph.json]
   dge install-skills [--harness claude|copilot] [--symlink] [--force]
   dge validate [--graph path]
+  dge migrate [--graph path] [--json]
+  dge regenerate [--graph path] [--json]
+  dge show DEM-001 [--graph path] [--json]
   dge status [--graph path] [--out delivery-graph/reports/status.md | --save]
   dge next [--graph path] [--json]
   dge evidence add NODE-001 --satisfies "npm test" --summary "npm test passed" [--result pass|fail] [--artifact output.txt]
@@ -695,6 +783,7 @@ Usage:
   dge add-track --title "Implementation"
   dge add-node --title "..." --type implementation --track TRK-implementation --requirements REQ-001 --validation "npm test"
   dge remove-node NODE-001
+  dge remove-demand DEM-001 [--graph path]
   dge set-validation NODE-001 --validation "npm test" --validation "lint passes"
 `);
 }

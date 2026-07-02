@@ -227,16 +227,26 @@ This creates:
 
 ```text
 delivery-graph/
-├── graph.json
-├── demands/DEM-001.md
-├── requirements/REQ-001.md
-├── evidence/NODE-001/evidence.json
-├── evidence/NODE-001/summary.md
-├── evidence/NODE-001/verification.md
+├── graph.json                    # single source of truth (structure, DAG, status)
+├── demands/
+│   └── DEM-001/                  # everything a demand generates lives under it
+│       ├── DEM-001.md
+│       ├── requirements/REQ-001.md
+│       └── evidence/
+│           └── NODE-001/         # nodes are scoped to their one owning demand
+│               ├── evidence.json
+│               ├── summary.md
+│               └── verification.md
 └── reports/
     ├── review-<timestamp>.md
     └── status-<timestamp>.md
 ```
+
+The store is demand-centric: a node belongs to exactly one demand, and everything derived
+from a demand (its requirements and its nodes' evidence) lives under `demands/DEM-###/`. The
+folder tree is a materialized projection of `graph.json` — `dge regenerate` rebuilds it,
+`dge show DEM-###` renders one demand's tree, and `dge remove-demand DEM-###` retires a demand
+(folder + graph records) in one step.
 
 `dge validate` runs both the published JSON Schema and the semantic graph checks: cross references, unresolved blocker gaps, dependency cycles, dependency readiness, and validation evidence rules.
 
@@ -276,7 +286,7 @@ The battle test should prove:
 - `/dge-intake` turns raw asks into explicit demands, testable requirements, and blocker gaps.
 - `/dge-plan-graph` converts requirements into tracks, nodes, dependencies, and validation contracts.
 - `/dge-work-node` keeps implementation scoped to one ready node.
-- `/dge-verify` blocks completion until evidence exists and writes user-visible proof under `delivery-graph/evidence/NODE-<id>/verification.md`.
+- `/dge-verify` blocks completion until evidence exists and writes user-visible proof under `delivery-graph/demands/DEM-<id>/evidence/NODE-<id>/verification.md`.
 - `/dge-review` produces a durable review report under `delivery-graph/reports/`.
 
 Run the battle test from the consuming repository:
@@ -380,13 +390,13 @@ Linear, Azure DevOps, GitHub Issues, and markdown boards are projections of this
 
 | Asset | Saved in | Created by |
 | --- | --- | --- |
-| Demand record | `delivery-graph/demands/DEM-<id>.md` | `/dge-intake` |
-| Requirements | `delivery-graph/requirements/REQ-<id>.md` | `/dge-intake` |
+| Demand record | `delivery-graph/demands/DEM-<id>/DEM-<id>.md` | `/dge-intake` |
+| Requirements | `delivery-graph/demands/DEM-<id>/requirements/REQ-<id>.md` | `/dge-intake` |
 | Gap register | `delivery-graph/graph.json` under `gaps` | `/dge-intake` |
 | Canonical graph | `delivery-graph/graph.json` | `/dge-plan-graph` |
 | Linear sync map | `delivery-graph/sync/linear.json` | `/dge-sync` |
 | ADO sync map | `delivery-graph/sync/ado.json` | `/dge-sync` |
-| Node evidence | `delivery-graph/evidence/NODE-<id>/` | `/dge-verify` |
+| Node evidence | `delivery-graph/demands/DEM-<id>/evidence/NODE-<id>/` | `/dge-verify` |
 | Review report | `delivery-graph/reports/review-<timestamp>.md` | `/dge-review` |
 | Status report | `delivery-graph/reports/status-<timestamp>.md` | `/dge-status` |
 | Learning note | `delivery-graph/learnings/<slug>.md` | `/dge-compound` |
@@ -414,7 +424,7 @@ A node can only move to `done` when:
 
 1. All dependencies are complete.
 2. Required validation has passed.
-3. Evidence is attached under `delivery-graph/evidence/NODE-<id>/`.
+3. Evidence is attached under `delivery-graph/demands/DEM-<id>/evidence/NODE-<id>/`.
 4. Tracker state is synchronized.
 5. Review findings are resolved or explicitly deferred.
 

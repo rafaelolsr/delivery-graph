@@ -31,13 +31,68 @@ test("requires node evidence paths to match the owning node", () => {
       makeNode("NODE-002", {
         validation: {
           required: ["npm test"],
-          evidence_path: "delivery-graph/evidence/NODE-001/"
+          evidence_path: "delivery-graph/demands/DEM-001/evidence/NODE-001/"
         }
       })
     ]
   });
 
-  assert.match(validateGraph(graph).join("\n"), /NODE-002\.validation\.evidence_path must be delivery-graph\/evidence\/NODE-002\//);
+  assert.match(validateGraph(graph).join("\n"), /NODE-002\.validation\.evidence_path must be delivery-graph\/demands\/DEM-001\/evidence\/NODE-002\//);
+});
+
+test("flags a node whose requirements span multiple demands", () => {
+  const graph = makeGraph({
+    demands: [
+      { id: "DEM-001", title: "Demand A", source: "test", outcome: "A" },
+      { id: "DEM-002", title: "Demand B", source: "test", outcome: "B" }
+    ],
+    requirements: [
+      {
+        id: "REQ-001",
+        demand_id: "DEM-001",
+        statement: "req a",
+        acceptance: ["acc"],
+        validation: { method: "automated-test", required_evidence: ["out"] }
+      },
+      {
+        id: "REQ-002",
+        demand_id: "DEM-002",
+        statement: "req b",
+        acceptance: ["acc"],
+        validation: { method: "automated-test", required_evidence: ["out"] }
+      }
+    ],
+    nodes: [makeNode("NODE-001", { requirement_ids: ["REQ-001", "REQ-002"] })]
+  });
+
+  assert.match(
+    validateGraph(graph).join("\n"),
+    /NODE-001 requirements span multiple demands \(DEM-001, DEM-002\); a node must belong to exactly one demand/
+  );
+});
+
+test("accepts a node whose requirements all share one demand", () => {
+  const graph = makeGraph({
+    requirements: [
+      {
+        id: "REQ-001",
+        demand_id: "DEM-001",
+        statement: "req a",
+        acceptance: ["acc"],
+        validation: { method: "automated-test", required_evidence: ["out"] }
+      },
+      {
+        id: "REQ-002",
+        demand_id: "DEM-001",
+        statement: "req b",
+        acceptance: ["acc"],
+        validation: { method: "automated-test", required_evidence: ["out"] }
+      }
+    ],
+    nodes: [makeNode("NODE-001", { requirement_ids: ["REQ-001", "REQ-002"] })]
+  });
+
+  assert.deepEqual(validateGraph(graph), []);
 });
 
 test("blocks unresolved blocker gaps", () => {
@@ -198,7 +253,7 @@ function makeNode(id, overrides = {}) {
     status: "ready",
     validation: {
       required: ["npm test"],
-      evidence_path: `delivery-graph/evidence/${id}/`
+      evidence_path: `delivery-graph/demands/DEM-001/evidence/${id}/`
     },
     sync: {
       linear_issue_id: null,

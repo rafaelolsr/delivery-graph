@@ -1,4 +1,4 @@
-import { assertValidGraph } from "./graph-engine.mjs";
+import { assertValidGraph, demandEvidencePath, nodeDemandId } from "./graph-engine.mjs";
 
 export function createGraph({ id = "DGE-001", title, source = "local", createdAt = new Date().toISOString() }) {
   requireText(title, "title");
@@ -140,17 +140,21 @@ export function addNode(graph, input) {
   requireText(input.track, "track");
 
   const id = input.id ?? nextNumericId(graph.nodes, "NODE");
+  const requirementIds = splitRequiredList(input.requirements, "requirements");
+  // Evidence lives under the node's owning demand (derived from its requirements).
+  // assertValidGraph below rejects the node if those requirements span demands.
+  const owningDemand = nodeDemandId(graph, { requirement_ids: requirementIds });
   const node = {
     id,
     title: input.title,
     type: input.type,
     track: input.track,
-    requirement_ids: splitRequiredList(input.requirements, "requirements"),
+    requirement_ids: requirementIds,
     depends_on: splitList(input.dependsOn),
     status: input.status ?? "ready",
     validation: {
       required: requiredItems(input.validation, "validation"),
-      evidence_path: input.evidencePath ?? `delivery-graph/evidence/${id}/`
+      evidence_path: input.evidencePath ?? demandEvidencePath(owningDemand, id)
     },
     sync: {
       linear_issue_id: input.linearIssueId ?? null,
@@ -187,6 +191,50 @@ export function removeNode(graph, nodeId) {
   };
   assertValidGraph(nextGraph);
   return { graph: nextGraph, record: node };
+}
+
+// Retire a whole demand: purge the demand, its requirements, its nodes, and any
+// gaps scoped entirely to it from graph.json. Refuses when a node in ANOTHER demand
+// depends on one of this demand's nodes (that dependency would be orphaned). The
+// scoped folder delete is a filesystem side-effect handled by the CLI, not here.
+export function removeDemand(graph, demandId) {
+  requireText(demandId, "demand id");
+  const demand = (graph.demands ?? []).find((d) => d.id === demandId);
+  if (!demand) {
+    throw new Error(`${demandId} not found`);
+  }
+
+  const requirementIds = new Set(
+    (graph.requirements ?? []).filter((r) => r.demand_id === demandId).map((r) => r.id)
+  );
+  const ownNodes = (graph.nodes ?? []).filter((n) => nodeDemandId(graph, n) === demandId);
+  const ownNodeIds = new Set(ownNodes.map((n) => n.id));
+
+  // Guard: a node outside this demand must not depend on a node inside it.
+  const externalDependents = (graph.nodes ?? [])
+    .filter((n) => !ownNodeIds.has(n.id))
+    .filter((n) => (n.depends_on ?? []).some((dep) => ownNodeIds.has(dep)))
+    .map((n) => n.id);
+  if (externalDependents.length > 0) {
+    throw new Error(
+      `${demandId} cannot be removed; nodes in other demands depend on its nodes: ${externalDependents.join(", ")}`
+    );
+  }
+
+  const nextGraph = {
+    ...touchGraph(graph),
+    demands: graph.demands.filter((d) => d.id !== demandId),
+    requirements: (graph.requirements ?? []).filter((r) => r.demand_id !== demandId),
+    nodes: (graph.nodes ?? []).filter((n) => !ownNodeIds.has(n.id)),
+    // Drop gaps whose blocked requirements are entirely within this demand; a gap
+    // that also blocks another demand's requirement is left intact (not orphaned).
+    gaps: (graph.gaps ?? []).filter(
+      (gap) => !(gap.blocks ?? []).length || !(gap.blocks ?? []).every((req) => requirementIds.has(req))
+    )
+  };
+
+  assertValidGraph(nextGraph);
+  return { graph: nextGraph, record: demand };
 }
 
 // Replace a node's validation contract (validation.required) via the CLI so a

@@ -60,6 +60,9 @@ export function validateGraph(graph, options = {}) {
   const trackIds = new Set();
   const nodeIds = new Set();
   const evidencePaths = new Set();
+  // requirement_id -> demand_id, so a node's owning demand can be derived and the
+  // one-demand-per-node rule enforced (all of a node's requirements share a demand).
+  const requirementDemand = new Map();
 
   for (const demand of graph.demands) {
     requirePattern(demand.id, /^DEM-\d{3,}$/, "demand.id", errors);
@@ -81,6 +84,7 @@ export function validateGraph(graph, options = {}) {
     requireText(requirement.validation?.method, `${requirement.id}.validation.method`, errors);
     requireNonEmptyArray(requirement.validation?.required_evidence, `${requirement.id}.validation.required_evidence`, errors);
     addUnique(requirementIds, requirement.id, "requirement", errors);
+    requirementDemand.set(requirement.id, requirement.demand_id);
   }
 
   for (const gap of graph.gaps ?? []) {
@@ -106,17 +110,32 @@ export function validateGraph(graph, options = {}) {
       errors.push(`${node.id} references missing track ${node.track}`);
     }
     requireNonEmptyArray(node.requirement_ids, `${node.id}.requirement_ids`, errors);
+    const nodeDemands = new Set();
     for (const requirementId of node.requirement_ids ?? []) {
       if (!requirementIds.has(requirementId)) {
         errors.push(`${node.id} references missing requirement ${requirementId}`);
+      } else {
+        nodeDemands.add(requirementDemand.get(requirementId));
       }
+    }
+    // A node belongs to exactly one demand: all its requirements must resolve to
+    // the same demand, so the demand folder can scope everything it generates.
+    if (nodeDemands.size > 1) {
+      errors.push(
+        `${node.id} requirements span multiple demands (${[...nodeDemands].sort().join(", ")}); a node must belong to exactly one demand`
+      );
     }
     requireArray(node.depends_on, `${node.id}.depends_on`, errors);
     requireObject(node.validation, `${node.id}.validation`, errors);
     requireNonEmptyArray(node.validation?.required, `${node.id}.validation.required`, errors);
     requireText(node.validation?.evidence_path, `${node.id}.validation.evidence_path`, errors);
-    if (node.validation?.evidence_path !== `delivery-graph/evidence/${node.id}/`) {
-      errors.push(`${node.id}.validation.evidence_path must be delivery-graph/evidence/${node.id}/`);
+    // Evidence is scoped under the node's owning demand. Only enforce the exact path
+    // when the demand is unambiguous (single-demand rule already checked above).
+    if (nodeDemands.size === 1) {
+      const expectedEvidencePath = demandEvidencePath([...nodeDemands][0], node.id);
+      if (node.validation?.evidence_path !== expectedEvidencePath) {
+        errors.push(`${node.id}.validation.evidence_path must be ${expectedEvidencePath}`);
+      }
     }
     addUnique(evidencePaths, node.validation?.evidence_path, "node evidence path", errors);
     requireObject(node.sync, `${node.id}.sync`, errors);
@@ -146,6 +165,25 @@ export function assertValidGraph(graph, options = {}) {
   if (errors.length > 0) {
     throw new Error(`Delivery graph validation failed:\n${errors.map((error) => `- ${error}`).join("\n")}`);
   }
+}
+
+// Derive a node's owning demand from its requirements. A valid graph guarantees
+// all of a node's requirement_ids share one demand (the one-demand-per-node rule),
+// so this is unambiguous; returns null if no requirement resolves to a demand.
+export function nodeDemandId(graph, node) {
+  const requirementDemand = new Map((graph.requirements ?? []).map((r) => [r.id, r.demand_id]));
+  for (const requirementId of node.requirement_ids ?? []) {
+    const demandId = requirementDemand.get(requirementId);
+    if (demandId) return demandId;
+  }
+  return null;
+}
+
+// The one canonical location of a node's evidence: scoped under its owning demand
+// as a flat sibling list (demands/DEM-###/evidence/NODE-###/), so retiring a demand
+// is a single-folder delete. Authoring and validation both go through this.
+export function demandEvidencePath(demandId, nodeId) {
+  return `delivery-graph/demands/${demandId}/evidence/${nodeId}/`;
 }
 
 export function summarizeGraph(graph) {
