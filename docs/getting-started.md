@@ -88,7 +88,7 @@ Before integrating a tracker, verify the local graph engine:
 npm run check
 ```
 
-This runs graph validation, renders status, and executes the engine tests.
+This runs graph validation, renders status, and executes the full test suite.
 
 ## Local authoring workflow
 

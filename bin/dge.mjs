@@ -144,7 +144,7 @@ function main() {
         runInstallSkills(args);
         break;
       default:
-        throw new Error(`Unknown command: ${command}`);
+        throw new Error(`Unknown command: ${command}\nRun \`dge help\` for available commands.`);
     }
   } catch (error) {
     console.error(error.message);
@@ -425,7 +425,7 @@ function runCapturedEvidence(graphPath, graph, nodeId, input) {
       metadata: input.metadata,
       artifacts: input.artifacts
     });
-    throw new Error(`Command failed with exit code ${exitCode}; output artifact: ${artifactPath}`);
+    throw new Error(`Command failed with exit code ${exitCode}; output artifact: ${relativePath(artifactPath, graphPath)}`);
   }
 
   return addCommandEvidence(graphPath, graph, nodeId, {
@@ -722,7 +722,11 @@ function parseArgs(rawArgs) {
 
 function readOptionalJson(filePath) {
   if (!fs.existsSync(filePath)) return {};
-  return JSON.parse(fs.readFileSync(filePath, "utf8"));
+  try {
+    return JSON.parse(fs.readFileSync(filePath, "utf8"));
+  } catch (error) {
+    throw new Error(`Could not read existing sync plan at ${filePath}: ${error.message}`);
+  }
 }
 
 function appendArgValue(parsed, key, value) {
@@ -746,12 +750,17 @@ function printRecord(label, record, args = {}) {
     console.log(JSON.stringify(record, null, 2));
     return;
   }
-  const g = glyph("added", args);
+  // A recorded evidence item with result "fail" does not satisfy its contract
+  // (see isPassing in evidence-engine): flag it so the user is not misled by an
+  // "added" glyph into thinking it moved verification forward.
+  const isFailingEvidence = record.result === "fail";
+  const g = glyph(isFailingEvidence ? "fail" : "added", args);
   // A concise one-liner: glyph, id/title, and a short type/track/req hint when present.
   const hint = [record.type, record.track, (record.requirement_ids ?? []).join(", ") || null]
     .filter(Boolean)
     .join(" · ");
-  console.log(`${g} ${record.id ?? record.title}  ${record.title ?? ""}${hint ? `  [${hint}]` : ""}`.trimEnd());
+  const note = isFailingEvidence ? "  (does not satisfy contract)" : "";
+  console.log(`${g} ${record.id ?? record.title}  ${record.title ?? ""}${hint ? `  [${hint}]` : ""}${note}`.trimEnd());
 }
 
 function printHelp() {

@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { assertValidGraph } from "./graph-engine.mjs";
+import { assertValidGraph, writeFileAtomic } from "./graph-engine.mjs";
 import { resolveRuntimePath } from "./path-utils.mjs";
 
 export function evidenceManifestPath(graphPath, node) {
@@ -26,7 +26,7 @@ export function readEvidenceManifest(graphPath, node) {
 export function writeEvidenceManifest(graphPath, node, manifest) {
   const manifestPath = evidenceManifestPath(graphPath, node);
   fs.mkdirSync(path.dirname(manifestPath), { recursive: true });
-  fs.writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+  writeFileAtomic(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
   writeEvidenceSummary(graphPath, node, manifest);
 }
 
