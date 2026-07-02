@@ -225,8 +225,16 @@ export function verifyNode(graphPath, graph, nodeId, options = {}) {
     throw new Error(`${node.id} is missing validation evidence: ${evidenceStatus.missing.join(", ")}`);
   }
 
-  if (node.status === "blocked") {
-    throw new Error(`${node.id} is blocked and cannot be verified`);
+  // Verification is only meaningful for a node that is actually being worked.
+  // Reject terminal/not-started states so a node cannot jump straight from
+  // `proposed` (never implemented) to `verified` -> `done`, bypassing the
+  // work/review states the lifecycle guarantees. `blocked` needs a human
+  // decision before it can move at all.
+  const VERIFIABLE_STATUSES = new Set(["ready", "in_progress", "review"]);
+  if (!VERIFIABLE_STATUSES.has(node.status)) {
+    throw new Error(
+      `${node.id} cannot be verified from status "${node.status}"; it must be ready, in_progress, or review`
+    );
   }
 
   const nextGraph = {

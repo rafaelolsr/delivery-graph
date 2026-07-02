@@ -256,7 +256,13 @@ export function transitionNode(graph, nodeId, nextStatus, options = {}) {
   }
 
   if (nextStatus === "verified") {
-    assertEvidencePath(node);
+    // `verified` is an evidence-gated status: reaching it requires proving the
+    // validation contract is satisfied, which needs the evidence manifest on
+    // disk. transitionNode has no graphPath and cannot read the manifest, so it
+    // must not mint `verified` itself — that would bypass the evidence gate.
+    // Route verification through verifyNode (evidence-engine), which checks
+    // completeness before setting the status.
+    throw new Error(`${node.id} cannot be moved to verified via transition; run \`dge verify ${node.id}\` so the evidence gate applies`);
   }
 
   if (nextStatus === "done") {

@@ -34,6 +34,27 @@ test("adds evidence and verifies a node", () => {
   assert.match(fs.readFileSync(verified.verificationPath, "utf8"), /npm test: satisfied/);
 });
 
+test("verifyNode refuses to verify a node that has not been worked", () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "dge-evidence-"));
+  const graphPath = path.join(tempDir, "delivery-graph", "graph.json");
+  const graph = makeGraph();
+  // A node still `proposed` (never implemented) must not be verifiable even if
+  // evidence happens to exist — that would let it skip the work/review states.
+  graph.nodes[0].status = "proposed";
+
+  addEvidence(graphPath, graph, "NODE-001", {
+    summary: "npm test passed",
+    satisfies: "npm test",
+    result: "pass",
+    createdAt: "2026-06-30T00:00:00Z"
+  });
+
+  assert.throws(
+    () => verifyNode(graphPath, graph, "NODE-001"),
+    /cannot be verified from status "proposed"/
+  );
+});
+
 test("verify fails when evidence is missing", () => {
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "dge-evidence-"));
   const graphPath = path.join(tempDir, "delivery-graph", "graph.json");

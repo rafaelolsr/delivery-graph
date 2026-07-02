@@ -247,6 +247,18 @@ test("requires dependencies to be done before starting work", () => {
   );
 });
 
+test("transitionNode refuses to mint verified (evidence gate lives in verifyNode)", () => {
+  const graph = makeGraph({ nodes: [makeNode("NODE-001", { status: "review" })] });
+
+  // review -> verified is a valid lifecycle edge, but transitionNode cannot read
+  // the evidence manifest, so it must reject the move and point at `dge verify`
+  // rather than silently mark a node verified without proof.
+  assert.throws(
+    () => transitionNode(graph, "NODE-001", "verified"),
+    /cannot be moved to verified via transition/
+  );
+});
+
 function makeGraph(overrides = {}) {
   return {
     graph: {
