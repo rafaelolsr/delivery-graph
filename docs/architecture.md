@@ -55,5 +55,12 @@ Adapters must:
 1. Read graph state.
 2. Create or update external records.
 3. Save sync state.
-4. Report conflicts.
-5. Never silently replace graph state with tracker state.
+4. Never silently replace graph state with tracker state.
+
+**Conflict handling (current status).** Today's Linear and ADO adapters are
+**dry-run projections** that operate last-writer-wins: each run records
+`last_synced_status` per node in the sync map, but no adapter yet *compares* it
+against the live tracker to detect drift — there is no external read to compare
+against in dry-run mode. `last_synced_status` is the hook a future real-API
+adapter will use to report conflicts (tracker changed since last sync); until
+then it is informational. Do not assume drift is detected.

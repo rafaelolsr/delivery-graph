@@ -29,6 +29,20 @@ test("enforces the delivery graph JSON schema", () => {
   assert.match(validateGraph(graph).join("\n"), /schema \/graph: must NOT have additional properties/);
 });
 
+test("node.sync is open so a new tracker can own its own key", () => {
+  // A novel per-tracker key (e.g. a future GitHub adapter) must validate without
+  // a core-schema change; the two legacy keys are optional, not required.
+  const graph = makeGraph({
+    nodes: [
+      makeNode("NODE-001", {
+        sync: { linear_issue_id: null, github_issue_number: 42 }
+      })
+    ]
+  });
+
+  assert.deepEqual(validateGraph(graph), []);
+});
+
 test("requires node evidence paths to match the owning node", () => {
   const graph = makeGraph({
     nodes: [

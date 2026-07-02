@@ -183,8 +183,7 @@
         },
         "sync": {
           "type": "object",
-          "required": ["linear_issue_id", "ado_task_id"],
-          "additionalProperties": false,
+          "description": "Per-tracker projection ids. Open by design: an adapter owns its own key (e.g. linear_issue_id, ado_task_id, github_issue_number) so a new tracker does not require a core-schema change. The canonical graph stays the source of truth; these are just back-references into projections.",
           "properties": {
             "linear_issue_id": { "type": ["string", "null"] },
             "ado_task_id": { "type": ["string", "number", "null"] }
