@@ -29,7 +29,19 @@ Convert execution knowledge into reusable learning for future DGE loops.
 
 ## Learning format
 
+Add a small YAML frontmatter block so `dge learnings --about "<topic>"` can match
+this learning by tag and related id (the read side of the compound loop that
+`/dge-intake` and `/dge-plan-graph` run before scoping new work). The frontmatter
+is optional and legacy learnings without it still list — but new learnings should
+carry it so future demands actually find them.
+
 ```markdown
+---
+title: <Learning title>
+tags: [<topic>, <area>, <keyword>]
+related: [NODE-###, DEM-###, REQ-###]
+---
+
 # <Learning title>
 
 ## Applies when
@@ -44,4 +56,7 @@ Convert execution knowledge into reusable learning for future DGE loops.
 
 ## Related graph ids
 ```
+
+After writing a learning, confirm it surfaces: `dge learnings --about "<a tag>"`
+should list it. A learning no future demand can find is not compounding.
 

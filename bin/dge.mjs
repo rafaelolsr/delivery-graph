@@ -56,6 +56,7 @@ import {
 import { installSkills } from "../src/skill-installer.mjs";
 import { migrateStore } from "../src/store-migration.mjs";
 import { buildDemandView, renderDemandView } from "../src/show-renderer.mjs";
+import { findLearnings } from "../src/learnings-engine.mjs";
 
 const DEFAULT_GRAPH_PATH = "delivery-graph/graph.json";
 
@@ -142,6 +143,9 @@ function main() {
         break;
       case "install-skills":
         runInstallSkills(args);
+        break;
+      case "learnings":
+        runLearnings(graphPath, args);
         break;
       default:
         throw new Error(`Unknown command: ${command}\nRun \`dge help\` for available commands.`);
@@ -261,6 +265,53 @@ function runShow(graphPath, args = {}) {
     return;
   }
   console.log(renderDemandView(view, args));
+}
+
+// The READ side of the compound loop. dge-intake/dge-plan-graph call this to
+// surface relevant prior learnings before scoping new work, so the toolset
+// compounds across demands. Terms come from positional args and/or --about.
+function runLearnings(graphPath, args = {}) {
+  const terms = [...(args._ ?? []), ...toList(args.about)].filter(Boolean);
+  const learnings = findLearnings(graphPath, terms);
+
+  if (args.json) {
+    const withRelativePaths = learnings.map((learning) => ({
+      ...learning,
+      path: relativePath(learning.path, graphPath)
+    }));
+    console.log(JSON.stringify({ count: learnings.length, terms, learnings: withRelativePaths }, null, 2));
+    return;
+  }
+
+  const g = (name) => glyph(name, args);
+  if (learnings.length === 0) {
+    const scope = terms.length > 0 ? ` matching ${terms.join(", ")}` : "";
+    console.log(`No prior learnings${scope}. (Capture new ones with /dge-compound.)`);
+    return;
+  }
+
+  const scope = terms.length > 0 ? ` (matching ${terms.join(", ")})` : "";
+  console.log(`${g("requirements")} ${learnings.length} learning${learnings.length === 1 ? "" : "s"}${scope}`);
+  for (const learning of learnings) {
+    const tagHint = learning.tags.length > 0 ? `  [${learning.tags.join(", ")}]` : "";
+    console.log(`\n• ${learning.title}${tagHint}`);
+    console.log(`  ${learning.slug}.md`);
+    if (learning.applies_when) {
+      console.log(`  applies when: ${firstLine(learning.applies_when)}`);
+    }
+    if (learning.related.length > 0) {
+      console.log(`  related: ${learning.related.join(", ")}`);
+    }
+  }
+}
+
+function toList(value) {
+  if (value === undefined || value === null || value === "") return [];
+  return Array.isArray(value) ? value : [value];
+}
+
+function firstLine(text) {
+  return String(text).split("\n").map((line) => line.trim()).find(Boolean) ?? "";
 }
 
 function runStatus(graphPath, args = {}) {
@@ -773,6 +824,7 @@ Usage:
   dge migrate [--graph path] [--json]
   dge regenerate [--graph path] [--json]
   dge show DEM-001 [--graph path] [--json]
+  dge learnings [search terms...] [--about "topic"] [--graph path] [--json]
   dge status [--graph path] [--out delivery-graph/reports/status.md | --save]
   dge next [--graph path] [--json]
   dge evidence add NODE-001 --satisfies "npm test" --summary "npm test passed" [--result pass|fail] [--artifact output.txt]

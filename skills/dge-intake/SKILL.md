@@ -68,6 +68,23 @@ Before writing any requirement, read the relevant parts of the existing codebase
 
 Default position: the simplest change that reuses existing code beats a new abstraction. If nothing exists to reuse, say so explicitly — that statement is the evidence you looked.
 
+#### Read prior learnings (compound loop)
+
+Past demands leave behind learnings — bugs, gotchas, conventions, and failed
+approaches — under `delivery-graph/learnings/`. **Query them before scoping** so
+this demand does not re-solve or re-break something already learned:
+
+```bash
+dge learnings --about "<a few keywords from this demand>" --json   # or: npx dge learnings ...
+dge learnings                                                       # list all when unsure
+```
+
+For each relevant learning: read the file it names, and either fold its guidance
+into a requirement/constraint or record why it does not apply. This is the read
+side of the compound loop that `/dge-compound` feeds — skipping it means the
+toolset stops getting smarter with each demand. If there are no learnings yet,
+say so; that statement is the evidence you looked.
+
 ### 3. Grill the demand
 
 Act like a structured version of `grill-me`. Challenge:
