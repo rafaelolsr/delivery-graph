@@ -257,6 +257,111 @@ export function setNodeValidation(graph, nodeId, validation) {
   return { graph: nextGraph, record: updated };
 }
 
+// Remove a requirement via the CLI so a mis-authored one is fixable without
+// remove-demand (which nukes the whole demand). Refuses when a node still lists
+// it in requirement_ids (that would orphan the node's traceability). A gap that
+// blocks ONLY this requirement is dropped with it; a gap that also blocks another
+// requirement keeps that reference and is left intact.
+export function removeRequirement(graph, requirementId) {
+  requireText(requirementId, "requirement id");
+  const id = requirementId;
+  const requirement = (graph.requirements ?? []).find((r) => r.id === id);
+  if (!requirement) {
+    throw new Error(`${id} not found`);
+  }
+
+  const referencingNodes = (graph.nodes ?? [])
+    .filter((n) => (n.requirement_ids ?? []).includes(id))
+    .map((n) => n.id);
+  if (referencingNodes.length > 0) {
+    throw new Error(
+      `${id} cannot be removed; these nodes reference it: ${referencingNodes.join(", ")}`
+    );
+  }
+
+  const nextGraph = {
+    ...touchGraph(graph),
+    requirements: (graph.requirements ?? []).filter((r) => r.id !== id),
+    // For a gap that blocks this requirement: strip the id from its blocks list so
+    // no dangling reference remains. If that empties the blocks (it blocked only
+    // this requirement), drop the gap entirely. Gaps not blocking it are untouched.
+    gaps: (graph.gaps ?? [])
+      .map((gap) => {
+        const blocks = gap.blocks ?? [];
+        if (!blocks.includes(id)) return gap;
+        return { ...gap, blocks: blocks.filter((req) => req !== id) };
+      })
+      .filter((gap) => !("blocks" in gap) || (gap.blocks ?? []).length > 0)
+  };
+
+  assertValidGraph(nextGraph, { requireResolvedBlockers: false });
+  return { graph: nextGraph, record: requirement };
+}
+
+// Edit a requirement's mutable fields in place (statement, priority, acceptance,
+// validation method/evidence) so a mis-authored requirement is correctable via
+// the CLI. Identity fields (id, demand_id) are never changed. Only provided
+// fields are updated; omitted fields are left as-is.
+export function editRequirement(graph, requirementId, input = {}) {
+  requireText(requirementId, "requirement id");
+  const id = requirementId;
+  const requirement = (graph.requirements ?? []).find((r) => r.id === id);
+  if (!requirement) {
+    throw new Error(`${id} not found`);
+  }
+
+  const updated = { ...requirement };
+  if (input.statement !== undefined) {
+    requireText(input.statement, "statement"); // asserts non-empty; returns nothing
+    updated.statement = input.statement;
+  }
+  if (input.priority !== undefined) updated.priority = input.priority;
+  if (input.acceptance !== undefined) updated.acceptance = splitRequiredList(input.acceptance, "acceptance");
+  if (input.validationMethod !== undefined || input.evidence !== undefined) {
+    updated.validation = {
+      method: input.validationMethod ?? requirement.validation?.method ?? "manual-review",
+      required_evidence: input.evidence !== undefined
+        ? splitRequiredList(input.evidence, "evidence")
+        : (requirement.validation?.required_evidence ?? [])
+    };
+  }
+
+  const nextGraph = {
+    ...touchGraph(graph),
+    requirements: graph.requirements.map((r) => (r.id === id ? updated : r))
+  };
+  assertValidGraph(nextGraph, { requireResolvedBlockers: false });
+  return { graph: nextGraph, record: updated };
+}
+
+// Edit a demand's mutable narrative fields (problem, outcome, constraints,
+// non_goals) so they need not be perfect at add-demand time. Identity fields
+// (id, title, source) are never changed. Only provided fields are updated.
+export function editDemand(graph, demandId, input = {}) {
+  requireText(demandId, "demand id");
+  const id = demandId;
+  const demand = (graph.demands ?? []).find((d) => d.id === id);
+  if (!demand) {
+    throw new Error(`${id} not found`);
+  }
+
+  const updated = { ...demand };
+  if (input.problem !== undefined) updated.problem = input.problem;
+  if (input.outcome !== undefined) {
+    requireText(input.outcome, "outcome"); // asserts non-empty; returns nothing
+    updated.outcome = input.outcome;
+  }
+  if (input.constraints !== undefined) updated.constraints = splitList(input.constraints);
+  if (input.nonGoals !== undefined) updated.non_goals = splitList(input.nonGoals);
+
+  const nextGraph = {
+    ...touchGraph(graph),
+    demands: graph.demands.map((d) => (d.id === id ? updated : d))
+  };
+  assertValidGraph(nextGraph, { requireResolvedBlockers: false });
+  return { graph: nextGraph, record: updated };
+}
+
 export function nextNumericId(records, prefix) {
   const nextNumber = records.reduce((max, record) => {
     const match = String(record.id ?? "").match(new RegExp(`^${prefix}-(\\d+)$`));
