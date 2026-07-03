@@ -64,6 +64,10 @@ npx dge done NODE-001
 npx dge status --save
 ```
 
+Prefer no npm at all (or blocked by a corporate registry)? Install both surfaces over git via
+the [marketplace](#recommended-marketplace-install-no-npm--best-for-corporatewindows), then run
+`dge init` and the authoring commands as `dge …` instead of `npx dge …`.
+
 This runs **fully locally** — no Linear, Azure DevOps, or credentials required. Tracker sync
 (`dge sync linear|ado`) is dry-run only today: it writes a reviewable payload under
 `delivery-graph/sync/` and never calls an external API. New here? Read
@@ -88,26 +92,45 @@ validation evidence, decisions, reusable patterns, and follow-up context for the
 
 ## Quick start
 
-DGE has **two surfaces** that install through **two different channels**:
+DGE has **two surfaces** — the **`dge` CLI** (evidence gates, `init`, `status`, `next`, `done`,
+`brief`, …) and the **`/dge-*` skills** (the slash commands, which *call* the CLI). You can
+install **both at once** through the plugin marketplace, or install the CLI as an npm package.
+The CLI is a pure-Node binary with **zero external dependencies**, so it runs straight from a git
+checkout — no `npm install` step, no registry, nothing to authenticate against.
 
-- the **`dge` CLI** (evidence gates, `init`, `status`, `next`, `done`, `brief`, …) — an
-  **npm package**; and
-- the **`/dge-*` skills** (the slash commands) — **prompts**, installed per-project or via
-  the plugin marketplace.
+### Recommended: marketplace install (no npm — best for corporate/Windows)
 
-The skills *call* the CLI, so **you always need the CLI**. A marketplace install alone gives
-you the slash commands but no engine — they will stop at preflight until the CLI is installed.
+The marketplace ships the `/dge-*` skills **and** the `dge` CLI (via the plugin's `bin/`, which
+the harness puts on your PATH). It clones over git and needs **no `npm install`**, so it sidesteps
+the corporate-npm `E401` problem entirely.
 
-### Complete install (recommended)
+**Claude Code:**
+
+```text
+/plugin marketplace add rafaelolsr/delivery-graph
+/plugin install delivery-graph@dge-tools
+/reload-plugins
+```
+
+Then create the store in each project that owns one:
+
+```bash
+dge init --title "My delivery graph"
+```
+
+For GitHub Copilot CLI, see [the marketplace notes below](#marketplace-details-and-copilot-cli).
+
+### Alternative: install the CLI as an npm package
 
 Self-contained for one project — CLI, skills, and store, all wired:
 
-> On a locked-down corporate/Windows machine and hitting `npm error code E401`? Jump to
-> [Troubleshooting: E401 on a corporate machine](#troubleshooting-npm-error-code-e401-unable-to-authenticate-on-a-corporate-machine)
-> — pointing the install at the public registry fixes it.
+> On a locked-down corporate/Windows machine and hitting `npm error code E401`? The
+> [marketplace install above](#recommended-marketplace-install-no-npm--best-for-corporatewindows)
+> avoids npm entirely. If you'd rather use npm, see
+> [Troubleshooting: E401 on a corporate machine](#troubleshooting-npm-error-code-e401-unable-to-authenticate-on-a-corporate-machine).
 
 ```bash
-# 1. the CLI (npm) — required
+# 1. the CLI (npm)
 npm install --save-dev github:rafaelolsr/delivery-graph
 
 # 2. the /dge-* skills into your harness (.claude/ or .github/)
@@ -127,8 +150,15 @@ DGE is a **public MIT repo fetched over git** (`github:rafaelolsr/delivery-graph
 on the npm registry and needs no credentials. An `E401` here is **your environment, not this
 package**: a corporate `~/.npmrc` (`%USERPROFILE%\.npmrc` on Windows) with `always-auth=true`
 and/or a stale registry token forces npm to authenticate *every* request, including this public
-git fetch. Try these in order — each is a single command or project-local file; **none require
-editing the corporate global config**:
+git fetch.
+
+> **The cleanest fix is to skip npm entirely:** the
+> [marketplace install](#recommended-marketplace-install-no-npm--best-for-corporatewindows) ships
+> the CLI and skills over git, so there is no npm request to authenticate. Use the npm options
+> below only if you specifically want the CLI as a project dependency.
+
+Try these in order — each is a single command or project-local file; **none require editing the
+corporate global config**:
 
 **1. Point at the public registry for the install** — this is the fix that has worked on a
 locked-down corporate Windows machine. Installing globally (`-g`) puts `dge` on your PATH
@@ -190,17 +220,18 @@ dge install-skills --harness claude   # or: --harness copilot  (creates .claude/
 dge init --title "My delivery graph"
 ```
 
-**Can't run npm at all?** You can still get the `/dge-*` slash commands via the
-[marketplace](#optional-get-the-skills-globally-via-the-marketplace) — but the marketplace ships
-**prompts, not the CLI**, so the `dge` binary the skills call still has to come from options 1–3
-above (or a machine where npm works). Skills without the CLI stop at preflight.
+**Can't run npm at all?** Use the
+[marketplace install](#recommended-marketplace-install-no-npm--best-for-corporatewindows) — it
+ships the `/dge-*` skills **and** the `dge` CLI over git, with no npm step. Then just
+`dge init` in each project that owns a store.
 
-### Optional: get the skills globally via the marketplace
+### Marketplace details and Copilot CLI
 
-The marketplace installs the `/dge-*` skills **globally across all your Claude Code / Copilot
-CLI projects**, instead of copying them into one repo. Its one benefit is cross-project skill
-availability; its one caveat is that it ships **prompts, not the binary**, so you **still run
-steps 1 and 3 above** (the npm CLI install and `dge init`) in each project that owns a store.
+The marketplace installs the `/dge-*` skills **and** the `dge` CLI **globally across all your
+Claude Code / Copilot CLI projects**, instead of copying them into one repo. The CLI ships in the
+plugin's `bin/` directory, which the harness adds to your PATH, so `dge` is available as a bare
+command with **no `npm install`** — the plugin is self-contained because the CLI has zero external
+dependencies. You still run `dge init` once in each project that owns a store.
 
 **Claude Code:**
 
@@ -216,10 +247,10 @@ manage plugins with the `/plugin` slash command **inside the `copilot` prompt** 
 and add `rafaelolsr/delivery-graph` from the marketplace UI (inline
 `/plugin marketplace add rafaelolsr/delivery-graph` also works if your version supports it).
 
-Both harnesses read the same `.claude-plugin/plugin.json` at the repo root and auto-scan the
-top-level `skills/` directory. Skills appear namespaced (e.g. `/delivery-graph:dge-intake`).
-With the marketplace handling skills, use `npm install … && npx dge init` for the CLI + store;
-you can skip `dge install-skills`.
+Both harnesses read the same `.claude-plugin/plugin.json` at the repo root, auto-scan the
+top-level `skills/` directory, and put `bin/dge` on PATH. Skills appear namespaced (e.g.
+`/delivery-graph:dge-intake`). With the marketplace handling both surfaces, you only need
+`dge init` — skip both the npm install and `dge install-skills`.
 
 The shortest end-to-end loop is:
 
