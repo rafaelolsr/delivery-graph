@@ -48,8 +48,11 @@ import {
   addRequirement,
   addTrack,
   createGraph,
+  editDemand,
+  editRequirement,
   removeDemand,
   removeNode,
+  removeRequirement,
   resolveGap,
   setNodeValidation
 } from "../src/graph-authoring.mjs";
@@ -141,6 +144,15 @@ function main() {
         break;
       case "remove-node":
         runMutation(graphPath, (graph) => removeNode(graph, args._[0] ?? args.id), args);
+        break;
+      case "remove-requirement":
+        runMutation(graphPath, (graph) => removeRequirement(graph, args._[0] ?? args.id), args);
+        break;
+      case "edit-requirement":
+        runMutation(graphPath, (graph) => editRequirement(graph, args._[0] ?? args.id, mapRequirementArgs(args)), args);
+        break;
+      case "edit-demand":
+        runMutation(graphPath, (graph) => editDemand(graph, args._[0] ?? args.id, mapDemandArgs(args)), args);
         break;
       case "remove-demand":
         runRemoveDemand(graphPath, args);
@@ -906,6 +918,9 @@ Usage:
   dge add-track --title "Implementation"
   dge add-node --title "..." --type implementation --track TRK-implementation --requirements REQ-001 --validation "npm test"
   dge remove-node NODE-001
+  dge remove-requirement REQ-001
+  dge edit-requirement REQ-001 --statement "..." --priority should --validation-method automated-test --evidence "..."
+  dge edit-demand DEM-001 --problem "..." --outcome "..." --non-goal "..." --constraint "..."
   dge remove-demand DEM-001 [--graph path]
   dge set-validation NODE-001 --validation "npm test" --validation "lint passes"
 `);
