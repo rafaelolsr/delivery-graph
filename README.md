@@ -104,7 +104,7 @@ Self-contained for one project — CLI, skills, and store, all wired:
 
 > On a locked-down corporate/Windows machine and hitting `npm error code E401`? Jump to
 > [Troubleshooting: E401 on a corporate machine](#troubleshooting-npm-error-code-e401-unable-to-authenticate-on-a-corporate-machine)
-> for a clone-based install that needs no npm-registry auth.
+> — pointing the install at the public registry fixes it.
 
 ```bash
 # 1. the CLI (npm) — required
@@ -130,16 +130,29 @@ and/or a stale registry token forces npm to authenticate *every* request, includ
 git fetch. Try these in order — each is a single command or project-local file; **none require
 editing the corporate global config**:
 
-**1. Bypass the corporate auth for one install** — force the public registry and turn off
-always-auth for just this command:
+**1. Point at the public registry for the install** — this is the fix that has worked on a
+locked-down corporate Windows machine. Installing globally (`-g`) puts `dge` on your PATH
+directly, so you don't need `npx` or a project first:
 
 ```bash
-npm install --save-dev github:rafaelolsr/delivery-graph --registry=https://registry.npmjs.org/ --always-auth=false
+npm install -g github:rafaelolsr/delivery-graph --registry=https://registry.npmjs.org/
+# then verify:
+dge preflight --no-graph
 ```
 
-**2. Skip npm's registry path entirely — clone + local install** (most reliable behind a
-locked-down proxy, and the recommended corporate fallback: it delivers **both** the CLI and,
-via `npx dge install-skills`, the skills, with no registry auth):
+Prefer a project-local dev dependency instead? The same override works with `--save-dev`
+(then use `npx dge ...`):
+
+```bash
+npm install --save-dev github:rafaelolsr/delivery-graph --registry=https://registry.npmjs.org/
+```
+
+If it still fails, add `--always-auth=false` to the command — that overrides a corporate
+`always-auth=true` for this one install.
+
+**2. Skip npm's registry path entirely — clone + local install** (for when even
+`registry.npmjs.org` is unreachable through the corporate proxy; delivers **both** the CLI and,
+via `npx dge install-skills`, the skills):
 
 ```bash
 git clone https://github.com/rafaelolsr/delivery-graph.git
@@ -166,6 +179,14 @@ npm config list -l | findstr auth
 If `always-auth=true` comes from your user config, override it **per project** — without touching
 the corporate global config — by adding an `.npmrc` next to your `package.json` containing
 `always-auth=false`.
+
+Once the CLI is installed, add the `/dge-*` skills to your harness and create the store — from
+your project directory:
+
+```bash
+dge install-skills          # copies the /dge-* skills into .claude/ or .github/
+dge init --title "My delivery graph"
+```
 
 **Can't run npm at all?** You can still get the `/dge-*` slash commands via the
 [marketplace](#optional-get-the-skills-globally-via-the-marketplace) — but the marketplace ships
