@@ -88,22 +88,26 @@ export function removeEvidence(graphPath, graph, nodeId, evidenceId) {
   return { manifest: nextManifest, record: removed };
 }
 
-// Manual evidence carries an explicit pass/fail result. Missing/legacy result
-// is treated as "pass" for backward compatibility; only "fail" is rejected.
+// Manual evidence carries an explicit result. Missing/legacy result is treated
+// as "pass" for backward compatibility. "fail" and "ambiguous" are both
+// non-passing: "fail" is a known failure; "ambiguous" is a judgment call the
+// agent could not self-certify (e.g. present-but-wrong content), so it must not
+// silently satisfy a contract item — it forces a human decision instead.
 function normalizeResult(result) {
   if (result === undefined || result === null) return "pass";
   const value = String(result).toLowerCase();
-  if (value !== "pass" && value !== "fail") {
-    throw new Error(`evidence result must be "pass" or "fail", got: ${result}`);
+  if (value !== "pass" && value !== "fail" && value !== "ambiguous") {
+    throw new Error(`evidence result must be "pass", "fail", or "ambiguous", got: ${result}`);
   }
   return value;
 }
 
-// An evidence item counts toward completeness unless it is explicitly a failure.
+// An evidence item counts toward completeness only when it is a clean pass.
 // Legacy items (no result field) and command evidence (recorded only on success)
-// count as passing.
+// count as passing; "fail" and "ambiguous" do not, so a node cannot reach done
+// on the strength of a failure note or an unresolved judgment call.
 function isPassing(item) {
-  return item.result !== "fail";
+  return item.result !== "fail" && item.result !== "ambiguous";
 }
 
 export function addCommandEvidence(graphPath, graph, nodeId, input) {
@@ -197,7 +201,18 @@ export function writeCommandAttemptArtifact(graphPath, graph, nodeId, input) {
 
 export function getEvidenceStatus(graphPath, graph, node) {
   const manifest = readEvidenceManifest(graphPath, node);
-  const satisfied = new Set(manifest.items.filter(isPassing).map((item) => item.satisfies));
+
+  // A contract key is satisfied only when it has a passing item AND no UNRESOLVED
+  // ambiguous item. Evidence is append-only, so after adjudication the corrected
+  // pass is added alongside the ambiguous record — but the ambiguity must be
+  // explicitly cleared (dge evidence remove) before the key counts as satisfied.
+  // Otherwise an unresolved judgment call would slip through the moment any pass
+  // exists for the same key, silently reaching done on an open question.
+  const ambiguousKeys = new Set(
+    manifest.items.filter((item) => item.result === "ambiguous").map((item) => item.satisfies)
+  );
+  const passedKeys = new Set(manifest.items.filter(isPassing).map((item) => item.satisfies));
+  const satisfied = new Set([...passedKeys].filter((key) => !ambiguousKeys.has(key)));
   const missing = node.validation.required.filter((required) => !satisfied.has(required));
 
   return {

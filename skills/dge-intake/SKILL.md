@@ -30,20 +30,21 @@ If no demand is provided, ask the user what demand, problem, or request they wan
 
 ## Preflight: require the DGE CLI
 
-Before writing anything, confirm the `dge` CLI is available:
+Before writing anything, run the shared preflight (one callable place for every
+`dge-*` skill and the `/dge-deliver` conductor). Intake runs before `dge init`, so
+skip the graph check:
 
 ```bash
-dge --help >/dev/null 2>&1 || npx --no-install dge --help >/dev/null 2>&1
+dge preflight --no-graph || npx --no-install dge preflight --no-graph
 ```
 
-If neither resolves, **stop** and tell the user to install DGE first — do not proceed:
+If it exits non-zero, **stop** and tell the user to install DGE first — do not proceed:
 
 > DGE CLI not found. Install the plugin (which ships `dge` on the PATH) or run
 > `npm install --save-dev github:rafaelolsr/delivery-graph`, then re-run `/dge-intake`.
 
 The `dge` CLI is the **only** writer of `delivery-graph/graph.json`. Never hand-write or
-hand-edit `graph.json` — doing so drifts from the engine schema and breaks every other
-`dge` command. If the CLI is missing, the correct action is to install it, not to emulate it.
+hand-edit `graph.json`. If the CLI is missing, the correct action is to install it, not to emulate it.
 
 ## Workflow
 

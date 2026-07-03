@@ -25,10 +25,27 @@ export function buildDemandView(graphPath, graph, demandId) {
       has_evidence: nodeHasEvidence(graphPath, node)
     }));
 
+  // Unresolved blocker gaps that block one of this demand's requirements. Gate 1
+  // (the Demand Brief) must show these so an edit that reintroduces a blocker is
+  // visible and blocks approval, rather than sliding silently into planning.
+  const blockerGaps = (graph.gaps ?? [])
+    .filter((gap) => gap.severity === "blocker" && !gap.resolution)
+    .filter((gap) => (gap.blocks ?? []).some((id) => requirementIds.has(id)))
+    .map((gap) => ({ id: gap.id, question: gap.question, blocks: gap.blocks ?? [] }));
+
   return {
-    demand: { id: demand.id, title: demand.title, outcome: demand.outcome },
+    // Gate 1 (the Demand Brief) is the human's approve/reject artifact, so it must
+    // carry the problem, outcome, and non-goals — not just the title/outcome.
+    demand: {
+      id: demand.id,
+      title: demand.title,
+      problem: demand.problem ?? null,
+      outcome: demand.outcome,
+      non_goals: demand.non_goals ?? []
+    },
     requirements: requirements.map((r) => ({ id: r.id, statement: r.statement, priority: r.priority })),
     nodes,
+    blocker_gaps: blockerGaps,
     // Any node whose requirement is not one of this demand's is a data error; surface it.
     orphan_requirement_ids: nodes
       .flatMap((n) => n.requirement_ids)
@@ -49,7 +66,15 @@ export function renderDemandView(view, options = {}) {
   const g = (name) => glyph(name, options);
   const lines = [];
   lines.push(`${view.demand.id}  ${view.demand.title}`);
-  lines.push(`${g("reports")} ${view.demand.outcome}`);
+  if (view.demand.problem) {
+    lines.push(`${g("blocked")} problem: ${view.demand.problem}`);
+  }
+  lines.push(`${g("reports")} outcome: ${view.demand.outcome}`);
+  const nonGoals = view.demand.non_goals ?? [];
+  if (nonGoals.length > 0) {
+    lines.push(`${g("fail")} non-goals:`);
+    for (const goal of nonGoals) lines.push(`  - ${goal}`);
+  }
   lines.push("");
 
   lines.push(`${g("requirements")} requirements (${view.requirements.length})`);
@@ -64,6 +89,15 @@ export function renderDemandView(view, options = {}) {
     const evidence = node.has_evidence ? g("pass") : g("fail");
     lines.push(`  ${statusGlyph} ${node.id} ${node.title}`);
     lines.push(`      serves ${node.requirement_ids.join(", ")} · evidence ${evidence}`);
+  }
+
+  const blockerGaps = view.blocker_gaps ?? [];
+  if (blockerGaps.length > 0) {
+    lines.push("");
+    lines.push(`${g("blocked")} unresolved blocker gaps (${blockerGaps.length}) — must resolve before approval:`);
+    for (const gap of blockerGaps) {
+      lines.push(`  ${gap.id} blocks ${gap.blocks.join(", ")}: ${gap.question}`);
+    }
   }
 
   if (view.orphan_requirement_ids.length > 0) {
