@@ -1,29 +1,44 @@
 # Delivery Graph Engineering
 
-Delivery Graph Engineering (DGE) turns raw demands into validated delivery graphs that agents can execute across harnesses and task trackers.
+**The neutral ground where any agent's work is proven, not trusted.**
 
-Instead of treating work as a linear checklist, DGE models delivery as a graph: demands become requirements, requirements become tracks and nodes, nodes carry dependencies and validation contracts, and external tools such as Linear or Azure DevOps stay synchronized as projections.
+Claude Code, Copilot CLI, Kimi — whatever coding agent you use, it works against **one
+evidence-gated delivery graph**, and `done` is **enforced by the engine, not claimed by the
+agent**. A node cannot reach `done` until its validation evidence exists on disk. The tool
+decides completion; the agent doesn't get to say "it's done" and be believed.
 
-DGE is a **delivery operating system for coding agents**. It includes the general discipline every serious agentic workflow needs:
+### Why this is different
 
-- clarify before coding
-- plan before execution
-- work in isolated units
-- validate before completion
-- review before merge
-- capture learnings
+Every coding agent today trusts *itself* to declare work complete — and agents are
+documented to over-report "done." In DGE, completion is a **state-machine invariant**:
+`verified` can only be minted by running `dge verify` against real evidence, and `done`
+requires `verified`. There is no path — not even a "quiet" or automated one — that reaches
+`done` without proof. That check is the same regardless of which agent produced the work,
+which is what makes DGE **neutral ground**: an objective arbiter any agent's output must pass.
 
-But DGE adds stronger operational requirements:
+- **Harness-agnostic.** The `dge` CLI is a plain binary and `graph.json` is a plain file, so
+  Claude Code, Copilot CLI, and others read and write the *same* delivery graph. DGE rides on
+  top of harnesses; it is not itself a harness.
+- **Done means proven.** Evidence-gated completion is enforced in the engine, not left to the
+  agent, the user, or CI.
+- **Persistent, machine-readable graph.** Demands → requirements → tracks → nodes with real
+  dependency edges and validation contracts, versioned in `graph.json` — the source of truth
+  harnesses treat as ephemeral.
+- **Compounds across demands.** Completed work leaves behind evidence and learnings that the
+  next intake reads, so the toolset gets smarter with each demand.
 
-- tasks become **nodes**
-- nodes have **dependencies**
-- nodes sync to **Linear or Azure DevOps**
-- every node has a **validation contract**
-- done requires **evidence**
-- status is managed through a **state machine**
-- the canonical artifact is **machine-readable**
+> **Built for what no single harness can do.** Because the ground is neutral and completion is
+> objective, DGE is designed toward *different agents building and verifying each other's work
+> against one source of truth*. That parallel, cross-agent validation is on the
+> [roadmap](ROADMAP.md) — the substrate (harness-neutral CLI + shared graph + objective gate)
+> exists today; concurrency-safe storage and a cross-agent verify role are what make it fully
+> real. See [ROADMAP.md](ROADMAP.md) for what ships today vs. what's coming.
 
-The result is a workflow that is general enough to become a public methodology, but specific enough to support graph execution, evidence-gated completion, and task-tracker synchronization.
+DGE also brings the general discipline every serious agentic workflow needs — clarify before
+coding, plan before execution, work in isolated units, validate before completion, review
+before merge, capture learnings — and models delivery as a **graph** rather than a linear
+checklist. But the discipline is table stakes; the enforced, evidence-gated, agent-neutral
+`done` is the point.
 
 ## 60-second quickstart
 
