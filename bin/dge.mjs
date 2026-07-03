@@ -56,6 +56,7 @@ import {
 import { installSkills } from "../src/skill-installer.mjs";
 import { migrateStore } from "../src/store-migration.mjs";
 import { buildDemandView, renderDemandView } from "../src/show-renderer.mjs";
+import { buildGraphBrief, renderGraphBrief } from "../src/brief-renderer.mjs";
 import { findLearnings } from "../src/learnings-engine.mjs";
 
 const DEFAULT_GRAPH_PATH = "delivery-graph/graph.json";
@@ -78,6 +79,9 @@ function main() {
       case "init":
         runInit(graphPath, args);
         break;
+      case "preflight":
+        runPreflight(graphPath, args);
+        break;
       case "validate":
         runValidate(graphPath);
         break;
@@ -89,6 +93,9 @@ function main() {
         break;
       case "show":
         runShow(graphPath, args);
+        break;
+      case "brief":
+        runBrief(graphPath, args);
         break;
       case "status":
         runStatus(graphPath, args);
@@ -198,6 +205,35 @@ function runValidate(graphPath) {
   console.log(`Delivery graph valid: ${graph.graph.id} - ${graph.graph.title}`);
 }
 
+// The shared skill preamble, factored to one callable place (DEM-008 / NODE-026).
+// Every dge-* skill and the /dge-deliver conductor run `dge preflight` instead of
+// restating the CLI check + writer guardrail. Reaching this code proves the CLI is
+// installed and on PATH; it then confirms the graph is present and valid (unless
+// --no-graph, for intake before `dge init`) and prints the "CLI is the only writer"
+// reminder. Non-zero exit on a missing/invalid graph is the stop signal skills gate on.
+function runPreflight(graphPath, args = {}) {
+  const lines = ["dge CLI: reachable"];
+
+  if (args["no-graph"]) {
+    lines.push("graph: not required (pre-init)");
+  } else {
+    const graph = readGraph(graphPath); // throws (non-zero exit) if unreadable
+    const errors = validateGraph(graph);
+    if (errors.length > 0) {
+      throw new Error(`Delivery graph invalid:\n${errors.map((error) => `- ${error}`).join("\n")}`);
+    }
+    lines.push(`graph: ${graph.graph.id} valid`);
+  }
+
+  lines.push("reminder: the dge CLI is the ONLY writer of delivery-graph/graph.json — never hand-edit it.");
+
+  if (args.json) {
+    console.log(JSON.stringify({ ok: true, cli: "reachable", graph_required: !args["no-graph"] }, null, 2));
+    return;
+  }
+  console.log(lines.join("\n"));
+}
+
 // Relocate a flat store into the demand-centric layout. readGraph does not validate,
 // so this works on a store whose evidence_paths are still flat (the pre-migration state).
 function runMigrate(graphPath, args = {}) {
@@ -265,6 +301,32 @@ function runShow(graphPath, args = {}) {
     return;
   }
   console.log(renderDemandView(view, args));
+}
+
+// The two judgment-gate artifacts of the intent-driven flow, both derived from
+// graph.json (never a separate log). `brief demand DEM-###` is gate #1 (reuses
+// the demand view); `brief graph [DEM-###] [--mermaid]` is gate #2 (DAG + table).
+function runBrief(graphPath, args = {}) {
+  const kind = args._[0];
+  const graph = readGraph(graphPath);
+
+  if (kind === "demand") {
+    const demandId = args._[1] ?? args.demand;
+    if (!demandId) throw new Error("Usage: dge brief demand DEM-### [--json]");
+    const view = buildDemandView(graphPath, graph, demandId);
+    console.log(args.json ? JSON.stringify(view, null, 2) : renderDemandView(view, args));
+    return;
+  }
+
+  if (kind === "graph") {
+    // Optional demand scope: `dge brief graph DEM-###` scopes to one demand.
+    const demandId = args._[1] ?? args.demand ?? null;
+    const brief = buildGraphBrief(graphPath, graph, demandId);
+    console.log(args.json ? JSON.stringify(brief, null, 2) : renderGraphBrief(brief));
+    return;
+  }
+
+  throw new Error("Usage: dge brief demand DEM-### | dge brief graph [DEM-###] [--mermaid] [--json]");
 }
 
 // The READ side of the compound loop. dge-intake/dge-plan-graph call this to
@@ -384,7 +446,7 @@ function runTransition(graphPath, args) {
 function runEvidence(graphPath, args) {
   const [subcommand, nodeId, thirdArg] = args._;
   if (!nodeId || !["add", "run", "playwright", "remove"].includes(subcommand)) {
-    throw new Error("Usage: dge evidence add NODE-### --satisfies \"...\" --summary \"...\" [--result pass|fail] [--kind command] [--artifact path]\n       dge evidence run NODE-### --satisfies \"...\" [--summary \"...\"] -- <command>\n       dge evidence playwright NODE-### --satisfies \"...\" [--url URL] [--script test.spec.ts] [--artifacts test-results] -- <command>\n       dge evidence remove NODE-### EVD-###");
+    throw new Error("Usage: dge evidence add NODE-### --satisfies \"...\" --summary \"...\" [--result pass|fail|ambiguous] [--kind command] [--artifact path]\n       dge evidence run NODE-### --satisfies \"...\" [--summary \"...\"] -- <command>\n       dge evidence playwright NODE-### --satisfies \"...\" [--url URL] [--script test.spec.ts] [--artifacts test-results] -- <command>\n       dge evidence remove NODE-### EVD-###");
   }
 
   const graph = readGraph(graphPath);

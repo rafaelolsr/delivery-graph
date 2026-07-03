@@ -88,22 +88,26 @@ export function removeEvidence(graphPath, graph, nodeId, evidenceId) {
   return { manifest: nextManifest, record: removed };
 }
 
-// Manual evidence carries an explicit pass/fail result. Missing/legacy result
-// is treated as "pass" for backward compatibility; only "fail" is rejected.
+// Manual evidence carries an explicit result. Missing/legacy result is treated
+// as "pass" for backward compatibility. "fail" and "ambiguous" are both
+// non-passing: "fail" is a known failure; "ambiguous" is a judgment call the
+// agent could not self-certify (e.g. present-but-wrong content), so it must not
+// silently satisfy a contract item — it forces a human decision instead.
 function normalizeResult(result) {
   if (result === undefined || result === null) return "pass";
   const value = String(result).toLowerCase();
-  if (value !== "pass" && value !== "fail") {
-    throw new Error(`evidence result must be "pass" or "fail", got: ${result}`);
+  if (value !== "pass" && value !== "fail" && value !== "ambiguous") {
+    throw new Error(`evidence result must be "pass", "fail", or "ambiguous", got: ${result}`);
   }
   return value;
 }
 
-// An evidence item counts toward completeness unless it is explicitly a failure.
+// An evidence item counts toward completeness only when it is a clean pass.
 // Legacy items (no result field) and command evidence (recorded only on success)
-// count as passing.
+// count as passing; "fail" and "ambiguous" do not, so a node cannot reach done
+// on the strength of a failure note or an unresolved judgment call.
 function isPassing(item) {
-  return item.result !== "fail";
+  return item.result !== "fail" && item.result !== "ambiguous";
 }
 
 export function addCommandEvidence(graphPath, graph, nodeId, input) {

@@ -23,13 +23,15 @@ Create the executable delivery graph: tracks, nodes, dependency edges, and valid
 
 ## Preflight: require the DGE CLI
 
-Before planning, confirm the `dge` CLI is available:
+Before planning, run the shared preflight (one callable place for every `dge-*`
+skill and the `/dge-deliver` conductor). Planning runs after `dge init`, so the
+graph must exist and validate:
 
 ```bash
-dge --help >/dev/null 2>&1 || npx --no-install dge --help >/dev/null 2>&1
+dge preflight || npx --no-install dge preflight
 ```
 
-If neither resolves, **stop** and tell the user to install DGE first (the plugin ships `dge`
+If it exits non-zero, **stop** and tell the user to install DGE first (the plugin ships `dge`
 on the PATH, or `npm install --save-dev github:rafaelolsr/delivery-graph`). The `dge` CLI is
 the **only** writer of `delivery-graph/graph.json`; never hand-write or hand-edit it.
 
