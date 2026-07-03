@@ -13,3 +13,8 @@ tmp/
 # are kept out of version control here.
 delivery-graph/
 
+# archflow architecture/status reports — generated locally, not source
+architecture-report.html
+architecture-report.pt-br.html
+demands-010-012-report.html
+

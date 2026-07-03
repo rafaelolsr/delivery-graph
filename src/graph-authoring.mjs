@@ -1,12 +1,17 @@
 import { assertValidGraph, demandEvidencePath, nodeDemandId } from "./graph-engine.mjs";
 
+// A deterministic default so `dge init` needs no --title decision (REQ-040).
+// Kept constant (not date/path-derived) so the graph is reproducible and the
+// default is overridable with --title.
+export const DEFAULT_GRAPH_TITLE = "Delivery graph";
+
 export function createGraph({ id = "DGE-001", title, source = "local", createdAt = new Date().toISOString() }) {
-  requireText(title, "title");
+  const resolvedTitle = isNonEmptyText(title) ? title : DEFAULT_GRAPH_TITLE;
 
   return {
     graph: {
       id,
-      title,
+      title: resolvedTitle,
       status: "draft",
       source,
       created_at: createdAt,
@@ -437,7 +442,11 @@ function removeUndefined(record) {
 }
 
 function requireText(value, field) {
-  if (typeof value !== "string" || value.trim() === "") {
+  if (!isNonEmptyText(value)) {
     throw new Error(`${field} is required`);
   }
+}
+
+function isNonEmptyText(value) {
+  return typeof value === "string" && value.trim() !== "";
 }
