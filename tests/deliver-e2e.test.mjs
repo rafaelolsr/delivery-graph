@@ -40,11 +40,16 @@ test("the /dge-deliver spine runs demand -> brief -> plan -> graph -> execute ->
   run("add-node", "--graph", graphPath, "--title", "do it", "--type", "test",
     "--track", "TRK-build", "--requirements", "REQ-001", "--validation", "it passes");
 
-  // Gate 2 artifact renders the DAG + ready queue from graph.json.
+  // Gate 2 artifact renders the dependency tree + ready queue from graph.json
+  // (Mermaid is opt-in via --mermaid, so the default brief has no fence).
   const graphBrief = run("brief", "graph", "DEM-001", "--graph", graphPath);
-  assert.match(graphBrief, /mermaid/);
+  assert.match(graphBrief, /## Plan/);
+  assert.doesNotMatch(graphBrief, /```mermaid/);
   assert.match(graphBrief, /NODE-001/);
   assert.match(graphBrief, /Ready-queue order/);
+  // --mermaid opt-in still yields the DAG fence.
+  const mermaidBrief = run("brief", "graph", "DEM-001", "--mermaid", "--graph", graphPath);
+  assert.match(mermaidBrief, /```mermaid/);
 
   // Execute phase: the queue head is NODE-001, then evidence-gated done.
   const next = JSON.parse(run("next", "--graph", graphPath, "--json"));

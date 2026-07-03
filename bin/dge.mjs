@@ -340,7 +340,7 @@ function runBrief(graphPath, args = {}) {
     // Optional demand scope: `dge brief graph DEM-###` scopes to one demand.
     const demandId = args._[1] ?? args.demand ?? null;
     const brief = buildGraphBrief(graphPath, graph, demandId);
-    console.log(args.json ? JSON.stringify(brief, null, 2) : renderGraphBrief(brief));
+    console.log(args.json ? JSON.stringify(brief, null, 2) : renderGraphBrief(brief, { mermaid: args.mermaid }));
     return;
   }
 
