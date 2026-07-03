@@ -10,7 +10,8 @@ export function createGraph({ id = "DGE-001", title, source = "local", createdAt
       status: "draft",
       source,
       created_at: createdAt,
-      updated_at: createdAt
+      updated_at: createdAt,
+      rev: 0
     },
     demands: [],
     requirements: [],

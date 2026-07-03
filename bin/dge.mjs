@@ -4,11 +4,14 @@ import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { resolveRuntimePath } from "../src/path-utils.mjs";
 import {
+  ConcurrentModificationError,
   getNextReadyNode,
   readGraph,
+  readGraphRev,
   summarizeGraph,
   transitionNode,
   validateGraph,
+  withStoreLock,
   writeGraph
 } from "../src/graph-engine.mjs";
 import {
@@ -63,6 +66,9 @@ import { buildGraphBrief, renderGraphBrief } from "../src/brief-renderer.mjs";
 import { findLearnings } from "../src/learnings-engine.mjs";
 
 const DEFAULT_GRAPH_PATH = "delivery-graph/graph.json";
+
+// Bounded retries for the optimistic-concurrency mutation loop before failing loud.
+const MUTATION_RETRY_LIMIT = 10;
 
 main();
 
@@ -743,9 +749,29 @@ function writeSyncPlan(outputPath, syncPlan) {
   fs.writeFileSync(path.resolve(outputPath), `${JSON.stringify(syncPlan, null, 2)}\n`);
 }
 
+// Apply a mutation atomically across processes. The read-modify-write runs inside
+// an exclusive store lock, so no two writers can interleave — closing the lost-update
+// race. The rev compare-and-swap remains as a second line of defence (it catches the
+// rare case where a stale lock was broken mid-cycle) and retries a bounded number of
+// times, failing loudly rather than clobbering or looping forever.
 function runMutation(graphPath, mutate, args = {}) {
-  const { graph, record } = mutate(readGraph(graphPath));
-  writeGraph(graphPath, graph);
+  let record;
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      withStoreLock(graphPath, () => {
+        const expectedRev = readGraphRev(graphPath);
+        const result = mutate(readGraph(graphPath));
+        record = result.record;
+        writeGraph(graphPath, result.graph, { expectedRev });
+      });
+      break;
+    } catch (error) {
+      if (error instanceof ConcurrentModificationError && attempt < MUTATION_RETRY_LIMIT) {
+        continue;
+      }
+      throw error;
+    }
+  }
   const artifactPath = writeRecordArtifact(graphPath, record);
   printRecord("record", record, args);
   if (artifactPath && !args.json) {

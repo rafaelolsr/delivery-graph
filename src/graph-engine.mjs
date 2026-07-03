@@ -33,10 +33,103 @@ export function readGraph(graphPath) {
   }
 }
 
-export function writeGraph(graphPath, graph) {
+// Raised when an optimistic write loses the compare-and-swap race: another
+// process committed a new revision between our read and our write. runMutation
+// catches this and retries (re-read, re-apply, re-write).
+export class ConcurrentModificationError extends Error {
+  constructor(expectedRev, actualRev) {
+    super(
+      `Store changed under us (expected rev ${expectedRev}, found ${actualRev}); another writer committed concurrently.`
+    );
+    this.name = "ConcurrentModificationError";
+    this.expectedRev = expectedRev;
+    this.actualRev = actualRev;
+  }
+}
+
+// Run `fn` while holding an exclusive lock on the store, so a full read-modify-write
+// cycle is atomic across processes. The optimistic rev check narrows the lost-update
+// window but cannot close it alone: two processes can both pass the rev check and then
+// both rename, the second silently clobbering the first. An OS-level exclusive create
+// (open with "wx" — fails if the lock exists) is the only primitive that serializes the
+// check-and-commit. Lock is released in finally; a stale lock older than the timeout is
+// broken so a killed holder cannot deadlock the store.
+export function withStoreLock(graphPath, fn, { timeoutMs = 5000, staleMs = 30000 } = {}) {
+  const lockPath = `${path.resolve(graphPath)}.lock`;
+  const deadline = Date.now() + timeoutMs;
+  let fd;
+  for (;;) {
+    try {
+      fd = fs.openSync(lockPath, "wx");
+      break;
+    } catch (error) {
+      if (error.code !== "EEXIST") throw error;
+      // Break a stale lock left by a crashed holder.
+      try {
+        const age = Date.now() - fs.statSync(lockPath).mtimeMs;
+        if (age > staleMs) {
+          fs.rmSync(lockPath, { force: true });
+          continue;
+        }
+      } catch {
+        continue; // lock vanished between open and stat — retry immediately
+      }
+      if (Date.now() > deadline) {
+        throw new Error(`Timed out acquiring store lock at ${lockPath}`);
+      }
+      sleepBusy(15);
+    }
+  }
+  try {
+    return fn();
+  } finally {
+    fs.closeSync(fd);
+    fs.rmSync(lockPath, { force: true });
+  }
+}
+
+// Synchronous short spin — the lock is held only for the duration of one
+// read-modify-write, so contention waits are milliseconds.
+function sleepBusy(ms) {
+  const until = Date.now() + ms;
+  while (Date.now() < until) {
+    // busy-wait; keeps the lock protocol fully synchronous like the rest of the CLI
+  }
+}
+
+// The on-disk revision counter, or 0 for a store that predates rev (or is absent).
+export function readGraphRev(graphPath) {
+  try {
+    const onDisk = JSON.parse(fs.readFileSync(path.resolve(graphPath), "utf8"));
+    return onDisk?.graph?.rev ?? 0;
+  } catch {
+    return 0; // no file yet → first write starts the sequence
+  }
+}
+
+// Persist the graph, bumping graph.rev on every write.
+//
+// The write is atomic (temp + rename) so it can never leave a torn file. When
+// `opts.expectedRev` is supplied, the write is ALSO concurrency-safe: it refuses
+// to overwrite if the on-disk rev has moved since the caller read it, throwing
+// ConcurrentModificationError instead of silently clobbering a concurrent update
+// (the lost-update race in runMutation's read-modify-write cycle). Callers that
+// omit expectedRev keep the previous unconditional behavior — preserving every
+// existing single-writer flow unchanged.
+export function writeGraph(graphPath, graph, opts = {}) {
   const absolutePath = path.resolve(graphPath);
   fs.mkdirSync(path.dirname(absolutePath), { recursive: true });
+
+  if (opts.expectedRev !== undefined) {
+    const actualRev = readGraphRev(absolutePath);
+    if (actualRev !== opts.expectedRev) {
+      throw new ConcurrentModificationError(opts.expectedRev, actualRev);
+    }
+  }
+
+  graph.graph = { ...graph.graph, rev: (graph.graph?.rev ?? 0) + 1 };
   writeFileAtomic(absolutePath, `${JSON.stringify(graph, null, 2)}\n`);
+  return graph.graph.rev;
 }
 
 // Write to a sibling temp file, then rename onto the target. Rename is atomic on
