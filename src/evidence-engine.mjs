@@ -201,7 +201,18 @@ export function writeCommandAttemptArtifact(graphPath, graph, nodeId, input) {
 
 export function getEvidenceStatus(graphPath, graph, node) {
   const manifest = readEvidenceManifest(graphPath, node);
-  const satisfied = new Set(manifest.items.filter(isPassing).map((item) => item.satisfies));
+
+  // A contract key is satisfied only when it has a passing item AND no UNRESOLVED
+  // ambiguous item. Evidence is append-only, so after adjudication the corrected
+  // pass is added alongside the ambiguous record — but the ambiguity must be
+  // explicitly cleared (dge evidence remove) before the key counts as satisfied.
+  // Otherwise an unresolved judgment call would slip through the moment any pass
+  // exists for the same key, silently reaching done on an open question.
+  const ambiguousKeys = new Set(
+    manifest.items.filter((item) => item.result === "ambiguous").map((item) => item.satisfies)
+  );
+  const passedKeys = new Set(manifest.items.filter(isPassing).map((item) => item.satisfies));
+  const satisfied = new Set([...passedKeys].filter((key) => !ambiguousKeys.has(key)));
   const missing = node.validation.required.filter((required) => !satisfied.has(required));
 
   return {

@@ -41,6 +41,22 @@ test("editing the demand (dropping a requirement) changes the re-rendered brief"
   assert.match(after, /REQ-001/, "unrelated requirement is untouched");
 });
 
+test("the Demand Brief (gate 1) renders non-goals and problem so the human can judge scope", () => {
+  // F4: gate 1 is the approve/reject artifact; it must show more than title+outcome.
+  const g = graphWith();
+  g.demands[0].problem = "the command palette burden";
+  g.demands[0].non_goals = ["not rewriting the skills", "not real tracker writes"];
+
+  const view = buildDemandView("/tmp/x/g.json", g, "DEM-001");
+  assert.equal(view.demand.problem, "the command palette burden");
+  assert.deepEqual(view.demand.non_goals, ["not rewriting the skills", "not real tracker writes"]);
+
+  const md = renderDemandView(view, { ascii: true });
+  assert.match(md, /problem: the command palette burden/);
+  assert.match(md, /non-goals:/);
+  assert.match(md, /not rewriting the skills/);
+});
+
 test("a reintroduced blocker gap surfaces in the Demand Brief (gate 1) so it blocks approval", () => {
   const g = graphWith({
     gaps: [{ id: "GAP-001", type: "validation", severity: "blocker", question: "unresolved?", blocks: ["REQ-001"], resolution: null }]

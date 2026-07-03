@@ -77,6 +77,25 @@ test("renderGraphBrief emits the DAG, per-node table, and ready-queue order", ()
   assert.match(md, /1\. NODE-002/);
 });
 
+test("a demand-scoped graph brief only shows blocker gaps that block its own requirements", () => {
+  const graph = makeGraph();
+  // A blocker gap on DEM-002's REQ-050 must NOT appear in DEM-001's brief. (F2.)
+  graph.gaps = [
+    { id: "GAP-001", type: "scope", severity: "blocker", question: "other demand's blocker", blocks: ["REQ-050"], resolution: null },
+    { id: "GAP-002", type: "scope", severity: "blocker", question: "this demand's blocker", blocks: ["REQ-001"], resolution: null }
+  ];
+
+  const dem1 = buildGraphBrief("/tmp/x/g.json", graph, "DEM-001");
+  assert.deepEqual(dem1.blocker_gaps.map((g) => g.id), ["GAP-002"], "only DEM-001's blocker shows");
+
+  const dem2 = buildGraphBrief("/tmp/x/g.json", graph, "DEM-002");
+  assert.deepEqual(dem2.blocker_gaps.map((g) => g.id), ["GAP-001"], "only DEM-002's blocker shows");
+
+  // Whole-graph scope (no demandId) still shows all blocker gaps.
+  const whole = buildGraphBrief("/tmp/x/g.json", graph, null);
+  assert.equal(whole.blocker_gaps.length, 2);
+});
+
 test("mermaid labels with quotes or newlines cannot break the diagram", () => {
   const nodes = [{ id: "NODE-001", title: 'has "quotes"\nand a newline', depends_on: [] }];
   const mermaid = renderMermaidDag(nodes);

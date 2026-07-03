@@ -63,6 +63,15 @@ export function buildGraphBrief(graphPath, graph, demandId) {
   const nodeIds = new Set(nodes.map((n) => n.id));
   const readyQueue = summary.readyNodes.filter((n) => nodeIds.has(n.id)).map((n) => n.id);
 
+  // Blocker gaps must be scoped to the demand too (mirror buildDemandView), or a
+  // demand-scoped Gate 2 would show and miscount blockers from unrelated demands.
+  const scopedRequirementIds = demandId
+    ? new Set((graph.requirements ?? []).filter((r) => r.demand_id === demandId).map((r) => r.id))
+    : null;
+  const blockerGaps = summary.blockerGaps
+    .filter((gap) => !scopedRequirementIds || (gap.blocks ?? []).some((id) => scopedRequirementIds.has(id)))
+    .map((gap) => ({ id: gap.id, question: gap.question }));
+
   return {
     scope: demandId ?? graph.graph?.id ?? "graph",
     demand: demandId
@@ -71,7 +80,7 @@ export function buildGraphBrief(graphPath, graph, demandId) {
     node_count: nodeRows.length,
     nodes: nodeRows,
     ready_queue: readyQueue,
-    blocker_gaps: summary.blockerGaps.map((gap) => ({ id: gap.id, question: gap.question }))
+    blocker_gaps: blockerGaps
   };
 }
 

@@ -139,6 +139,55 @@ test("done stays blocked when the only evidence is ambiguous", () => {
   );
 });
 
+test("an unresolved ambiguous item blocks its key even when a pass exists for the same key", () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "dge-evidence-"));
+  const graphPath = path.join(tempDir, "delivery-graph", "graph.json");
+  const graph = makeGraph();
+
+  // The append-only workflow: record ambiguous, then add a pass for the SAME key
+  // WITHOUT removing the ambiguous marker. The key must stay unsatisfied — an open
+  // judgment call cannot be silently overridden by a later pass. (F1 / moat.)
+  addEvidence(graphPath, graph, "NODE-001", {
+    summary: "present but wrong",
+    satisfies: "npm test",
+    result: "ambiguous",
+    createdAt: "2026-06-30T00:00:00Z"
+  });
+  addEvidence(graphPath, graph, "NODE-001", {
+    summary: "npm test passed",
+    satisfies: "npm test",
+    result: "pass",
+    createdAt: "2026-06-30T00:01:00Z"
+  });
+
+  const status = getEvidenceStatus(graphPath, graph, graph.nodes[0]);
+  assert.equal(status.complete, false, "a pass must not override an unresolved ambiguous item");
+  assert.deepEqual(status.missing, ["npm test"]);
+});
+
+test("removing the ambiguous record lets the sibling pass satisfy the key (adjudicated path)", () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "dge-evidence-"));
+  const graphPath = path.join(tempDir, "delivery-graph", "graph.json");
+  const graph = makeGraph();
+
+  const amb = addEvidence(graphPath, graph, "NODE-001", {
+    summary: "present but wrong",
+    satisfies: "npm test",
+    result: "ambiguous",
+    createdAt: "2026-06-30T00:00:00Z"
+  });
+  addEvidence(graphPath, graph, "NODE-001", {
+    summary: "npm test passed",
+    satisfies: "npm test",
+    result: "pass",
+    createdAt: "2026-06-30T00:01:00Z"
+  });
+
+  // Adjudication: remove the ambiguous marker, then the pass counts.
+  removeEvidence(graphPath, graph, "NODE-001", amb.record.id);
+  assert.equal(getEvidenceStatus(graphPath, graph, graph.nodes[0]).complete, true);
+});
+
 test("a pass result (and the default) satisfies a contract item", () => {
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "dge-evidence-"));
   const graphPath = path.join(tempDir, "delivery-graph", "graph.json");

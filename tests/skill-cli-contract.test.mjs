@@ -54,10 +54,15 @@ test("dge-execute-graph carries the AMBIGUOUS third outcome", () => {
   assert.match(text, /result-ambiguity/i);
   assert.match(text, /fix-ambiguity/i);
   assert.match(text, /--result ambiguous/);
-  // Must tie ambiguity to the structural blast-radius / missing-contract triggers,
-  // not to subjective judgment.
-  assert.match(text, /blast radius/i);
+  // Must tie ambiguity to structural, detectable triggers (missing/non-executable
+  // contract, unresolved blocker GAP), not subjective judgment. NB: "blast radius"
+  // is intentionally NOT asserted — it was aspirational prose with no backing model
+  // and was descoped; do not reintroduce a phrase-only assertion (F3).
   assert.match(text, /missing or non-executable/i);
+  assert.match(text, /blocker GAP/i);
+  // The append-only adjudication rule: a resolved ambiguity must be removed, not
+  // just overridden by a later pass (the moat fix, F1).
+  assert.match(text, /dge evidence remove/);
 });
 
 // DEM-008 / NODE-029: quiet mode must change only reporting, never gating. Guard

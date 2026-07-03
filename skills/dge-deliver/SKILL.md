@@ -31,7 +31,7 @@ judgment gates** and surfaces genuine failure/ambiguity (judgment). It never ask
 1. **One entry verb.** After `/dge-deliver`, the user is never asked to invoke another
    `dge-*` skill. The conductor runs intake → brief → plan → graph → execute → summary.
 2. **Two judgment gates, and only two.** Gate 1 = the Demand Brief (after intake).
-   Gate 2 = the Graph Brief with the Mermaid DAG + blast radius (after planning).
+   Gate 2 = the Graph Brief with the Mermaid DAG + per-node change summary (after planning).
    Gate 2 is **always required** — never auto-skip it.
 3. **The user owns the gates.** The conductor never self-approves a gate. The only way
    past a gate is explicit user approval.
@@ -110,10 +110,9 @@ dge brief graph DEM-###
 ```
 
 Show it as the "here is exactly what will be built and changed" graph: the Mermaid DAG,
-the per-node change summary and **blast radius**, the validation contract per node, and
-the ready-queue order. Then **stop and ask for approval or edits** (same conversational
-edit → CLI → re-render loop as Gate 1; blocker gaps still block approval; abandon is
-still clean).
+the per-node change summary, the validation contract per node, and the ready-queue order.
+Then **stop and ask for approval or edits** (same conversational edit → CLI → re-render
+loop as Gate 1; blocker gaps still block approval; abandon is still clean).
 
 **Gate 2 is always required.** Never begin execution without explicit approval here.
 
@@ -128,10 +127,10 @@ Drive the ready queue end to end, one node at a time, evidence-gated:
 - **Failure stops the loop, loudly** — surface the exact `dge done` error and the review
   report path (stop-on-failure). Do not retry structural failures.
 - **Ambiguity pauses once, asks once** — on a genuine fork the conductor must not resolve
-  (result-ambiguity: pass/fail is a judgment call; fix-ambiguity: multiple satisfying
-  changes, or a repair that exits the node's approved blast radius; or a missing/
-  non-executable contract or unresolved blocker GAP), pause, ask **one** question, apply
-  the answer, and resume. See `/dge-execute-graph` "Failure classification".
+  (result-ambiguity: pass/fail is a judgment call; fix-ambiguity: more than one change
+  would satisfy the contract; or a missing/non-executable contract or unresolved blocker
+  GAP), pause, ask **one** question, apply the answer, and resume. See `/dge-execute-graph`
+  "Failure classification".
 
 Never fabricate evidence or weaken a contract to keep the loop flowing.
 
