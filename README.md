@@ -102,6 +102,10 @@ you the slash commands but no engine — they will stop at preflight until the C
 
 Self-contained for one project — CLI, skills, and store, all wired:
 
+> On a locked-down corporate/Windows machine and hitting `npm error code E401`? Jump to
+> [Troubleshooting: E401 on a corporate machine](#troubleshooting-npm-error-code-e401-unable-to-authenticate-on-a-corporate-machine)
+> for a clone-based install that needs no npm-registry auth.
+
 ```bash
 # 1. the CLI (npm) — required
 npm install --save-dev github:rafaelolsr/delivery-graph
@@ -116,6 +120,57 @@ npx dge init --title "My delivery graph"
 Then reload skills in Claude Code (restart the session or `/reload-plugins`). Pass
 `--harness claude|copilot` to choose explicitly, drop `--symlink` to copy instead, or
 `--force` to overwrite.
+
+### Troubleshooting: `npm error code E401 Unable to authenticate` on a corporate machine
+
+DGE is a **public MIT repo fetched over git** (`github:rafaelolsr/delivery-graph`) — it is not
+on the npm registry and needs no credentials. An `E401` here is **your environment, not this
+package**: a corporate `~/.npmrc` (`%USERPROFILE%\.npmrc` on Windows) with `always-auth=true`
+and/or a stale registry token forces npm to authenticate *every* request, including this public
+git fetch. Try these in order — each is a single command or project-local file; **none require
+editing the corporate global config**:
+
+**1. Bypass the corporate auth for one install** — force the public registry and turn off
+always-auth for just this command:
+
+```bash
+npm install --save-dev github:rafaelolsr/delivery-graph --registry=https://registry.npmjs.org/ --always-auth=false
+```
+
+**2. Skip npm's registry path entirely — clone + local install** (most reliable behind a
+locked-down proxy, and the recommended corporate fallback: it delivers **both** the CLI and,
+via `npx dge install-skills`, the skills, with no registry auth):
+
+```bash
+git clone https://github.com/rafaelolsr/delivery-graph.git
+cd delivery-graph && npm install --ignore-scripts
+# then, from YOUR project (this path assumes the clone sits beside it):
+npm install --save-dev "file:../delivery-graph"
+```
+
+**3. Use npm's git resolver** instead of the GitHub-shorthand tarball fetch that some proxies
+gate:
+
+```bash
+npm install --save-dev git+https://github.com/rafaelolsr/delivery-graph.git
+```
+
+**4. Inspect what config is forcing auth** (on Windows use `findstr`, not `grep`):
+
+```bash
+npm config get always-auth       # true here is the culprit
+npm config get registry          # a corporate mirror, not registry.npmjs.org
+npm config list -l | findstr auth
+```
+
+If `always-auth=true` comes from your user config, override it **per project** — without touching
+the corporate global config — by adding an `.npmrc` next to your `package.json` containing
+`always-auth=false`.
+
+**Can't run npm at all?** You can still get the `/dge-*` slash commands via the
+[marketplace](#optional-get-the-skills-globally-via-the-marketplace) — but the marketplace ships
+**prompts, not the CLI**, so the `dge` binary the skills call still has to come from options 1–3
+above (or a machine where npm works). Skills without the CLI stop at preflight.
 
 ### Optional: get the skills globally via the marketplace
 
