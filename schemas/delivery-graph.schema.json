@@ -19,7 +19,8 @@
         },
         "source": { "type": "string" },
         "created_at": { "type": "string" },
-        "updated_at": { "type": "string" }
+        "updated_at": { "type": "string" },
+        "rev": { "type": "integer", "minimum": 0 }
       }
     },
     "demands": {
