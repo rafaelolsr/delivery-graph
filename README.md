@@ -73,10 +73,41 @@ validation evidence, decisions, reusable patterns, and follow-up context for the
 
 ## Quick start
 
-### Install the skills from the marketplace (recommended)
+DGE has **two surfaces** that install through **two different channels**:
 
-DGE ships a plugin marketplace, so Claude Code and GitHub Copilot CLI can install the
-`/dge-*` skills directly from GitHub — no npm publish required.
+- the **`dge` CLI** (evidence gates, `init`, `status`, `next`, `done`, `brief`, …) — an
+  **npm package**; and
+- the **`/dge-*` skills** (the slash commands) — **prompts**, installed per-project or via
+  the plugin marketplace.
+
+The skills *call* the CLI, so **you always need the CLI**. A marketplace install alone gives
+you the slash commands but no engine — they will stop at preflight until the CLI is installed.
+
+### Complete install (recommended)
+
+Self-contained for one project — CLI, skills, and store, all wired:
+
+```bash
+# 1. the CLI (npm) — required
+npm install --save-dev github:rafaelolsr/delivery-graph
+
+# 2. the /dge-* skills into your harness (.claude/ or .github/)
+npx dge install-skills --harness claude --symlink
+
+# 3. the canonical graph store
+npx dge init --title "My delivery graph"
+```
+
+Then reload skills in Claude Code (restart the session or `/reload-plugins`). Pass
+`--harness claude|copilot` to choose explicitly, drop `--symlink` to copy instead, or
+`--force` to overwrite.
+
+### Optional: get the skills globally via the marketplace
+
+The marketplace installs the `/dge-*` skills **globally across all your Claude Code / Copilot
+CLI projects**, instead of copying them into one repo. Its one benefit is cross-project skill
+availability; its one caveat is that it ships **prompts, not the binary**, so you **still run
+steps 1 and 3 above** (the npm CLI install and `dge init`) in each project that owns a store.
 
 **Claude Code:**
 
@@ -88,43 +119,14 @@ DGE ships a plugin marketplace, so Claude Code and GitHub Copilot CLI can instal
 
 **GitHub Copilot CLI** (the standalone `copilot`, installed via `npm install -g @github/copilot`) —
 manage plugins with the `/plugin` slash command **inside the `copilot` prompt** (note the leading
-`/`; without it the text is sent to the model as a normal prompt). Open the plugin UI with:
-
-```text
-/plugin
-```
-
-then add `rafaelolsr/delivery-graph` from the marketplace UI. If your version supports inline
-args, this also works:
-
-```text
-/plugin marketplace add rafaelolsr/delivery-graph
-```
+`/`; without it the text is sent to the model as a normal prompt). Open the plugin UI with `/plugin`
+and add `rafaelolsr/delivery-graph` from the marketplace UI (inline
+`/plugin marketplace add rafaelolsr/delivery-graph` also works if your version supports it).
 
 Both harnesses read the same `.claude-plugin/plugin.json` at the repo root and auto-scan the
 top-level `skills/` directory. Skills appear namespaced (e.g. `/delivery-graph:dge-intake`).
-
-### Install the CLI
-
-The `dge` CLI (evidence gates, `init`, `status`, `next`, `done`, …) is a separate surface —
-add it as a dev dependency in the repo that should own the canonical `delivery-graph/` store:
-
-```bash
-npm install --save-dev github:rafaelolsr/delivery-graph
-npx dge init --title "My delivery graph"
-```
-
-### Alternative: copy the skills without the marketplace
-
-If you are not using a marketplace-capable harness, `dge install-skills` auto-detects your
-harness (`.claude/` or `.github/`) and copies the `/dge-*` skills into it. Pass
-`--harness claude|copilot` to choose explicitly, `--symlink` to keep them tracking
-`node_modules`, or `--force` to overwrite. The CLI works without this step; only the slash
-commands need it.
-
-```bash
-npx dge install-skills
-```
+With the marketplace handling skills, use `npm install … && npx dge init` for the CLI + store;
+you can skip `dge install-skills`.
 
 The shortest end-to-end loop is:
 
