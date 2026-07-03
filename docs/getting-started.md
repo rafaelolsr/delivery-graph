@@ -2,6 +2,27 @@
 
 ## Install in a consuming repository
 
+### Option A — marketplace (no npm, recommended for corporate/Windows)
+
+The plugin marketplace installs the `/dge-*` skills **and** the `dge` CLI over git, with no
+`npm install` — the CLI is a zero-dependency binary the harness puts on your PATH. In Claude Code:
+
+```text
+/plugin marketplace add rafaelolsr/delivery-graph
+/plugin install delivery-graph@dge-tools
+/reload-plugins
+```
+
+Then create the store where the canonical `delivery-graph/` folder should live:
+
+```bash
+dge init --title "My first DGE graph"
+```
+
+Because there is no npm request, this sidesteps the corporate `E401` problem entirely.
+
+### Option B — npm package
+
 Install DGE where the canonical `delivery-graph/` folder should live:
 
 ```bash
@@ -9,10 +30,10 @@ npm install --save-dev github:rafaelolsr/delivery-graph
 npx dge init --title "My first DGE graph"
 ```
 
-> **Hitting `npm error code E401 Unable to authenticate` on a corporate/Windows machine?** DGE is a
-> public git fetch, not a registry package — the E401 comes from your corporate npm config (a
-> stale token / registry mirror) forcing auth on a request that needs none. Point at the public
-> registry for the install; this has worked on a locked-down corporate Windows machine:
+> **Hitting `npm error code E401 Unable to authenticate` on a corporate/Windows machine?** Use
+> Option A above — it needs no npm. If you'd rather stay on npm, the E401 comes from your corporate
+> npm config (a stale token / registry mirror) forcing auth on a request that needs none; point at
+> the public registry for the install:
 >
 > ```bash
 > npm install -g github:rafaelolsr/delivery-graph --registry=https://registry.npmjs.org/
@@ -21,7 +42,7 @@ npx dge init --title "My first DGE graph"
 >
 > See the [README troubleshooting section](../README.md#troubleshooting-npm-error-code-e401-unable-to-authenticate-on-a-corporate-machine) for the project-local and clone-based alternatives.
 
-Inside the DGE source repository, use `npm run dge -- ...` for development. In consuming repositories, use `npx dge ...`.
+Inside the DGE source repository, use `npm run dge -- ...` for development. In consuming repositories, use `npx dge ...` (or bare `dge ...` after a marketplace install).
 
 ### Install the skills into your harness
 

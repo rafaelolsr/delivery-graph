@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.2.2
+
+Zero-dependency CLI — the marketplace now genuinely ships a working engine, no npm needed.
+
+### Changed
+- **The `dge` CLI has no external dependencies.** The lone runtime dependency (`ajv`) was replaced
+  by a small built-in validator for the closed delivery-graph schema. The CLI now runs straight
+  from a git checkout, so the plugin marketplace install — which puts `bin/dge` on the harness
+  PATH — delivers a **fully working engine with no `npm install`**. This is the real fix for the
+  corporate-npm `E401` failure: there is no npm request to authenticate against. Schema error
+  messages are unchanged (the validator mirrors ajv's wording), so behavior is identical.
+
+### Docs
+- README and getting-started now lead with the npm-free marketplace install for corporate/Windows
+  users, and the E401 troubleshooting points there first.
+
 ## 0.2.1
 
 Authoring-correctness fixes.

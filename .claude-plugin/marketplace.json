@@ -1,6 +1,6 @@
 {
   "name": "dge-tools",
-  "description": "Delivery Graph Engineering tools — install the delivery-graph plugin (the /dge-* skills; the dge CLI installs separately via npm).",
+  "description": "Delivery Graph Engineering tools — install the delivery-graph plugin (the /dge-* skills and the dge CLI, both on PATH, no npm install needed).",
   "owner": {
     "name": "Rafael Rodrigues",
     "email": "rafael@datageek.com.br"
@@ -9,7 +9,7 @@
     {
       "name": "delivery-graph",
       "source": "./",
-      "description": "Delivery Graph Engineering: the /dge-* skills (the dge CLI installs separately via npm)."
+      "description": "Delivery Graph Engineering: the /dge-* skills and the dge CLI (bin/dge on PATH, no npm install needed)."
     }
   ]
 }
