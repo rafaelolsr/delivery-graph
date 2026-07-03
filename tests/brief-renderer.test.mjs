@@ -64,17 +64,33 @@ test("renderMermaidDag draws only edges whose target is inside the rendered node
   assert.doesNotMatch(mermaid, /NODE-050/);
 });
 
-test("renderGraphBrief emits the DAG, per-node table, and ready-queue order", () => {
+test("renderGraphBrief defaults to a universally-renderable dependency tree (no Mermaid)", () => {
   const graph = makeGraph();
   const brief = buildGraphBrief("/tmp/x/delivery-graph/graph.json", graph, "DEM-001");
   const md = renderGraphBrief(brief);
 
-  assert.match(md, /## Dependency graph/);
-  assert.match(md, /```mermaid/);
-  assert.match(md, /## Per-node change summary/);
-  assert.match(md, /NODE-002 validated/); // validation contract rendered
+  assert.match(md, /## Plan/);
+  // Tree shape: NODE-002 nests under its dep NODE-001, NODE-003 under NODE-002.
+  assert.match(md, /└─ NODE-002 🟢/); // ready node marked, drawn as a child branch
+  assert.match(md, /└─ NODE-003/);
+  // Approval facts inline on each node.
+  assert.match(md, /serves REQ-002/);
+  assert.match(md, /proven by: NODE-002 validated/);
   assert.match(md, /## Ready-queue order/);
   assert.match(md, /1\. NODE-002/);
+  // Mermaid is opt-in — absent by default so a terminal never gets an unrenderable fence.
+  assert.doesNotMatch(md, /```mermaid/);
+});
+
+test("renderGraphBrief includes the Mermaid DAG only when opted in", () => {
+  const graph = makeGraph();
+  const brief = buildGraphBrief("/tmp/x/delivery-graph/graph.json", graph, "DEM-001");
+  const md = renderGraphBrief(brief, { mermaid: true });
+
+  assert.match(md, /## Plan/); // tree still present
+  assert.match(md, /## Dependency graph \(Mermaid\)/);
+  assert.match(md, /```mermaid/);
+  assert.match(md, /NODE-001 --> NODE-002/);
 });
 
 test("a demand-scoped graph brief only shows blocker gaps that block its own requirements", () => {

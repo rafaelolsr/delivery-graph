@@ -31,7 +31,8 @@ judgment gates** and surfaces genuine failure/ambiguity (judgment). It never ask
 1. **One entry verb.** After `/dge-deliver`, the user is never asked to invoke another
    `dge-*` skill. The conductor runs intake → brief → plan → graph → execute → summary.
 2. **Two judgment gates, and only two.** Gate 1 = the Demand Brief (after intake).
-   Gate 2 = the Graph Brief with the Mermaid DAG + per-node change summary (after planning).
+   Gate 2 = the Graph Brief with the dependency tree + per-node change/validation summary
+   (after planning); `--mermaid` adds the DAG diagram for large graphs in a rendering surface.
    Gate 2 is **always required** — never auto-skip it.
 3. **The user owns the gates.** The conductor never self-approves a gate. The only way
    past a gate is explicit user approval.
@@ -116,10 +117,13 @@ Then render and present the Graph Brief:
 dge brief graph DEM-### 
 ```
 
-Show it as the "here is exactly what will be built and changed" graph: the Mermaid DAG,
-the per-node change summary, the validation contract per node, and the ready-queue order.
-Then **stop and ask for approval or edits** (same conversational edit → CLI → re-render
-loop as Gate 1; blocker gaps still block approval; abandon is still clean).
+Show it as the "here is exactly what will be built and changed" graph: an indented
+dependency tree where each node carries its type, the requirements it serves, and its
+validation contract inline, plus the ready-queue order. The tree renders in every surface
+(terminal, CLI, harness chat); add `--mermaid` only for a large multi-edge graph in a
+rendering surface where a diagram beats indentation. Then **stop and ask for approval or
+edits** (same conversational edit → CLI → re-render loop as Gate 1; blocker gaps still
+block approval; abandon is still clean).
 
 **Gate 2 is always required.** Never begin execution without explicit approval here.
 

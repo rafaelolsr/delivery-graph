@@ -84,7 +84,46 @@ export function buildGraphBrief(graphPath, graph, demandId) {
   };
 }
 
-export function renderGraphBrief(brief) {
+// Render each node as an indented dependency tree with its approval facts (type,
+// the requirements it serves, and how it's validated) inline. This is the default
+// Gate 2 body because it renders in every surface — terminal, CLI, harness chat —
+// while a Mermaid fence only renders where a Mermaid engine exists. The tree's
+// indentation carries dependency shape for the common tree/fan-out case; the
+// `--mermaid` opt-in (renderMermaidDag) is for large multi-edge graphs in a
+// rendering surface where a picture beats indentation.
+function renderDependencyTree(nodes) {
+  const byId = new Map(nodes.map((n) => [n.id, n]));
+  const inSetDeps = (node) => node.depends_on.filter((d) => byId.has(d));
+  const childrenOf = new Map(nodes.map((n) => [n.id, []]));
+  const roots = [];
+  for (const node of nodes) {
+    // Attach each node under the first of its in-set dependencies; a node with no
+    // in-set dependency is a root. Extra parents are noted inline as "also needs".
+    const parents = inSetDeps(node);
+    if (parents.length === 0) roots.push(node);
+    else childrenOf.get(parents[0]).push(node.id);
+  }
+
+  const lines = [];
+  const emit = (node, prefix, isLast, isRoot) => {
+    const branch = isRoot ? "" : isLast ? "└─ " : "├─ ";
+    const ready = node.ready ? " 🟢" : "";
+    const extraDeps = inSetDeps(node).slice(1);
+    const also = extraDeps.length ? ` (also needs ${extraDeps.join(", ")})` : "";
+    lines.push(`${prefix}${branch}${node.id}${ready}  ${node.title}  [${node.type}]${also}`);
+
+    const detailPrefix = prefix + (isRoot ? "" : isLast ? "   " : "│  ");
+    lines.push(`${detailPrefix}   serves ${node.requirement_ids.join(", ") || "—"}`);
+    lines.push(`${detailPrefix}   proven by: ${node.validation.join("; ") || "—"}`);
+
+    const kids = childrenOf.get(node.id);
+    kids.forEach((childId, i) => emit(byId.get(childId), detailPrefix, i === kids.length - 1, false));
+  };
+  roots.forEach((root, i) => emit(root, "", i === roots.length - 1, true));
+  return lines.join("\n");
+}
+
+export function renderGraphBrief(brief, options = {}) {
   const lines = [];
   const title = brief.demand ? `${brief.demand.id}  ${brief.demand.title}` : brief.scope;
   lines.push(`# Graph Brief — ${title}`);
@@ -92,23 +131,19 @@ export function renderGraphBrief(brief) {
   lines.push(`${brief.node_count} nodes · ${brief.ready_queue.length} ready · ${brief.blocker_gaps.length} blocker gaps`);
   lines.push("");
 
-  lines.push("## Dependency graph");
+  lines.push("## Plan");
   lines.push("");
-  lines.push(renderMermaidDag(brief.nodes));
+  lines.push(renderDependencyTree(brief.nodes));
   lines.push("");
 
-  lines.push("## Per-node change summary");
-  lines.push("");
-  lines.push("| Node | Type | Depends on | Serves | Validated by |");
-  lines.push("| --- | --- | --- | --- | --- |");
-  for (const node of brief.nodes) {
-    const ready = node.ready ? " 🟢" : "";
-    lines.push(
-      `| ${node.id}${ready} | ${node.type} | ${node.depends_on.join(", ") || "—"} ` +
-      `| ${node.requirement_ids.join(", ") || "—"} | ${node.validation.join("; ") || "—"} |`
-    );
+  // Mermaid is opt-in: only useful in a rendering surface and only worth the
+  // ceremony for graphs whose shape the tree can't show at a glance.
+  if (options.mermaid) {
+    lines.push("## Dependency graph (Mermaid)");
+    lines.push("");
+    lines.push(renderMermaidDag(brief.nodes));
+    lines.push("");
   }
-  lines.push("");
 
   lines.push("## Ready-queue order");
   lines.push(brief.ready_queue.length ? brief.ready_queue.map((id, i) => `${i + 1}. ${id}`).join("\n") : "- none ready");
