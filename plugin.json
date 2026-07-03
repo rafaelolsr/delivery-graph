@@ -1,6 +1,6 @@
 {
   "name": "delivery-graph",
-  "description": "Delivery Graph Engineering: turn demands into validated delivery graphs. Ships the /dge-* skills and the dge CLI.",
+  "description": "Delivery Graph Engineering: turn demands into validated delivery graphs. Ships the /dge-* skills; the dge CLI installs separately via npm.",
   "version": "0.2.1",
   "author": {
     "name": "Rafael Rodrigues",

@@ -18,7 +18,7 @@ Marketplace distribution, a coupled CLI, and evidence/output hardening.
 
 ### Added
 - **Plugin marketplace** for Claude Code and GitHub Copilot CLI (`.claude-plugin/plugin.json` + `marketplace.json`); install with `/plugin marketplace add rafaelolsr/delivery-graph` then `/plugin install delivery-graph@dge-tools`. No npm publish required.
-- **CLI shipped with the plugin** — `bin/dge` is exposed on the harness PATH, so installing the plugin makes the `dge` command available with no separate `npm install`.
+- **CLI + skills, two install channels** — the plugin marketplace installs the `/dge-*` skill prompts only; the `dge` CLI is the `bin` entry in `package.json`, installed via `npm install github:rafaelolsr/delivery-graph`. A marketplace install alone gives the slash commands but not the `dge` binary, so any project that runs the engine still needs the npm/CLI install.
 - **`dge evidence add --result pass|fail`** and **`dge evidence remove NODE-### EVD-###`** — result-aware evidence and CLI-based correction of records.
 - **Concise, emoji-forward CLI output** for `done`/`verify`/`review`/`add-*`, with `--json` for the full payload and `--ascii`/`NO_EMOJI` for an emoji-free rendering. Paths are now relative, never absolute.
 - **Wider gap vocabulary** — gap `type` accepts `privacy`, `architecture`, `ownership`; gap `severity` accepts `major`.

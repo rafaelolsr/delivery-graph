@@ -9,6 +9,18 @@ npm install --save-dev github:rafaelolsr/delivery-graph
 npx dge init --title "My first DGE graph"
 ```
 
+> **Hitting `npm error code E401 Unable to authenticate` on a corporate/Windows machine?** DGE is a
+> public git fetch, not a registry package — the E401 comes from your corporate npm config (a
+> stale token / registry mirror) forcing auth on a request that needs none. Point at the public
+> registry for the install; this has worked on a locked-down corporate Windows machine:
+>
+> ```bash
+> npm install -g github:rafaelolsr/delivery-graph --registry=https://registry.npmjs.org/
+> dge preflight --no-graph   # verify the CLI is reachable
+> ```
+>
+> See the [README troubleshooting section](../README.md#troubleshooting-npm-error-code-e401-unable-to-authenticate-on-a-corporate-machine) for the project-local and clone-based alternatives.
+
 Inside the DGE source repository, use `npm run dge -- ...` for development. In consuming repositories, use `npx dge ...`.
 
 ### Install the skills into your harness
