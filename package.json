@@ -13,7 +13,8 @@
     "url": "https://github.com/rafaelolsr/delivery-graph/issues"
   },
   "bin": {
-    "dge": "./bin/dge.mjs"
+    "dge": "./bin/dge.mjs",
+    "setup": "./bin/dge-setup.mjs"
   },
   "files": [
     "adapters/",

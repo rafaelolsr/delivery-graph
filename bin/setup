@@ -1,0 +1,4 @@
+#!/usr/bin/env node
+// Extensionless entry point so `npx github:rafaelolsr/delivery-graph setup ...`
+// (and the plugin's bin/ PATH) run the bootstrap by bare name, mirroring bin/dge.
+import "./dge-setup.mjs";

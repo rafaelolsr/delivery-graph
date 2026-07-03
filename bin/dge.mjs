@@ -754,7 +754,24 @@ function writeSyncPlan(outputPath, syncPlan) {
 // race. The rev compare-and-swap remains as a second line of defence (it catches the
 // rare case where a stale lock was broken mid-cycle) and retries a bounded number of
 // times, failing loudly rather than clobbering or looping forever.
+// REQ-041 / NODE-048: the first mutation in a repo with no graph auto-creates the
+// store — but ONLY at the default path, and never silently when the user pointed
+// --graph at a specific file. An explicit --graph at a missing path still fails
+// loudly (via readGraph below), so a typo can't spawn an accidental second store.
+function ensureStoreForMutation(graphPath, args) {
+  if (args.graph !== undefined) return; // explicit --graph: never auto-create
+  if (graphPath !== DEFAULT_GRAPH_PATH) return;
+  if (fs.existsSync(graphPath)) return;
+
+  const graph = createGraph({});
+  writeGraph(graphPath, graph);
+  if (!args.json) {
+    console.log(`${glyph("added", args)} created store at ${graphPath} (no graph found; run \`dge init --title\` to set a title)`);
+  }
+}
+
 function runMutation(graphPath, mutate, args = {}) {
+  ensureStoreForMutation(graphPath, args);
   let record;
   for (let attempt = 0; ; attempt += 1) {
     try {
