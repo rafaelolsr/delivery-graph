@@ -34,6 +34,43 @@ Re-running is safe: existing skills are skipped unless you pass `--force`.
 
 > The numbered steps below assume the skills are installed. Without them, run the equivalent `npx dge ...` commands shown in each section directly.
 
+## Decide what to commit: your `delivery-graph/` store
+
+DGE does **not** touch your `.gitignore` — what you share is your team's call, not the
+tool's. The `delivery-graph/` folder is your store; decide whether it belongs in version
+control and paste one of the snippets below into your own `.gitignore` (append it; do not
+replace your existing rules).
+
+**Default — ignore the whole store** (nothing shared; each dev's graph is local):
+
+```gitignore
+# --- Delivery Graph Engineering ---
+delivery-graph/
+```
+
+**Share the compound-loop learnings** (recommended for a single team on one repo). The
+`learnings/` folder is what `/dge-intake` reads before scoping new work, so sharing it is
+how the toolset gets smarter across the team — without sharing the churnier, conflict-prone
+rest:
+
+```gitignore
+# --- Delivery Graph Engineering ---
+# Ignore the runtime store, but SHARE the compound-loop learnings.
+delivery-graph/*
+!delivery-graph/learnings/
+!delivery-graph/learnings/**
+```
+
+**Share the whole store** (demands, requirements, graph, evidence, reports) — richest
+onboarding and traceability, best for small teams doing serialized work: simply do not
+ignore `delivery-graph/` at all, and commit it.
+
+> **Caveat for concurrent teams:** `graph.json` is a single JSON file with no locking, so
+> two people authoring the graph at the same time will hit merge conflicts on it. For small
+> teams editing serially this is a non-issue; at higher concurrency, coordinate graph edits
+> (pull before editing, small commits). This is a per-repo decision — DGE neither knows nor
+> tracks team boundaries.
+
 ## 1. Intake a demand
 
 ```text
