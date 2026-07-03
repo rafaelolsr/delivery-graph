@@ -180,11 +180,13 @@ If `always-auth=true` comes from your user config, override it **per project** �
 the corporate global config — by adding an `.npmrc` next to your `package.json` containing
 `always-auth=false`.
 
-Once the CLI is installed, add the `/dge-*` skills to your harness and create the store — from
-your project directory:
+Once the CLI is installed, add the `/dge-*` skills to your harness and create the store. Run
+these **from your project directory** — `install-skills` auto-detects the harness only when a
+`.claude/` or `.github/` folder already exists there, so pass `--harness` explicitly if it
+doesn't (e.g. right after a global `-g` install):
 
 ```bash
-dge install-skills          # copies the /dge-* skills into .claude/ or .github/
+dge install-skills --harness claude   # or: --harness copilot  (creates .claude/skills or .github/skills)
 dge init --title "My delivery graph"
 ```
 
