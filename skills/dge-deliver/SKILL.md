@@ -51,7 +51,14 @@ the graph check on a brand-new demand):
 dge preflight --no-graph || npx --no-install dge preflight --no-graph
 ```
 
-If it exits non-zero, stop and tell the user to install DGE first.
+If it exits non-zero, **stop** and tell the user to install the DGE CLI first:
+
+> **DGE CLI not found.** The `dge` CLI is a separate npm package from the `/dge-*`
+> slash commands — the plugin marketplace ships the skills, not the binary. Install
+> it in this project, then re-run:
+> ```bash
+> npm install --save-dev github:rafaelolsr/delivery-graph
+> ```
 
 ## Resume detection
 

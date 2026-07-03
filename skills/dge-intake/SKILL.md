@@ -38,10 +38,16 @@ skip the graph check:
 dge preflight --no-graph || npx --no-install dge preflight --no-graph
 ```
 
-If it exits non-zero, **stop** and tell the user to install DGE first — do not proceed:
+If it exits non-zero, **stop** and tell the user to install the DGE CLI first — do not proceed:
 
-> DGE CLI not found. Install the plugin (which ships `dge` on the PATH) or run
-> `npm install --save-dev github:rafaelolsr/delivery-graph`, then re-run `/dge-intake`.
+> **DGE CLI not found.** The `dge` CLI is a separate npm package from the `/dge-*`
+> slash commands. If you installed the skills via the plugin marketplace, you still
+> need the CLI — the marketplace ships prompts, not the binary. Install it in this
+> project:
+> ```bash
+> npm install --save-dev github:rafaelolsr/delivery-graph
+> ```
+> Then re-run `/dge-intake`.
 
 The `dge` CLI is the **only** writer of `delivery-graph/graph.json`. Never hand-write or
 hand-edit `graph.json`. If the CLI is missing, the correct action is to install it, not to emulate it.
