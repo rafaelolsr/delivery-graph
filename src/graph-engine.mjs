@@ -9,7 +9,8 @@ export const NODE_STATUSES = [
   "blocked",
   "review",
   "verified",
-  "done"
+  "done",
+  "done-waived"
 ];
 
 export const GRAPH_STATUSES = ["draft", "active", "blocked", "review", "done"];
@@ -19,9 +20,14 @@ export const NODE_TRANSITIONS = new Map([
   ["ready", new Set(["in_progress", "blocked"])],
   ["in_progress", new Set(["review", "blocked"])],
   ["blocked", new Set(["ready", "in_progress"])],
-  ["review", new Set(["in_progress", "verified", "blocked"])],
+  ["review", new Set(["in_progress", "verified", "blocked", "done-waived"])],
   ["verified", new Set(["done", "in_progress"])],
-  ["done", new Set([])]
+  ["done", new Set([])],
+  // `done-waived` is a terminal status like `done`, minted only through the
+  // waiver path (a review node with no evidence, whose deps are complete). It is
+  // deliberately reachable ONLY from `review`, never from `verified` — the whole
+  // point is a proof-free exit for un-provable work, kept distinct from `done`.
+  ["done-waived", new Set([])]
 ]);
 
 export function readGraph(graphPath) {
@@ -309,7 +315,9 @@ export function getReadyNodes(graph) {
   const nodesById = new Map((graph.nodes ?? []).map((node) => [node.id, node]));
   return (graph.nodes ?? []).filter((node) => {
     if (node.status !== "ready") return false;
-    return (node.depends_on ?? []).every((dependencyId) => nodesById.get(dependencyId)?.status === "done");
+    // A dependency is satisfied when it is complete — `done` OR `done-waived`.
+    // A waived node unblocks its dependents exactly like a proven one.
+    return (node.depends_on ?? []).every((dependencyId) => isNodeComplete(nodesById.get(dependencyId)));
   });
 }
 
@@ -377,9 +385,19 @@ export function transitionNode(graph, nodeId, nextStatus, options = {}) {
   };
 }
 
+// A node is "complete" — it satisfies a dependency and unblocks dependents — when
+// it is either `done` (proven) or `done-waived` (proof waived for un-provable work).
+// This is the single definition of completion; readiness and the dependency checks
+// both route through it so a waived node counts exactly like a done one.
+export const COMPLETE_STATUSES = new Set(["done", "done-waived"]);
+
+export function isNodeComplete(node) {
+  return COMPLETE_STATUSES.has(node?.status);
+}
+
 function getIncompleteDependencies(graph, node) {
   const nodesById = new Map(graph.nodes.map((candidate) => [candidate.id, candidate]));
-  return node.depends_on.filter((dependencyId) => nodesById.get(dependencyId)?.status !== "done");
+  return node.depends_on.filter((dependencyId) => !isNodeComplete(nodesById.get(dependencyId)));
 }
 
 function assertEvidencePath(node) {

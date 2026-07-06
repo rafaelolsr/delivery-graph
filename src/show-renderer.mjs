@@ -22,7 +22,8 @@ export function buildDemandView(graphPath, graph, demandId) {
       title: node.title,
       status: node.status,
       requirement_ids: node.requirement_ids ?? [],
-      has_evidence: nodeHasEvidence(graphPath, node)
+      has_evidence: nodeHasEvidence(graphPath, node),
+      waiver: node.waiver ?? null
     }));
 
   // Unresolved blocker gaps that block one of this demand's requirements. Gate 1
