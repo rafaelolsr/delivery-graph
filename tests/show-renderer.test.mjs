@@ -115,3 +115,43 @@ test("renderDemandView always ends with exactly one Next section", () => {
   assert.equal(out.match(/^## Next$/gm).length, 1);
   assert.match(out, /Approve to plan/);
 });
+
+test("buildDemandView includes the derived progress for the demand", () => {
+  const { graphPath, graph } = setup();
+  const view = buildDemandView(graphPath, graph, "DEM-001");
+  // DEM-001 has one node in `done`, so it is fully complete -> done stage.
+  assert.deepEqual(view.progress, {
+    stage: "done",
+    requirementCount: 1,
+    totalNodes: 1,
+    completeNodes: 1,
+    blockedNodes: 0,
+    reviewNodes: 0
+  });
+});
+
+test("renderDemandView includes the progress line in emoji mode", () => {
+  const { graphPath, graph } = setup();
+  const out = renderDemandView(buildDemandView(graphPath, graph, "DEM-001"), {});
+  assert.match(out, /Intake ✅ → Plan ✅ → Execute ✅ → Verify ✅ → Done 🎯/);
+});
+
+test("renderDemandView includes the progress line in ascii mode with no raw emoji", () => {
+  const { graphPath, graph } = setup();
+  const out = renderDemandView(buildDemandView(graphPath, graph, "DEM-001"), { ascii: true });
+  assert.match(out, /Intake \[x\] -> Plan \[x\] -> Execute \[x\] -> Verify \[x\] -> Done \[done\]/);
+});
+
+test("renderDemandView renders each node's status as a glyph plus its status word in emoji mode", () => {
+  const { graphPath, graph } = setup();
+  graph.nodes.push(makeNode("NODE-002", "DEM-001", ["REQ-001"], "review"));
+  const out = renderDemandView(buildDemandView(graphPath, graph, "DEM-001"), {});
+  assert.match(out, /🟠 review NODE-002/);
+});
+
+test("renderDemandView renders the proposed status glyph in ascii mode", () => {
+  const { graphPath, graph } = setup();
+  graph.nodes.push(makeNode("NODE-002", "DEM-001", ["REQ-001"], "proposed"));
+  const out = renderDemandView(buildDemandView(graphPath, graph, "DEM-001"), { ascii: true });
+  assert.match(out, /\[proposed\] NODE-002/);
+});

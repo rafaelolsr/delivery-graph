@@ -7,6 +7,7 @@ import {
   ConcurrentModificationError,
   getNextReadyNode,
   isNodeComplete,
+  nodeDemandId,
   readGraph,
   readGraphRev,
   summarizeGraph,
@@ -398,10 +399,16 @@ function firstLine(text) {
 
 function runStatus(graphPath, args = {}) {
   const graph = readGraph(graphPath);
+  const demandId = args.demand ?? null;
   const shouldWriteReport = args.out !== undefined || args.save;
   const generatedAt = shouldWriteReport ? new Date() : null;
+  const evidenceStatuses = getAllEvidenceStatuses(graphPath, graph).filter(
+    (status) => !demandId || nodeDemandId(graph, findNode(graph, status.node_id)) === demandId
+  );
   const markdown = renderStatus(graph, {
-    evidenceStatuses: getAllEvidenceStatuses(graphPath, graph),
+    ...args,
+    demandId,
+    evidenceStatuses,
     generatedAt: generatedAt?.toISOString()
   });
   process.stdout.write(markdown);
@@ -1010,7 +1017,7 @@ Usage:
   dge regenerate [--graph path] [--json]
   dge show DEM-001 [--graph path] [--json]
   dge learnings [search terms...] [--about "topic"] [--graph path] [--json]
-  dge status [--graph path] [--out delivery-graph/reports/status.md | --save]
+  dge status [--demand DEM-001] [--graph path] [--out delivery-graph/reports/status.md | --save]
   dge next [--graph path] [--json]
   dge evidence add NODE-001 --satisfies "npm test" --summary "npm test passed" [--result pass|fail] [--artifact output.txt]
   dge evidence run NODE-001 --satisfies "npm test" -- npm test

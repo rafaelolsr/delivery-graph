@@ -108,7 +108,7 @@ Create tracks and nodes through the CLI (`dge add-track`, `dge add-node`); it up
 
 Follow the shared output convention (see `skills/README.md`): lead with a bold
 one-line synthesis (e.g. "Graph planned: N tracks, M nodes, K ready"), then the
-detail:
+demand's progress indicator (see `skills/README.md`), then the detail:
 
 - graph id
 - tracks created

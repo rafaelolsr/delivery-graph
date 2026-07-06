@@ -162,6 +162,26 @@ test("skills/README.md defines the output convention", () => {
   assert.match(text, /##\s*Next/);
 });
 
+// Demand-level progress indicator: the 5 skills that mutate a demand's
+// requirements/nodes must each print the derived lifecycle line (Intake ->
+// Plan -> Execute -> Verify -> Done) between the synthesis and the detail.
+// Guard the behavior (a reference to the progress indicator convention), not
+// exact phrasing, per skill-prose-can-drift-from-code.
+const PROGRESS_SKILLS = ["dge-intake", "dge-plan-graph", "dge-work-node", "dge-execute-graph", "dge-verify"];
+
+for (const skill of PROGRESS_SKILLS) {
+  test(`${skill} references the demand progress indicator`, () => {
+    const text = readSkill(skill);
+    assert.match(text, /progress indicator/i);
+  });
+}
+
+test("skills/README.md defines the demand progress indicator convention", () => {
+  const text = fs.readFileSync(path.join(skillsDir, "README.md"), "utf8");
+  assert.match(text, /progress indicator/i);
+  assert.match(text, /Intake.*Plan.*Execute.*Verify.*Done/s);
+});
+
 // DEM-013 (and the standing mirror rule): when a local .claude/skills/ mirror
 // exists (it is a local `dge install-skills` artifact, NOT tracked source — the
 // package ships `skills/` only), it must stay byte-identical to canonical

@@ -219,7 +219,8 @@ If blocker gaps remain, stop and report them instead of invoking `/dge-plan-grap
 
 Follow the shared output convention (see `skills/README.md`): lead the final reply
 with a bold one-line synthesis — ready for `/dge-plan-graph`, or blocked on N
-gaps — then the detail (requirements captured, gaps open), then a `## Next` block:
+gaps — then the demand's progress indicator (see `skills/README.md`), then the
+detail (requirements captured, gaps open), then a `## Next` block:
 `/dge-plan-graph` when ready, or the specific blocker gaps to resolve when not.
 
 ## CLI contract

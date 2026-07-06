@@ -80,6 +80,7 @@ convention (see `skills/README.md`):
 
 - **A one-sentence "here's the story" synthesis first** — what this run accomplished
   (or where it stopped and why), before any per-node detail.
+- Then the demand's progress indicator (see `skills/README.md`).
 - Then the detail: nodes completed this run, in order, noting any that succeeded only
   after a retry or an ambiguity pause; the node that blocked, if any, with the exact
   `dge done` failure reason, whether it was transient or structural, and how many
