@@ -165,7 +165,7 @@
         },
         "status": {
           "type": "string",
-          "enum": ["proposed", "ready", "in_progress", "blocked", "review", "verified", "done"]
+          "enum": ["proposed", "ready", "in_progress", "blocked", "review", "verified", "done", "done-waived"]
         },
         "validation": {
           "type": "object",
@@ -189,6 +189,16 @@
           "properties": {
             "linear_issue_id": { "type": ["string", "null"] },
             "ado_task_id": { "type": ["string", "number", "null"] }
+          }
+        },
+        "waiver": {
+          "type": "object",
+          "description": "Present only on a done-waived node. Records why the evidence gate was waived for un-provable work, keeping every skip signed and auditable.",
+          "required": ["reason", "waived_at"],
+          "additionalProperties": false,
+          "properties": {
+            "reason": { "type": "string", "minLength": 1 },
+            "waived_at": { "type": "string" }
           }
         }
       }

@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { assertValidGraph, writeFileAtomic } from "./graph-engine.mjs";
+import { assertValidGraph, isNodeComplete, writeFileAtomic } from "./graph-engine.mjs";
 import { resolveRuntimePath } from "./path-utils.mjs";
 
 export function evidenceManifestPath(graphPath, node) {
@@ -268,6 +268,65 @@ export function verifyNode(graphPath, graph, nodeId, options = {}) {
     verifiedAt: options.updatedAt ?? nextGraph.graph.updated_at
   });
   return { graph: nextGraph, evidenceStatus, verificationPath };
+}
+
+// waiveNode is the escape hatch for un-provable work: it mints the terminal
+// `done-waived` status WITHOUT evidence, but only through four hard guardrails so
+// the waiver can never become a way to dodge the real evidence gate. Every rule
+// lives here in the engine (not a skill) so a raw CLI call is governed identically.
+export function waiveNode(graphPath, graph, nodeId, options = {}) {
+  assertValidGraph(graph);
+  const node = findNode(graph, nodeId);
+
+  // 1. Reason is mandatory — a blank waiver is an unsigned exception. requireText
+  //    throws on empty/whitespace.
+  const reason = requireText(options.reason, "waiver reason");
+
+  // 2. A waiver is a proof-free `review -> done-waived` move only. Any other
+  //    source status (including `blocked`, which needs a human decision, and
+  //    `verified`, which should go to real `done`) is rejected.
+  if (node.status !== "review") {
+    throw new Error(
+      `${node.id} cannot be waived from status "${node.status}"; a waiver applies only to a node in review`
+    );
+  }
+
+  // 3. Ordering still holds — the waiver skips proof, not the dependency line.
+  const incompleteDependencies = (node.depends_on ?? []).filter(
+    (dependencyId) => !isNodeComplete(graph.nodes.find((candidate) => candidate.id === dependencyId))
+  );
+  if (incompleteDependencies.length > 0) {
+    throw new Error(
+      `${node.id} cannot be waived; incomplete dependencies: ${incompleteDependencies.join(", ")}`
+    );
+  }
+
+  // 4. A waiver is ONLY for "nothing to prove." If any evidence exists (pass, fail,
+  //    or ambiguous), the node is not un-provable — it must go through `dge verify`,
+  //    not around it. This is the rule that keeps done-waived honest.
+  const manifest = readEvidenceManifest(graphPath, node);
+  if ((manifest.items ?? []).length > 0) {
+    throw new Error(
+      `${node.id} has evidence recorded; waivers are only for nodes with no evidence — run \`dge verify ${node.id}\` and \`dge done ${node.id}\` instead`
+    );
+  }
+
+  const waivedAt = options.updatedAt ?? new Date().toISOString();
+  const nextGraph = {
+    ...graph,
+    graph: {
+      ...graph.graph,
+      updated_at: waivedAt
+    },
+    nodes: graph.nodes.map((candidate) =>
+      candidate.id === node.id
+        ? { ...candidate, status: "done-waived", waiver: { reason, waived_at: waivedAt } }
+        : candidate
+    )
+  };
+
+  assertValidGraph(nextGraph);
+  return { graph: nextGraph, reason };
 }
 
 export function findNode(graph, nodeId) {

@@ -4,6 +4,8 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import {
+  NODE_STATUSES,
+  NODE_TRANSITIONS,
   getNextReadyNode,
   getReadyNodes,
   readGraph,
@@ -270,6 +272,43 @@ test("transitionNode refuses to mint verified (evidence gate lives in verifyNode
   assert.throws(
     () => transitionNode(graph, "NODE-001", "verified"),
     /cannot be moved to verified via transition/
+  );
+});
+
+test("done-waived is a recognized node status", () => {
+  assert.ok(NODE_STATUSES.includes("done-waived"));
+});
+
+test("done-waived is terminal — it has no outgoing transitions", () => {
+  const outgoing = NODE_TRANSITIONS.get("done-waived");
+  assert.ok(outgoing instanceof Set);
+  assert.equal(outgoing.size, 0);
+});
+
+test("done-waived is reachable from review but not from verified", () => {
+  assert.ok(NODE_TRANSITIONS.get("review").has("done-waived"));
+  assert.ok(!NODE_TRANSITIONS.get("verified").has("done-waived"));
+});
+
+test("a done-waived node unblocks its dependents exactly like a done node", () => {
+  const graph = makeGraph({
+    nodes: [
+      makeNode("NODE-001", { status: "done-waived" }),
+      makeNode("NODE-002", { status: "ready", depends_on: ["NODE-001"] })
+    ]
+  });
+
+  assert.deepEqual(getReadyNodes(graph).map((node) => node.id), ["NODE-002"]);
+});
+
+test("adding done-waived leaves the real done gate unchanged: done still requires verified", () => {
+  const graph = makeGraph({ nodes: [makeNode("NODE-001", { status: "review" })] });
+
+  // review -> done is not a lifecycle edge; the only path to `done` remains
+  // review -> verified -> done. The waiver status must not open a shortcut to done.
+  assert.throws(
+    () => transitionNode(graph, "NODE-001", "done"),
+    /Invalid node transition/
   );
 });
 

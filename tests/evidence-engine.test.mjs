@@ -9,6 +9,7 @@ import {
   getEvidenceStatus,
   removeEvidence,
   verifyNode,
+  waiveNode,
   writeCommandAttemptArtifact
 } from "../src/evidence-engine.mjs";
 
@@ -418,6 +419,83 @@ test("failed playwright attempts save output and available artifacts without add
   assert.equal(attempt.metadata.url, "http://localhost:3000");
   assert.deepEqual(attempt.artifacts, ["artifacts/ATTEMPT-2026-06-30T00-00-00Z-playwright-artifacts/trace.zip"]);
   assert.equal(fs.existsSync(path.join(tempDir, "delivery-graph", "demands", "DEM-001", "evidence", "NODE-001", "evidence.json")), false);
+});
+
+test("waiveNode moves a no-evidence review node to done-waived and records the reason", () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "dge-waive-"));
+  const graphPath = path.join(tempDir, "delivery-graph", "graph.json");
+  const graph = makeGraph();
+
+  const { graph: nextGraph, reason } = waiveNode(graphPath, graph, "NODE-001", {
+    reason: "typo fix — nothing to test",
+    updatedAt: "2026-07-06T00:00:00Z"
+  });
+
+  assert.equal(nextGraph.nodes[0].status, "done-waived");
+  assert.equal(nextGraph.nodes[0].waiver.reason, "typo fix — nothing to test");
+  assert.equal(nextGraph.nodes[0].waiver.waived_at, "2026-07-06T00:00:00Z");
+  assert.equal(reason, "typo fix — nothing to test");
+});
+
+test("waiveNode rejects a blank reason", () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "dge-waive-"));
+  const graphPath = path.join(tempDir, "delivery-graph", "graph.json");
+  const graph = makeGraph();
+
+  assert.throws(() => waiveNode(graphPath, graph, "NODE-001", { reason: "   " }), /waiver reason/);
+});
+
+test("waiveNode rejects a node that is not in review (e.g. blocked)", () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "dge-waive-"));
+  const graphPath = path.join(tempDir, "delivery-graph", "graph.json");
+  const graph = makeGraph();
+  graph.nodes[0].status = "blocked";
+
+  assert.throws(
+    () => waiveNode(graphPath, graph, "NODE-001", { reason: "trivial" }),
+    /cannot be waived from status "blocked"/
+  );
+});
+
+test("waiveNode rejects a node with incomplete dependencies", () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "dge-waive-"));
+  const graphPath = path.join(tempDir, "delivery-graph", "graph.json");
+  const graph = makeGraph();
+  // Add an upstream node that is not complete, and make NODE-001 depend on it.
+  graph.nodes.push({
+    ...graph.nodes[0],
+    id: "NODE-002",
+    status: "in_progress",
+    validation: {
+      required: ["npm test"],
+      evidence_path: "delivery-graph/demands/DEM-001/evidence/NODE-002/"
+    }
+  });
+  graph.nodes[0].depends_on = ["NODE-002"];
+
+  assert.throws(
+    () => waiveNode(graphPath, graph, "NODE-001", { reason: "trivial" }),
+    /incomplete dependencies: NODE-002/
+  );
+});
+
+test("waiveNode rejects a node that already has evidence recorded (pass or fail)", () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "dge-waive-"));
+  const graphPath = path.join(tempDir, "delivery-graph", "graph.json");
+  const graph = makeGraph();
+
+  addEvidence(graphPath, graph, "NODE-001", {
+    kind: "manual",
+    summary: "some proof",
+    satisfies: "npm test",
+    result: "pass",
+    createdAt: "2026-07-06T00:00:00Z"
+  });
+
+  assert.throws(
+    () => waiveNode(graphPath, graph, "NODE-001", { reason: "trivial" }),
+    /has evidence recorded; waivers are only for nodes with no evidence/
+  );
 });
 
 function makeGraph() {
