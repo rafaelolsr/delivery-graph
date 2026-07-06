@@ -29,3 +29,24 @@ shared with every CLI-rendered surface (DEM-013):
 
 This is a convention enforced by `tests/skill-cli-contract.test.mjs`, not a
 template file — each skill states it in its own words at its own output step.
+
+## Demand progress indicator (intake/plan/execute/verify)
+
+After a mutation that touches a demand's requirements or nodes, the skill's
+final reply includes the demand's one-line lifecycle indicator — where the
+demand sits across `Intake → Plan → Execute → Verify → Done` — placed between
+the synthesis line and the detail/`## Next` block.
+
+The stage is always derived, never stored: call `dge show DEM-### --json` or
+`dge status --demand DEM-### --json` (whichever the skill already calls) and
+render its `progress` field with the shared format, e.g.:
+
+```
+Intake ✅ → Plan ✅ → Execute 🟡 (3/7, 🚫1 blocked) → Verify ⚪ → Done ⚪
+```
+
+`dge-intake`, `dge-plan-graph`, `dge-work-node`, `dge-execute-graph`, and
+`dge-verify` each include this line. `dge-status` is already the dedicated
+progress surface (via `--demand`); the reflective/sequencing skills
+(`dge-review`, `dge-compound`, `dge-sync`, `dge-deliver`) don't need it —
+they either inherit it transitively or operate after a demand is already done.

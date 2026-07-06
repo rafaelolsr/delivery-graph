@@ -1,11 +1,15 @@
 import fs from "node:fs";
 import path from "node:path";
-import { NODE_STATUSES, summarizeGraph } from "./graph-engine.mjs";
+import { NODE_STATUSES, summarizeGraph, nodeDemandId, demandProgress } from "./graph-engine.mjs";
 import { resolveRuntimePath } from "./path-utils.mjs";
-import { renderNextSteps } from "./output.mjs";
+import { renderNextSteps, renderDemandProgressLine } from "./output.mjs";
 
 export function renderStatus(graph, options = {}) {
-  const summary = summarizeGraph(graph);
+  const demandId = options.demandId ?? null;
+  const scopedGraph = demandId
+    ? { ...graph, nodes: (graph.nodes ?? []).filter((node) => nodeDemandId(graph, node) === demandId) }
+    : graph;
+  const summary = summarizeGraph(scopedGraph);
   const evidenceStatuses = options.evidenceStatuses ?? [];
   const lines = [];
 
@@ -13,12 +17,17 @@ export function renderStatus(graph, options = {}) {
 
   // Bold headline so the board leads with the state, not the grid. Pure counts
   // over the status map — done/total, ready, blocked.
-  const total = (graph.nodes ?? []).length;
+  const total = (scopedGraph.nodes ?? []).length;
   const doneCount = (summary.statuses.get("done") ?? []).length;
   const readyCount = summary.readyNodes.length;
   const blockedCount = (summary.statuses.get("blocked") ?? []).length;
   lines.push("");
   lines.push(`**${doneCount}/${total} done · ${readyCount} ready · ${blockedCount} blocked**`);
+
+  if (demandId) {
+    lines.push("");
+    lines.push(renderDemandProgressLine(demandProgress(graph, demandId), options));
+  }
 
   if (options.generatedAt) {
     lines.push("");

@@ -16,7 +16,14 @@ const GLYPHS = {
   added: ["➕", "+"],
   removed: ["➖", "-"],
   next: ["👉", "->"],
-  ready: ["🟢", "[ready]"]
+  ready: ["🟢", "[ready]"],
+  stage_done: ["✅", "[x]"],
+  stage_current: ["🟡", "[~]"],
+  stage_pending: ["⚪", "[ ]"],
+  proposed: ["⚪", "[proposed]"],
+  in_progress: ["🟡", "[in_progress]"],
+  review: ["🟠", "[review]"],
+  "done-waived": ["🟣", "[done-waived]"]
 };
 
 // Resolve ascii mode from an explicit flag or the NO_EMOJI env var.
@@ -104,4 +111,62 @@ export function renderNextSteps(items, options = {}) {
     for (const item of list) lines.push(`${cue} ${item}`);
   }
   return lines.join("\n");
+}
+
+const DEMAND_STAGE_LABELS = {
+  intake: "Intake",
+  plan: "Plan",
+  execute: "Execute",
+  verify: "Verify",
+  done: "Done"
+};
+const DEMAND_STAGE_ORDER = ["intake", "plan", "execute", "verify", "done"];
+
+// The one-line demand lifecycle indicator every demand-scoped surface shows:
+// `Intake ✅ → Plan ✅ → Execute 🟡 (3/7, 1 in review, 🚫1 blocked) → Verify ⚪ → Done ⚪`.
+// `progress` is the shape returned by graph-engine's `demandProgress`. Stages
+// before the current one render done, the current one renders current (with
+// counts and blocked/in-review annotations when relevant), later ones render
+// pending. The terminal `done` stage reuses the existing `done` glyph (🎯) as
+// a celebratory marker instead of a plain checkmark.
+//
+// The "in review" annotation only appears during `execute`: it exists to
+// distinguish "nothing has reached review yet" from "some nodes are already
+// there," a distinction the bare done/total fraction can't show on its own.
+// Once every incomplete node has reached review the stage itself flips to
+// `verify`, so repeating the count there would be redundant.
+//
+// `plan` never has nodes yet — that is its defining condition — so it renders
+// bare (`Plan 🟡`) instead of an uninformative `(0/0)`.
+export function renderDemandProgressLine(progress, options = {}) {
+  const currentIndex = DEMAND_STAGE_ORDER.indexOf(progress.stage);
+  const arrow = isAsciiMode(options) ? " -> " : " → ";
+
+  const segments = DEMAND_STAGE_ORDER.map((stage, index) => {
+    const label = DEMAND_STAGE_LABELS[stage];
+    if (stage === "done" && index === currentIndex) {
+      return `${label} ${glyph("done", options)}`;
+    }
+    if (index < currentIndex) {
+      return `${label} ${glyph("stage_done", options)}`;
+    }
+    if (index > currentIndex) {
+      return `${label} ${glyph("stage_pending", options)}`;
+    }
+    // `plan` never has nodes yet (that's its defining condition), so a bare
+    // 0/0 fraction would carry no information — omit the parenthetical there.
+    if (stage === "plan") {
+      return `${label} ${glyph("stage_current", options)}`;
+    }
+    const detail = [`${progress.completeNodes}/${progress.totalNodes}`];
+    if (stage === "execute" && progress.reviewNodes > 0) {
+      detail.push(`${progress.reviewNodes} in review`);
+    }
+    if (progress.blockedNodes > 0) {
+      detail.push(`${glyph("blocked", options)}${progress.blockedNodes} blocked`);
+    }
+    return `${label} ${glyph("stage_current", options)} (${detail.join(", ")})`;
+  });
+
+  return segments.join(arrow);
 }

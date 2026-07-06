@@ -35,7 +35,8 @@ Gate node completion on validation evidence. Verification is a first-class workf
 
 Follow the shared output convention (see `skills/README.md`): lead the final
 reply with a bold one-line synthesis (e.g. "NODE-### verified" or "NODE-### blocked
-— missing evidence"), then the detail:
+— missing evidence"), then the demand's progress indicator (see
+`skills/README.md`), then the detail:
 
 - node id
 - validation status

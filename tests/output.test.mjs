@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import path from "node:path";
 import test from "node:test";
-import { glyph, isAsciiMode, relativePath, renderNextSteps, firstSentence, demandLead } from "../src/output.mjs";
+import { glyph, isAsciiMode, relativePath, renderNextSteps, firstSentence, demandLead, renderDemandProgressLine } from "../src/output.mjs";
 
 test("glyph returns emoji by default", () => {
   assert.equal(glyph("done", {}, {}), "🎯");
@@ -84,4 +84,108 @@ test("demandLead prefers summary, falls back to outcome, else empty", () => {
   assert.equal(demandLead({ summary: "TL;DR line", outcome: "long outcome. more." }), "**TL;DR line**");
   assert.equal(demandLead({ outcome: "Fallback works. Detail after." }), "**Fallback works.**");
   assert.equal(demandLead({}), "");
+});
+
+test("glyph returns the new stage glyphs in emoji and ascii modes", () => {
+  assert.equal(glyph("stage_done", {}, {}), "✅");
+  assert.equal(glyph("stage_current", {}, {}), "🟡");
+  assert.equal(glyph("stage_pending", {}, {}), "⚪");
+  assert.equal(glyph("stage_done", { ascii: true }, {}), "[x]");
+  assert.equal(glyph("stage_current", { ascii: true }, {}), "[~]");
+  assert.equal(glyph("stage_pending", { ascii: true }, {}), "[ ]");
+});
+
+test("glyph returns a per-node-status glyph for every non-done/ready/blocked status", () => {
+  assert.equal(glyph("proposed", {}, {}), "⚪");
+  assert.equal(glyph("in_progress", {}, {}), "🟡");
+  assert.equal(glyph("review", {}, {}), "🟠");
+  assert.equal(glyph("done-waived", {}, {}), "🟣");
+  assert.equal(glyph("proposed", { ascii: true }, {}), "[proposed]");
+  assert.equal(glyph("in_progress", { ascii: true }, {}), "[in_progress]");
+  assert.equal(glyph("review", { ascii: true }, {}), "[review]");
+  assert.equal(glyph("done-waived", { ascii: true }, {}), "[done-waived]");
+});
+
+test("renderDemandProgressLine marks completed, current, and pending stages", () => {
+  const line = renderDemandProgressLine(
+    { stage: "execute", totalNodes: 7, completeNodes: 3, blockedNodes: 0 },
+    {}
+  );
+  assert.equal(line, "Intake ✅ → Plan ✅ → Execute 🟡 (3/7) → Verify ⚪ → Done ⚪");
+});
+
+test("renderDemandProgressLine omits the uninformative (0/0) fraction during plan", () => {
+  const line = renderDemandProgressLine(
+    { stage: "plan", requirementCount: 1, totalNodes: 0, completeNodes: 0, blockedNodes: 0 },
+    {}
+  );
+  assert.equal(line, "Intake ✅ → Plan 🟡 → Execute ⚪ → Verify ⚪ → Done ⚪");
+});
+
+test("renderDemandProgressLine renders the plan stage bare in ASCII too", () => {
+  const line = renderDemandProgressLine(
+    { stage: "plan", requirementCount: 1, totalNodes: 0, completeNodes: 0, blockedNodes: 0 },
+    { ascii: true }
+  );
+  assert.equal(line, "Intake [x] -> Plan [~] -> Execute [ ] -> Verify [ ] -> Done [ ]");
+});
+
+test("renderDemandProgressLine appends a blocked annotation to the active stage", () => {
+  const line = renderDemandProgressLine(
+    { stage: "execute", totalNodes: 7, completeNodes: 3, blockedNodes: 1 },
+    {}
+  );
+  assert.equal(line, "Intake ✅ → Plan ✅ → Execute 🟡 (3/7, 🚫1 blocked) → Verify ⚪ → Done ⚪");
+});
+
+test("renderDemandProgressLine appends an in-review annotation during execute", () => {
+  const line = renderDemandProgressLine(
+    { stage: "execute", totalNodes: 2, completeNodes: 0, blockedNodes: 0, reviewNodes: 1 },
+    {}
+  );
+  assert.equal(line, "Intake ✅ → Plan ✅ → Execute 🟡 (0/2, 1 in review) → Verify ⚪ → Done ⚪");
+});
+
+test("renderDemandProgressLine shows both in-review and blocked annotations together", () => {
+  const line = renderDemandProgressLine(
+    { stage: "execute", totalNodes: 3, completeNodes: 0, blockedNodes: 1, reviewNodes: 1 },
+    {}
+  );
+  assert.equal(line, "Intake ✅ → Plan ✅ → Execute 🟡 (0/3, 1 in review, 🚫1 blocked) → Verify ⚪ → Done ⚪");
+});
+
+test("renderDemandProgressLine does not repeat the in-review count during the verify stage", () => {
+  // Once every incomplete node is in review the stage itself is `verify`, so
+  // the annotation (which only fires for `execute`) must not double up there.
+  const line = renderDemandProgressLine(
+    { stage: "verify", totalNodes: 2, completeNodes: 1, blockedNodes: 0, reviewNodes: 1 },
+    {}
+  );
+  assert.equal(line, "Intake ✅ → Plan ✅ → Execute ✅ → Verify 🟡 (1/2) → Done ⚪");
+});
+
+test("renderDemandProgressLine renders the terminal done stage with the done glyph", () => {
+  const line = renderDemandProgressLine(
+    { stage: "done", totalNodes: 4, completeNodes: 4, blockedNodes: 0 },
+    {}
+  );
+  assert.equal(line, "Intake ✅ → Plan ✅ → Execute ✅ → Verify ✅ → Done 🎯");
+});
+
+test("renderDemandProgressLine renders the ASCII fallback with no raw emoji", () => {
+  const line = renderDemandProgressLine(
+    { stage: "verify", totalNodes: 2, completeNodes: 1, blockedNodes: 0 },
+    { ascii: true }
+  );
+  assert.equal(line, "Intake [x] -> Plan [x] -> Execute [x] -> Verify [~] (1/2) -> Done [ ]");
+  assert.ok(!/\p{Emoji_Presentation}/u.test(line));
+});
+
+test("renderDemandProgressLine renders the terminal done stage in ASCII with no raw emoji", () => {
+  const line = renderDemandProgressLine(
+    { stage: "done", totalNodes: 4, completeNodes: 4, blockedNodes: 0 },
+    { ascii: true }
+  );
+  assert.equal(line, "Intake [x] -> Plan [x] -> Execute [x] -> Verify [x] -> Done [done]");
+  assert.ok(!/\p{Emoji_Presentation}/u.test(line));
 });

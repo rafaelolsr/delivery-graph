@@ -395,6 +395,54 @@ export function isNodeComplete(node) {
   return COMPLETE_STATUSES.has(node?.status);
 }
 
+// The demand lifecycle, coarser than node status: where a demand sits across
+// intake -> plan -> execute -> verify -> done. Always derived live from the
+// graph's requirements/nodes for this demand — never stored — so it can never
+// drift from the data it summarizes.
+export const DEMAND_STAGES = ["intake", "plan", "execute", "verify", "done"];
+
+// One demand's stage plus the counts a renderer needs alongside it. `stage` is
+// the first matching rule, in order:
+//   - no requirements yet                              -> intake
+//   - requirements, but no nodes yet                    -> plan
+//   - nodes exist, all complete (done/done-waived)       -> done
+//   - nodes exist, all incomplete ones are in `review`   -> verify
+//   - otherwise (some node still pre-review)             -> execute
+// `blockedNodes` and `reviewNodes` are reported as annotations on whichever
+// stage is active, not stages of their own — a blocked or in-review node is
+// still "pre-complete" work in progress, just at a more specific point.
+export function demandProgress(graph, demandId) {
+  const demand = (graph.demands ?? []).find((candidate) => candidate.id === demandId);
+  if (!demand) {
+    throw new Error(`${demandId} not found`);
+  }
+
+  const requirementCount = (graph.requirements ?? []).filter((r) => r.demand_id === demandId).length;
+  const nodes = (graph.nodes ?? []).filter((node) => nodeDemandId(graph, node) === demandId);
+  const totalNodes = nodes.length;
+  const completeNodes = nodes.filter(isNodeComplete).length;
+  const blockedNodes = nodes.filter((node) => node.status === "blocked").length;
+  const reviewNodes = nodes.filter((node) => node.status === "review").length;
+
+  let stage;
+  if (requirementCount === 0) {
+    stage = "intake";
+  } else if (totalNodes === 0) {
+    stage = "plan";
+  } else if (completeNodes === totalNodes) {
+    stage = "done";
+  } else {
+    const incomplete = nodes.filter((node) => !isNodeComplete(node));
+    stage = incomplete.every((node) => node.status === "review") ? "verify" : "execute";
+  }
+
+  return { stage, requirementCount, totalNodes, completeNodes, blockedNodes, reviewNodes };
+}
+
+export function deriveDemandStage(graph, demandId) {
+  return demandProgress(graph, demandId).stage;
+}
+
 function getIncompleteDependencies(graph, node) {
   const nodesById = new Map(graph.nodes.map((candidate) => [candidate.id, candidate]));
   return node.depends_on.filter((dependencyId) => !isNodeComplete(nodesById.get(dependencyId)));

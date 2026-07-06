@@ -1,6 +1,6 @@
-import { nodeDemandId } from "./graph-engine.mjs";
+import { nodeDemandId, demandProgress } from "./graph-engine.mjs";
 import { readEvidenceManifest } from "./evidence-engine.mjs";
-import { demandLead, glyph, renderNextSteps } from "./output.mjs";
+import { demandLead, glyph, isAsciiMode, renderNextSteps, renderDemandProgressLine } from "./output.mjs";
 
 // Build the structured view of everything a demand generated: the demand, its
 // requirements, and the nodes that serve those requirements (with status and
@@ -47,6 +47,7 @@ export function buildDemandView(graphPath, graph, demandId) {
     },
     requirements: requirements.map((r) => ({ id: r.id, statement: r.statement, priority: r.priority })),
     nodes,
+    progress: demandProgress(graph, demandId),
     blocker_gaps: blockerGaps,
     // Any node whose requirement is not one of this demand's is a data error; surface it.
     orphan_requirement_ids: nodes
@@ -76,6 +77,8 @@ export function renderDemandView(view, options = {}) {
     lines.push(lead);
   }
   lines.push("");
+  lines.push(renderDemandProgressLine(view.progress, options));
+  lines.push("");
   if (view.demand.problem) {
     lines.push(`${g("blocked")} problem: ${view.demand.problem}`);
   }
@@ -95,7 +98,10 @@ export function renderDemandView(view, options = {}) {
 
   lines.push(`${g("progress")} nodes (${view.nodes.length})`);
   for (const node of view.nodes) {
-    const statusGlyph = node.status === "done" ? g("done") : `[${node.status}]`;
+    // Emoji mode: glyph + status word, so the glyph's meaning is never a lookup
+    // (e.g. "🟠 review"). ASCII mode: the glyph's own fallback already reads as
+    // the bracketed status word (e.g. "[review]"), so it stands alone.
+    const statusGlyph = isAsciiMode(options) ? (g(node.status) || `[${node.status}]`) : `${g(node.status)} ${node.status}`;
     const evidence = node.has_evidence ? g("pass") : g("fail");
     lines.push(`  ${statusGlyph} ${node.id} ${node.title}`);
     lines.push(`      serves ${node.requirement_ids.join(", ")} · evidence ${evidence}`);

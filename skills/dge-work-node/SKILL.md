@@ -36,7 +36,8 @@ Execute only the selected node's scope, then produce evidence for `/dge-verify`.
 
 Follow the shared output convention (see `skills/README.md`): lead the final
 reply with a bold one-line synthesis (e.g. "NODE-### implemented, evidence
-captured, ready for verify"), then changed files, evidence paths, and remaining
+captured, ready for verify"), then the demand's progress indicator (see
+`skills/README.md`), then changed files, evidence paths, and remaining
 validation, then a `## Next` block: `/dge-verify NODE-###`.
 
 ## Evidence format
