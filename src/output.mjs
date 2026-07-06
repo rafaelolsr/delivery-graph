@@ -14,7 +14,9 @@ const GLYPHS = {
   progress: ["📊", "progress:"],
   reports: ["📄", "reports:"],
   added: ["➕", "+"],
-  removed: ["➖", "-"]
+  removed: ["➖", "-"],
+  next: ["👉", "->"],
+  ready: ["🟢", "[ready]"]
 };
 
 // Resolve ascii mode from an explicit flag or the NO_EMOJI env var.
@@ -55,4 +57,51 @@ export function graphRoot(graphPath) {
   if (idx !== -1) return resolved.slice(0, idx);
   // Fallback: parent of the graph file's directory.
   return path.dirname(path.dirname(resolved));
+}
+
+// The bold one-line TL;DR every demand-scoped surface leads with. Prefer the
+// demand's captured `summary`; when absent, fall back to the first sentence of
+// `outcome` so the surface always has a lead and old (summary-less) demands still
+// read cleanly. Returns a markdown-bold line (no trailing newline).
+export function demandLead(demand) {
+  const text = firstSentence(demand?.summary) || firstSentence(demand?.outcome) || "";
+  return text ? `**${text}**` : "";
+}
+
+// First sentence of a block of prose: up to the first sentence-ending punctuation,
+// else the whole (trimmed) string. Used for the outcome fallback so a wall-of-text
+// outcome still yields a one-line lead.
+export function firstSentence(text) {
+  if (typeof text !== "string") return "";
+  const trimmed = text.trim();
+  if (trimmed === "") return "";
+  const match = trimmed.match(/^.*?[.!?](?=\s|$)/);
+  const candidate = (match ? match[0] : trimmed).trim();
+  // Guard against a match that is really an abbreviation ("e.g.", "i.e.") rather
+  // than a full sentence: if the first "sentence" is very short and the source has
+  // more to say, keep the whole string as the lead. A genuine short sentence with
+  // no remainder (e.g. "Ship it.") is left as-is.
+  if (match && candidate.length <= 5 && trimmed.length > candidate.length) {
+    return trimmed;
+  }
+  return candidate;
+}
+
+// The shared "## Next" block every user-facing surface ends with, so the reader
+// always finds the next action in the same place and shape. One helper, one
+// convention — the cross-renderer guard test (DEM-013) asserts each surface emits
+// exactly one of these. `items` is the ordered list of next actions (each a short
+// plain phrase); an empty list still renders the heading with a single "nothing to
+// do" line so the block is never blank. Glyph-aware, so it degrades cleanly under
+// --ascii / NO_EMOJI like every other surface.
+export function renderNextSteps(items, options = {}) {
+  const cue = glyph("next", options);
+  const lines = ["## Next"];
+  const list = (items ?? []).filter((item) => typeof item === "string" && item.trim() !== "");
+  if (list.length === 0) {
+    lines.push(`${cue} nothing to do — this is complete`);
+  } else {
+    for (const item of list) lines.push(`${cue} ${item}`);
+  }
+  return lines.join("\n");
 }

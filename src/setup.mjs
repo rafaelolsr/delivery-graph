@@ -5,6 +5,7 @@ import {
   resolveHarnessTarget,
   packagedSkillsDir
 } from "./skill-installer.mjs";
+import { renderNextSteps } from "./output.mjs";
 
 // REQ-042 / NODE-049: one cross-platform code path that sets up everything DGE
 // OWNS on a new machine — it installs the /dge-* skills for the harness(es) the
@@ -103,19 +104,22 @@ export function runSetup(options = {}, { installer = installSkills, skillsDir = 
 }
 
 // Render a plan/result as human-facing lines for the bin wrapper.
-export function renderSetup(result) {
+export function renderSetup(result, options = {}) {
   const lines = [];
   if (!result.ok) {
-    lines.push("DGE setup could not complete — resolve these first, then re-run:");
+    // Bold TL;DR lead, then the blockers, then the shared Next block.
+    lines.push("**DGE setup could not complete — nothing was installed.**");
+    lines.push("");
     for (const blocker of result.blockers) {
       lines.push(`  • ${blocker.message}`);
     }
     lines.push("");
-    lines.push("Nothing was installed (setup never half-configures a machine).");
+    lines.push(renderNextSteps(["Resolve the blockers above, then re-run dge setup"], options));
     return lines.join("\n");
   }
 
-  lines.push("DGE setup complete.");
+  lines.push("**DGE setup complete.**");
+  lines.push("");
   for (const install of result.installed) {
     const count = install.installed.length;
     lines.push(`  • ${install.harness}: ${count} skill${count === 1 ? "" : "s"} -> ${install.skillsDir}`);
@@ -124,6 +128,6 @@ export function renderSetup(result) {
     }
   }
   lines.push("");
-  lines.push("Next: `dge init --title \"...\"` (optional) then `dge add-demand ...`.");
+  lines.push(renderNextSteps(["dge init --title \"...\" (optional), then dge add-demand ..."], options));
   return lines.join("\n");
 }

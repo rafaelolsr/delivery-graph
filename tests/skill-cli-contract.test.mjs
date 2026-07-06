@@ -111,3 +111,44 @@ test("dge-intake carries the grill-me interrogation mechanics", () => {
   assert.match(text, /Locked:/);
   assert.match(text, /Confirmed decisions/i);
 });
+
+// DEM-013 / NODE-054: intake must capture a one-line summary and cap the outcome so
+// the captured prose stops becoming a wall of text. Guard the behavior (a summary
+// discipline + an outcome length cap + the --summary CLI affordance), not the exact
+// phrasing (per learning skill-prose-can-drift-from-code).
+test("dge-intake captures a one-line summary and caps the outcome length", () => {
+  const text = readSkill("dge-intake");
+  assert.match(text, /summary/i);
+  assert.match(text, /--summary/);            // the CLI affordance is offered
+  assert.match(text, /at most 3 sentences|3 sentences|wall of text/i); // outcome cap
+});
+
+// DEM-013 / NODE-054: the run summaries must lead with a synthesis and end with a
+// Next block — the same skeleton the CLI surfaces use. Guard the behavior so a
+// future edit can't revert them to a flat enumeration.
+for (const skill of ["dge-deliver", "dge-execute-graph"]) {
+  test(`${skill} final summary leads with a synthesis and ends with a Next block`, () => {
+    const text = readSkill(skill);
+    assert.match(text, /synthesis/i);          // lead-with-the-story requirement
+    assert.match(text, /##\s*Next/);           // mandatory Next block
+  });
+}
+
+// DEM-013 (and the standing mirror rule): when a local .claude/skills/ mirror
+// exists (it is a local `dge install-skills` artifact, NOT tracked source — the
+// package ships `skills/` only), it must stay byte-identical to canonical
+// `skills/`. This catches editing one copy and forgetting the other during local
+// dogfooding. It SKIPS when the mirror is absent (e.g. a clean CI checkout) so it
+// never depends on untracked files — `skills/` is the single source of truth.
+const mirrorRoot = path.join(repoRoot, ".claude", "skills");
+for (const skill of ["dge-intake", "dge-deliver", "dge-execute-graph"]) {
+  test(`${skill} SKILL.md mirror (if present) is byte-identical to canonical skills/`, (t) => {
+    const mirrorPath = path.join(mirrorRoot, skill, "SKILL.md");
+    if (!fs.existsSync(mirrorPath)) {
+      t.skip("no local .claude/skills mirror (untracked install artifact) — skills/ is the source of truth");
+      return;
+    }
+    const canonical = fs.readFileSync(path.join(skillsDir, skill, "SKILL.md"), "utf8");
+    assert.equal(fs.readFileSync(mirrorPath, "utf8"), canonical);
+  });
+}

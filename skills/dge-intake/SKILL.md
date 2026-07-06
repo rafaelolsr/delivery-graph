@@ -61,7 +61,15 @@ Record:
 - source
 - requester, if known
 - problem statement
-- desired outcome
+- **summary** — a single-sentence TL;DR (≤ ~25 words: what changes and why). This
+  becomes the bold lead line every gate/report surface opens with, so write it as
+  the one line you would keep if the reader read nothing else. Capture it through
+  `dge add-demand --summary "..."` (or backfill later with `dge edit-demand`).
+- desired outcome — keep it to **at most 3 sentences**; lead with the single-sentence
+  result and push detail into constraints/requirements. A wall-of-text outcome is a
+  smell: if it runs long, the extra sentences are usually constraints or requirements
+  in disguise. (The `summary` field is where the one-liner lives, so the outcome does
+  not have to carry it.)
 - urgency
 - constraints
 - non-goals
@@ -194,7 +202,7 @@ Do not write `graph.json` yourself. The CLI owns its schema.
 Return `ready_for_graph: true` only when:
 
 1. The problem is clear.
-2. The intended outcome is explicit.
+2. The intended outcome is explicit — a one-line `summary` exists and the outcome is at most 3 sentences (not a wall of text).
 3. Non-goals are named.
 4. Constraints are known or marked as gaps.
 5. Requirements are testable.
@@ -213,7 +221,8 @@ The DGE CLI is required (see Preflight) and is the only writer of the canonical 
 `dge` if it is on the PATH (the plugin ships it), otherwise `npx dge`:
 
 ```bash
-dge add-demand ...       # or: npx dge add-demand ...
+dge add-demand --title "..." --source "..." --summary "one-line TL;DR" --outcome "..."   # or: npx dge add-demand ...
+dge edit-demand DEM-### --summary "..."   # backfill the TL;DR on an existing demand
 dge add-requirement ...
 dge add-gap ...
 dge resolve-gap ...

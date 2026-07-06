@@ -75,12 +75,17 @@ adding a failure/ambiguous note to force a pass is forbidden (rules 2 and 4b).
 
 ## Output
 
-Report a final **summary** when the queue is dry:
+Report a final **summary** when the queue is dry, in the shared skeleton — lead with
+the synthesis, end with Next:
 
-- nodes completed this run, in order, noting any that succeeded only after a retry or an ambiguity pause
-- the node that blocked, if any, with the exact `dge done` failure reason, whether it was transient or structural, and how many retries were spent
-- remaining ready count and remaining not-done count
-- recommended next command: `/dge-review`, `/dge-compound`, or re-run this skill after resolving the blocker
+- **A one-sentence "here's the story" synthesis first** — what this run accomplished
+  (or where it stopped and why), before any per-node detail.
+- Then the detail: nodes completed this run, in order, noting any that succeeded only
+  after a retry or an ambiguity pause; the node that blocked, if any, with the exact
+  `dge done` failure reason, whether it was transient or structural, and how many
+  retries were spent; remaining ready count and remaining not-done count.
+- End with a single **`## Next`** block: `/dge-review`, `/dge-compound`, or re-run this
+  skill after resolving the blocker.
 
 ## CLI contract
 

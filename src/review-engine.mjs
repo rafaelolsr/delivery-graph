@@ -3,6 +3,7 @@ import path from "node:path";
 import { getAllEvidenceStatuses } from "./evidence-engine.mjs";
 import { getReadyNodes, validateGraph } from "./graph-engine.mjs";
 import { resolveRuntimePath } from "./path-utils.mjs";
+import { renderNextSteps } from "./output.mjs";
 
 export function reviewGraph(graphPath, graph, options = {}) {
   const findings = [];
@@ -64,7 +65,7 @@ export function reviewGraph(graphPath, graph, options = {}) {
 
   return {
     report,
-    markdown: renderReviewMarkdown(graph, report)
+    markdown: renderReviewMarkdown(graph, report, options)
   };
 }
 
@@ -78,9 +79,20 @@ export function writeReviewReport(reportPath, markdown) {
   fs.writeFileSync(reportPath, markdown);
 }
 
-function renderReviewMarkdown(graph, report) {
+function renderReviewMarkdown(graph, report, options = {}) {
+  const blockers = report.findings.filter((finding) => finding.severity === "blocker").length;
+  // Bold TL;DR lead: the one-line verdict, so a reader knows pass/attention before
+  // scanning the findings list.
+  const lead = report.findings.length === 0
+    ? "**Clean — no findings.**"
+    : blockers > 0
+      ? `**${blockers} blocker finding(s) — must resolve before done.**`
+      : `**${report.findings.length} finding(s) to review — none blocking.**`;
+
   const lines = [
     `# DGE Review: ${graph.graph.id}`,
+    "",
+    lead,
     "",
     `Generated: ${report.generated_at}`,
     "",
@@ -100,6 +112,15 @@ function renderReviewMarkdown(graph, report) {
       lines.push(`- **${finding.severity}** [${finding.category}] ${finding.message}`);
     }
   }
+
+  // Always end with the shared Next block.
+  const nextItems = blockers > 0
+    ? ["Resolve the blocker findings above, then re-run dge done"]
+    : report.findings.length > 0
+      ? ["Review the non-blocking findings, then proceed"]
+      : ["Nothing to address — proceed"];
+  lines.push("");
+  lines.push(renderNextSteps(nextItems, options));
 
   return `${lines.join("\n")}\n`;
 }

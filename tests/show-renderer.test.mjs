@@ -88,3 +88,30 @@ test("renderDemandView lists requirements and nodes with status", () => {
   assert.match(out, /\[done\]/);
   assert.doesNotMatch(out, /REQ-050|NODE-050/);
 });
+
+test("renderDemandView leads with the bold summary when set", () => {
+  const { graphPath, graph } = setup();
+  graph.demands.find((d) => d.id === "DEM-001").summary = "One-line TL;DR of the demand.";
+  const out = renderDemandView(buildDemandView(graphPath, graph, "DEM-001"), {});
+  const lines = out.split("\n");
+  // title, blank, bold lead
+  assert.equal(lines[0].startsWith("DEM-001"), true);
+  assert.equal(lines[2], "**One-line TL;DR of the demand.**");
+});
+
+test("renderDemandView falls back to the first sentence of outcome when no summary", () => {
+  const { graphPath, graph } = setup();
+  const demand = graph.demands.find((d) => d.id === "DEM-001");
+  delete demand.summary;
+  demand.outcome = "First sentence stands alone. Second sentence is detail.";
+  const out = renderDemandView(buildDemandView(graphPath, graph, "DEM-001"), {});
+  assert.match(out, /^\*\*First sentence stands alone\.\*\*$/m);
+  assert.doesNotMatch(out.split("\n")[2] ?? "", /Second sentence/);
+});
+
+test("renderDemandView always ends with exactly one Next section", () => {
+  const { graphPath, graph } = setup();
+  const out = renderDemandView(buildDemandView(graphPath, graph, "DEM-001"), {});
+  assert.equal(out.match(/^## Next$/gm).length, 1);
+  assert.match(out, /Approve to plan/);
+});

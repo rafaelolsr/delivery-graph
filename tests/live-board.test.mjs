@@ -44,3 +44,28 @@ test("re-rendering after a transition reflects the new state (projection, not a 
   // The 'done' section now names NODE-001.
   assert.match(after, /done \| 1 \| NODE-001/);
 });
+
+test("the board leads with a bold done/total · ready · blocked headline", () => {
+  const graph = graphWith([
+    makeNode("NODE-001", "done"),
+    makeNode("NODE-002", "ready", ["NODE-001"]),
+    makeNode("NODE-003", "blocked")
+  ]);
+  const board = renderStatus(graph);
+  // Headline sits right under the H1 and is bold.
+  assert.match(board, /^\*\*1\/3 done · 1 ready · 1 blocked\*\*$/m);
+});
+
+test("the board headline and Next are correct in the all-done state", () => {
+  const graph = graphWith([makeNode("NODE-001", "done"), makeNode("NODE-002", "done")]);
+  const board = renderStatus(graph);
+  assert.match(board, /^\*\*2\/2 done · 0 ready · 0 blocked\*\*$/m);
+  assert.equal(board.match(/^## Next$/gm).length, 1);
+  assert.match(board, /All nodes done/);
+});
+
+test("the board always ends with exactly one Next section (nothing-ready state)", () => {
+  const graph = graphWith([makeNode("NODE-001", "proposed")]);
+  const board = renderStatus(graph);
+  assert.equal(board.match(/^## Next$/gm).length, 1);
+});

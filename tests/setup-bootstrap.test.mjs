@@ -96,10 +96,12 @@ test("renderSetup surfaces guidance on failure and next-steps on success", () =>
     fs.mkdirSync(path.join(repo, ".claude"));
     const ok = renderSetup(runSetup({ repoRoot: repo, harnesses: ["claude"] }, { installer: fakeInstaller([]) }));
     assert.match(ok, /DGE setup complete/);
+    assert.match(ok, /^## Next$/m); // shared skeleton: always a Next block
 
     const blocked = renderSetup(runSetup({ repoRoot: tmpRepo(), harnesses: ["claude"] }, { installer: fakeInstaller([]) }));
     assert.match(blocked, /could not complete/);
-    assert.match(blocked, /Nothing was installed/);
+    assert.match(blocked, /nothing was installed/i);
+    assert.match(blocked, /^## Next$/m);
   } finally {
     fs.rmSync(repo, { recursive: true, force: true });
   }
