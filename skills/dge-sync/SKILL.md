@@ -48,6 +48,14 @@ Project the canonical delivery graph into external systems. Trackers are project
 6. Save sync map under `delivery-graph/sync/`.
 7. Report created, updated, skipped, and conflicted records.
 
+## Output
+
+Follow the shared output convention (see `skills/README.md`): lead the final
+reply with a bold one-line synthesis (e.g. "Synced: 3 created, 2 updated, 1
+conflict"), then the created/updated/skipped/conflicted record list, then a
+`## Next` block: resolve reported conflicts, or `/dge-work-node` for
+newly-synced items.
+
 ## CLI contract
 
 Use local dry-run adapters first:

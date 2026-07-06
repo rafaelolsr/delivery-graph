@@ -33,7 +33,9 @@ Gate node completion on validation evidence. Verification is a first-class workf
 
 ## Output
 
-Return:
+Follow the shared output convention (see `skills/README.md`): lead the final
+reply with a bold one-line synthesis (e.g. "NODE-### verified" or "NODE-### blocked
+— missing evidence"), then the detail:
 
 - node id
 - validation status
@@ -41,7 +43,8 @@ Return:
 - missing evidence
 - commands run
 - updated status
-- next required step
+
+Then a `## Next` block with the next required step.
 
 ## CLI contract
 

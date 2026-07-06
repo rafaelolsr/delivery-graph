@@ -40,6 +40,14 @@ Review both the implementation and the delivery graph. Code can pass tests while
 - `minor`: safe to defer with rationale
 - `note`: informational
 
+## Output
+
+Follow the shared output convention (see `skills/README.md`): lead the final
+reply with a bold one-line synthesis (e.g. "Review clean — 0 blockers" or "Review
+found 2 blockers, 1 major"), then the finding list by severity, then a `## Next`
+block: fix listed blockers, `/dge-work-node` to address a finding, or
+`/dge-compound` when the review is clean and the work is closing out.
+
 ## CLI contract
 
 When local tooling is available, use:

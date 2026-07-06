@@ -126,6 +126,11 @@ test("dge-intake captures a one-line summary and caps the outcome length", () =>
 // DEM-013 / NODE-054: the run summaries must lead with a synthesis and end with a
 // Next block — the same skeleton the CLI surfaces use. Guard the behavior so a
 // future edit can't revert them to a flat enumeration.
+const ALL_SKILLS = [
+  "dge-intake", "dge-plan-graph", "dge-review", "dge-status", "dge-work-node",
+  "dge-verify", "dge-compound", "dge-sync", "dge-deliver", "dge-execute-graph"
+];
+
 for (const skill of ["dge-deliver", "dge-execute-graph"]) {
   test(`${skill} final summary leads with a synthesis and ends with a Next block`, () => {
     const text = readSkill(skill);
@@ -134,6 +139,29 @@ for (const skill of ["dge-deliver", "dge-execute-graph"]) {
   });
 }
 
+// DEM-015: every skill's conversational output — not just dge-deliver and
+// dge-execute-graph — must reference the shared output convention (bold
+// one-line lead + Next block) rather than reporting as a flat enumeration.
+// Guard the behavior (a reference to the shared convention plus a mandatory
+// Next block), not exact phrasing, per skill-prose-can-drift-from-code.
+for (const skill of ALL_SKILLS) {
+  test(`${skill} references the shared output convention and ends with a Next block`, () => {
+    const text = readSkill(skill);
+    assert.match(text, /shared output convention|synthesis/i);
+    assert.match(text, /##\s*Next/);
+  });
+}
+
+// DEM-015: skills/README.md is the single source of truth for the output
+// convention — guard that it actually defines the convention so the per-skill
+// references above point at something real.
+test("skills/README.md defines the output convention", () => {
+  const text = fs.readFileSync(path.join(skillsDir, "README.md"), "utf8");
+  assert.match(text, /Output convention/i);
+  assert.match(text, /bold one-line synthesis/i);
+  assert.match(text, /##\s*Next/);
+});
+
 // DEM-013 (and the standing mirror rule): when a local .claude/skills/ mirror
 // exists (it is a local `dge install-skills` artifact, NOT tracked source — the
 // package ships `skills/` only), it must stay byte-identical to canonical
@@ -141,7 +169,7 @@ for (const skill of ["dge-deliver", "dge-execute-graph"]) {
 // dogfooding. It SKIPS when the mirror is absent (e.g. a clean CI checkout) so it
 // never depends on untracked files — `skills/` is the single source of truth.
 const mirrorRoot = path.join(repoRoot, ".claude", "skills");
-for (const skill of ["dge-intake", "dge-deliver", "dge-execute-graph"]) {
+for (const skill of ALL_SKILLS) {
   test(`${skill} SKILL.md mirror (if present) is byte-identical to canonical skills/`, (t) => {
     const mirrorPath = path.join(mirrorRoot, skill, "SKILL.md");
     if (!fs.existsSync(mirrorPath)) {

@@ -60,3 +60,12 @@ related: [NODE-###, DEM-###, REQ-###]
 After writing a learning, confirm it surfaces: `dge learnings --about "<a tag>"`
 should list it. A learning no future demand can find is not compounding.
 
+## Output
+
+Follow the shared output convention (see `skills/README.md`): lead the final
+reply with a bold one-line synthesis of what was captured (e.g. "Learning
+captured: <slug>" or "Nothing new to compound"), then any schema/skill-instruction
+suggestion from workflow step 5, then a `## Next` block: `/dge-intake` or
+`/dge-plan-graph` for the next demand, or a single "nothing pending" line when
+there is none.
+
