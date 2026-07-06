@@ -21,7 +21,7 @@ function main() {
     force: Boolean(args.force)
   });
 
-  console.log(renderSetup(result));
+  console.log(renderSetup(result, { ascii: args.ascii }));
   process.exit(result.ok ? 0 : 1);
 }
 

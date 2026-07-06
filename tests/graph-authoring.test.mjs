@@ -7,6 +7,7 @@ import {
   addRequirement,
   addTrack,
   createGraph,
+  editDemand,
   nextNumericId,
   nextTrackId,
   resolveGap
@@ -64,6 +65,54 @@ test("authors demand, requirement, track, and node", () => {
 
   assert.equal(result.record.id, "NODE-001");
   assert.deepEqual(validateGraph(result.graph), []);
+});
+
+test("optional summary: add-demand persists it and edit-demand backfills it", () => {
+  let graph = createGraph({ title: "Summary graph" });
+
+  // add-demand with --summary persists the value verbatim.
+  let record;
+  ({ graph, record } = addDemand(graph, {
+    title: "Cleaner output",
+    source: "user",
+    outcome: "Every surface leads with a TL;DR.",
+    summary: "Lead every output with a one-line TL;DR."
+  }));
+  assert.equal(record.summary, "Lead every output with a one-line TL;DR.");
+  assert.deepEqual(validateGraph(graph), []);
+
+  // edit-demand backfills a summary on a demand that had none.
+  ({ graph, record } = addDemand(graph, {
+    title: "Backfill me",
+    source: "user",
+    outcome: "Outcome without a summary yet."
+  }));
+  assert.equal(record.summary, undefined);
+  ({ graph, record } = editDemand(graph, record.id, { summary: "Backfilled TL;DR." }));
+  assert.equal(record.summary, "Backfilled TL;DR.");
+  assert.deepEqual(validateGraph(graph), []);
+});
+
+test("optional summary: a summary-less demand round-trips as undefined, not empty string", () => {
+  let graph = createGraph({ title: "No-summary graph" });
+  let record;
+  ({ graph, record } = addDemand(graph, {
+    title: "No summary",
+    source: "user",
+    outcome: "Outcome only."
+  }));
+
+  // removeUndefined drops the absent field entirely — it is not "" and the key
+  // is not present, so the schema (which requires only id/title/source/outcome)
+  // still validates and renderers can fall back to outcome cleanly.
+  assert.equal(record.summary, undefined);
+  assert.equal(Object.prototype.hasOwnProperty.call(record, "summary"), false);
+  assert.deepEqual(validateGraph(graph), []);
+
+  // An explicit empty summary on edit clears the field back to unset.
+  ({ graph, record } = editDemand(graph, record.id, { summary: "" }));
+  assert.equal(Object.prototype.hasOwnProperty.call(record, "summary"), false);
+  assert.deepEqual(validateGraph(graph), []);
 });
 
 test("unresolved blocker gaps are authorable but not graph-ready", () => {

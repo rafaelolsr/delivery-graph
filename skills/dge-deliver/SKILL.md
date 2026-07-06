@@ -147,9 +147,19 @@ Never fabricate evidence or weaken a contract to keep the loop flowing.
 
 ### Phase 5 — Summary
 
-When the queue is dry, emit the final summary: nodes completed in order, evidence
-captured per node, any retries or ambiguity pauses, and remaining/blocked counts.
-Recommend `/dge-review` and `/dge-compound` as the natural next steps.
+When the queue is dry, emit the final summary in the same skeleton every DGE surface
+uses — **lead with the synthesis, end with Next**:
+
+1. **A one-paragraph "here's the story" synthesis first** — what got built and why the
+   demand is now done, in plain language a human grasps at a glance. This comes before
+   any per-node list, not after it.
+2. Then the detail: nodes completed in order, evidence captured per node, any retries
+   or ambiguity pauses, and remaining/blocked counts.
+3. End with a single **`## Next`** block (the same shape the CLI surfaces use):
+   `/dge-review` and `/dge-compound` as the natural next steps, or re-running after a
+   blocker if one remains.
+
+Lead with the point, detail after, next steps unmistakable — never a flat enumeration.
 
 ## Output
 

@@ -1,5 +1,6 @@
 import { nodeDemandId, summarizeGraph } from "./graph-engine.mjs";
 import { buildDemandView } from "./show-renderer.mjs";
+import { demandLead, glyph, renderNextSteps } from "./output.mjs";
 
 // The Graph Brief is gate #2's artifact: a didactic projection of graph.json a
 // human approves before autonomous execution. It renders the dependency DAG as
@@ -91,7 +92,7 @@ export function buildGraphBrief(graphPath, graph, demandId) {
 // indentation carries dependency shape for the common tree/fan-out case; the
 // `--mermaid` opt-in (renderMermaidDag) is for large multi-edge graphs in a
 // rendering surface where a picture beats indentation.
-function renderDependencyTree(nodes) {
+function renderDependencyTree(nodes, options = {}) {
   const byId = new Map(nodes.map((n) => [n.id, n]));
   const inSetDeps = (node) => node.depends_on.filter((d) => byId.has(d));
   const childrenOf = new Map(nodes.map((n) => [n.id, []]));
@@ -107,7 +108,9 @@ function renderDependencyTree(nodes) {
   const lines = [];
   const emit = (node, prefix, isLast, isRoot) => {
     const branch = isRoot ? "" : isLast ? "└─ " : "├─ ";
-    const ready = node.ready ? " 🟢" : "";
+    // Ready marker gated through the glyph system so it degrades under --ascii /
+    // NO_EMOJI like every other surface (guard test caught the raw-emoji leak).
+    const ready = node.ready ? ` ${glyph("ready", options)}` : "";
     const extraDeps = inSetDeps(node).slice(1);
     const also = extraDeps.length ? ` (also needs ${extraDeps.join(", ")})` : "";
     lines.push(`${prefix}${branch}${node.id}${ready}  ${node.title}  [${node.type}]${also}`);
@@ -127,13 +130,20 @@ export function renderGraphBrief(brief, options = {}) {
   const lines = [];
   const title = brief.demand ? `${brief.demand.id}  ${brief.demand.title}` : brief.scope;
   lines.push(`# Graph Brief — ${title}`);
+  // Bold TL;DR lead echoing the demand's captured summary (else outcome's first
+  // sentence). Demand-scoped only — a whole-graph brief has no single demand lead.
+  const lead = brief.demand ? demandLead(brief.demand) : "";
+  if (lead) {
+    lines.push("");
+    lines.push(lead);
+  }
   lines.push("");
   lines.push(`${brief.node_count} nodes · ${brief.ready_queue.length} ready · ${brief.blocker_gaps.length} blocker gaps`);
   lines.push("");
 
   lines.push("## Plan");
   lines.push("");
-  lines.push(renderDependencyTree(brief.nodes));
+  lines.push(renderDependencyTree(brief.nodes, options));
   lines.push("");
 
   // Mermaid is opt-in: only useful in a rendering surface and only worth the
@@ -153,6 +163,17 @@ export function renderGraphBrief(brief, options = {}) {
     lines.push("## Unresolved blocker gaps");
     for (const gap of brief.blocker_gaps) lines.push(`- ${gap.id}: ${gap.question}`);
   }
+
+  // Always end with the shared Next block. Blockers gate approval; otherwise point
+  // at the ready-queue head so the reader knows exactly where execution starts.
+  const head = brief.ready_queue[0];
+  const nextItems = brief.blocker_gaps.length
+    ? [`Resolve ${brief.blocker_gaps.map((gap) => gap.id).join(", ")} before approval`]
+    : head
+      ? [`Approve to start execution — begin with ${head}`, "or tell me what to change"]
+      : ["Approve to start execution", "or tell me what to change"];
+  lines.push("");
+  lines.push(renderNextSteps(nextItems, options));
 
   return `${lines.join("\n")}\n`;
 }

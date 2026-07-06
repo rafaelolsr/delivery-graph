@@ -36,6 +36,11 @@ export function addDemand(graph, input) {
     title: input.title,
     source: input.source,
     requester: input.requester,
+    // A one-line TL;DR that renderers use as the bold lead. Optional by design
+    // (mirrors `problem`): removeUndefined drops it when absent so a summary-less
+    // demand round-trips as undefined, never an empty string, and every existing
+    // demand stays valid. Never routed through requireText — it is not required.
+    summary: input.summary,
     problem: input.problem,
     outcome: input.outcome,
     constraints: splitList(input.constraints),
@@ -340,9 +345,10 @@ export function editRequirement(graph, requirementId, input = {}) {
   return { graph: nextGraph, record: updated };
 }
 
-// Edit a demand's mutable narrative fields (problem, outcome, constraints,
-// non_goals) so they need not be perfect at add-demand time. Identity fields
-// (id, title, source) are never changed. Only provided fields are updated.
+// Edit a demand's mutable narrative fields (summary, problem, outcome,
+// constraints, non_goals) so they need not be perfect at add-demand time.
+// Identity fields (id, title, source) are never changed. Only provided fields
+// are updated.
 export function editDemand(graph, demandId, input = {}) {
   requireText(demandId, "demand id");
   const id = demandId;
@@ -352,6 +358,12 @@ export function editDemand(graph, demandId, input = {}) {
   }
 
   const updated = { ...demand };
+  // summary can be backfilled after add-demand, like the other narrative fields.
+  // Optional, so no requireText — an explicit "" clears it back to unset.
+  if (input.summary !== undefined) {
+    if (input.summary === "") delete updated.summary;
+    else updated.summary = input.summary;
+  }
   if (input.problem !== undefined) updated.problem = input.problem;
   if (input.outcome !== undefined) {
     requireText(input.outcome, "outcome"); // asserts non-empty; returns nothing

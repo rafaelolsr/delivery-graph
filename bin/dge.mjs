@@ -35,7 +35,7 @@ import {
   writeReviewReport
 } from "../src/review-engine.mjs";
 import { regenerateArtifacts, writeRecordArtifact } from "../src/markdown-artifacts.mjs";
-import { glyph, relativePath } from "../src/output.mjs";
+import { glyph, relativePath, renderNextSteps } from "../src/output.mjs";
 import {
   createLinearSyncPlan,
   defaultLinearSyncPath
@@ -632,7 +632,7 @@ function runDone(graphPath, args) {
   }
 
   const generatedAt = new Date();
-  const { report, markdown } = reviewGraph(graphPath, graph, { generatedAt: generatedAt.toISOString() });
+  const { report, markdown } = reviewGraph(graphPath, graph, { generatedAt: generatedAt.toISOString(), ascii: args.ascii });
   const reviewPath = args.out ?? defaultReviewPath(graphPath, generatedAt);
   writeReviewReport(reviewPath, markdown);
   const blockers = report.findings.filter((finding) => finding.severity === "blocker");
@@ -665,12 +665,27 @@ function runDone(graphPath, args) {
 
   const g = (name) => glyph(name, args);
   console.log(`${g("done")} ${nodeId} done — ${doneNode.title}`);
+  // Bold TL;DR lead: the node title is the one-line story of what just got proven.
+  console.log("");
+  console.log(`**${doneNode.title}**`);
+  console.log("");
   console.log(`   ${g("requirements")} requirements  ${doneNode.requirement_ids.join(", ") || "-"}`);
   console.log(`   ${g("pass")} evidence      ${requiredCount}/${requiredCount} passed`);
   console.log(`   ${g("unblocked")} unblocked     ${unblocked.length ? unblocked.join(", ") : "none"}`);
   console.log(`   ${g("progress")} progress      ${doneCount}/${doneGraph.nodes.length} done · ${readyCount} ready`);
   console.log(`   ${g("reports")} reports       ${relativePath(verified.verificationPath, graphPath)}`);
   console.log(`                 ${relativePath(reviewPath, graphPath)}`);
+  // Always end with the shared Next block: point at what just unblocked, or the
+  // ready-queue depth, or a fully-done graph.
+  const nextItems = unblocked.length
+    ? [`Work ${unblocked.join(", ")} (newly unblocked)`]
+    : readyCount > 0
+      ? [`${readyCount} node(s) still ready — run dge next`]
+      : doneCount === doneGraph.nodes.length
+        ? ["All nodes done — run /dge-review"]
+        : ["Nothing ready — resolve upstream nodes to unblock the queue"];
+  console.log("");
+  console.log(renderNextSteps(nextItems, args));
 }
 
 // Nodes that become ready because this node just completed: they depend on it
@@ -685,7 +700,7 @@ function newlyUnblockedNodes(graph, doneNodeId) {
 function runReview(graphPath, args) {
   const graph = readGraph(graphPath);
   const generatedAt = new Date();
-  const { report, markdown } = reviewGraph(graphPath, graph, { generatedAt: generatedAt.toISOString() });
+  const { report, markdown } = reviewGraph(graphPath, graph, { generatedAt: generatedAt.toISOString(), ascii: args.ascii });
   const outputPath = args.out ?? defaultReviewPath(graphPath, generatedAt);
   writeReviewReport(outputPath, markdown);
 
@@ -802,6 +817,7 @@ function mapDemandArgs(args) {
     title: args.title,
     source: args.source,
     requester: args.requester,
+    summary: args.summary,
     problem: args.problem,
     outcome: args.outcome,
     constraints: args.constraint ?? args.constraints,
@@ -954,7 +970,7 @@ Usage:
   dge sync linear [--graph path] [--out delivery-graph/sync/linear.json]
   dge sync ado [--graph path] [--out delivery-graph/sync/ado.json] [--org name] [--project name] [--area path] [--iteration path]
   dge transition NODE-001 review [--graph path]
-  dge add-demand --title "..." --source "..." --outcome "..." [--graph path]
+  dge add-demand --title "..." --source "..." --outcome "..." [--summary "one-line TL;DR"] [--graph path]
   dge add-requirement --demand DEM-001 --statement "..." --acceptance "..." --evidence "..."
   dge add-gap --type validation --severity blocker --question "..." --blocks REQ-001
   dge resolve-gap GAP-001 --resolution "..."
@@ -963,7 +979,7 @@ Usage:
   dge remove-node NODE-001
   dge remove-requirement REQ-001
   dge edit-requirement REQ-001 --statement "..." --priority should --validation-method automated-test --evidence "..."
-  dge edit-demand DEM-001 --problem "..." --outcome "..." --non-goal "..." --constraint "..."
+  dge edit-demand DEM-001 --summary "..." --problem "..." --outcome "..." --non-goal "..." --constraint "..."
   dge remove-demand DEM-001 [--graph path]
   dge set-validation NODE-001 --validation "npm test" --validation "lint passes"
 `);

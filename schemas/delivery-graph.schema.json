@@ -55,6 +55,7 @@
         "title": { "type": "string", "minLength": 1 },
         "source": { "type": "string", "minLength": 1 },
         "requester": { "type": "string" },
+        "summary": { "type": "string" },
         "problem": { "type": "string" },
         "outcome": { "type": "string", "minLength": 1 },
         "constraints": {

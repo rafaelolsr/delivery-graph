@@ -1,6 +1,6 @@
 import { nodeDemandId } from "./graph-engine.mjs";
 import { readEvidenceManifest } from "./evidence-engine.mjs";
-import { glyph } from "./output.mjs";
+import { demandLead, glyph, renderNextSteps } from "./output.mjs";
 
 // Build the structured view of everything a demand generated: the demand, its
 // requirements, and the nodes that serve those requirements (with status and
@@ -39,6 +39,7 @@ export function buildDemandView(graphPath, graph, demandId) {
     demand: {
       id: demand.id,
       title: demand.title,
+      summary: demand.summary ?? null,
       problem: demand.problem ?? null,
       outcome: demand.outcome,
       non_goals: demand.non_goals ?? []
@@ -66,6 +67,14 @@ export function renderDemandView(view, options = {}) {
   const g = (name) => glyph(name, options);
   const lines = [];
   lines.push(`${view.demand.id}  ${view.demand.title}`);
+  // Bold TL;DR lead: the captured summary, else the first sentence of outcome, so
+  // the reader gets the point before the supporting problem/outcome detail.
+  const lead = demandLead(view.demand);
+  if (lead) {
+    lines.push("");
+    lines.push(lead);
+  }
+  lines.push("");
   if (view.demand.problem) {
     lines.push(`${g("blocked")} problem: ${view.demand.problem}`);
   }
@@ -104,6 +113,14 @@ export function renderDemandView(view, options = {}) {
     lines.push("");
     lines.push(`${g("blocked")} nodes reference requirements outside this demand: ${view.orphan_requirement_ids.join(", ")}`);
   }
+
+  // Always end with the shared Next block. Blocker gaps must be resolved before
+  // this gate can be approved, so they take precedence as the next action.
+  const nextItems = blockerGaps.length > 0
+    ? [`Resolve ${blockerGaps.map((gap) => gap.id).join(", ")} before approval`]
+    : ["Approve to plan the graph", "or tell me what to change (e.g. drop or reprioritize a requirement)"];
+  lines.push("");
+  lines.push(renderNextSteps(nextItems, options));
 
   return lines.join("\n");
 }

@@ -82,6 +82,31 @@ test("renderGraphBrief defaults to a universally-renderable dependency tree (no 
   assert.doesNotMatch(md, /```mermaid/);
 });
 
+test("renderGraphBrief leads with the demand summary and ends with exactly one Next", () => {
+  const graph = makeGraph();
+  graph.demands.find((d) => d.id === "DEM-001").summary = "Ship the thing.";
+  const brief = buildGraphBrief("/tmp/x/delivery-graph/graph.json", graph, "DEM-001");
+  const md = renderGraphBrief(brief);
+
+  // Bold lead sits between the H1 and the count line.
+  const lines = md.split("\n");
+  assert.match(lines[0], /^# Graph Brief —/);
+  assert.equal(lines[2], "**Ship the thing.**");
+  // Exactly one Next section, naming the ready-queue head.
+  assert.equal(md.match(/^## Next$/gm).length, 1);
+  assert.match(md, /begin with NODE-002/);
+});
+
+test("renderGraphBrief Next block still renders when there is no ready node", () => {
+  const graph = makeGraph();
+  // Mark the ready node not-ready so the queue is empty.
+  graph.nodes.find((n) => n.id === "NODE-002").status = "proposed";
+  const brief = buildGraphBrief("/tmp/x/delivery-graph/graph.json", graph, "DEM-001");
+  const md = renderGraphBrief(brief);
+  assert.equal(md.match(/^## Next$/gm).length, 1);
+  assert.match(md, /Approve to start execution/);
+});
+
 test("renderGraphBrief includes the Mermaid DAG only when opted in", () => {
   const graph = makeGraph();
   const brief = buildGraphBrief("/tmp/x/delivery-graph/graph.json", graph, "DEM-001");
