@@ -107,15 +107,48 @@ Intake -> Requirements -> Graph -> Sync -> Work Node -> Verify -> Review -> done
 - **Outer loop** compounds across demands: every completed node leaves behind validation evidence,
   decisions, reusable patterns, and follow-up context that the next intake reads.
 
-**One-command delivery.** `/dge-deliver` is the conductor: it takes a raw intent through two
-judgment gates (Demand Brief, Graph Brief), then runs silent, evidence-gated execution to a
-summary — sequential, one node at a time. Use it when you want intent-to-done without driving
-each skill by hand.
+### One command, two approvals: `/dge-deliver`
 
-<details>
-<summary><strong>Full workflow diagram</strong></summary>
+`/dge-deliver` is the **conductor** — it drives a raw idea all the way to evidence-gated `done`
+from a single command. You own **intent and judgment**; the conductor owns **procedure**. It
+auto-advances through every phase on its own, and **stops for you at exactly two approval gates**
+(plus any genuine failure or ambiguity). Nothing gets built until you approve twice.
 
-The manual skill-by-skill flow; `/dge-execute-graph` (built on `dge next`) automates the inner
+```mermaid
+flowchart LR
+    I([Raw idea]) --> A["/dge-intake"]
+    A --> G1{{"🧑 Gate 1<br/>Demand Brief<br/>— you approve or edit —"}}
+    G1 -->|approved| P["/dge-plan-graph"]
+    P --> G2{{"🧑 Gate 2<br/>Graph Brief + dependency tree<br/>— you approve or edit —"}}
+    G2 -->|approved| X["Silent execution<br/>(evidence-gated, one node at a time)"]
+    X --> S([Summary])
+
+    G1 -.->|edit / abandon| A
+    G2 -.->|edit / abandon| P
+
+    style G1 fill:#3a2f12,stroke:#f5b042,color:#f7f2e8
+    style G2 fill:#3a2f12,stroke:#f5b042,color:#f7f2e8
+    style X fill:#0f2a24,stroke:#2dd4bf,color:#e6f7f2
+```
+
+**What you're approving at each gate:**
+
+| Gate | When | What you review | How you respond |
+| --- | --- | --- | --- |
+| **Gate 1 — Demand Brief** | After intake, before planning | The clarified demand: goal, requirements, resolved gaps | Approve, or ask for edits in plain language (the conductor applies them via the CLI and re-renders). Blocker gaps must be resolved before you can approve. |
+| **Gate 2 — Graph Brief** | After planning, before any code | The dependency tree + per-node change/validation summary | Approve, or edit the same way. **Gate 2 is always required** — execution never starts without it. |
+
+After Gate 2, execution runs **silently and evidence-gated**: it only surfaces again on the final
+summary, or if it hits a genuine failure (stops loudly) or an ambiguity (pauses once to ask). You
+approve at two points, not at every step — that's the whole design.
+
+> Resuming a demand that already has an approved graph? `/dge-deliver` skips both gates (already
+> approved) and jumps straight to executing the ready queue.
+
+### The full skill-by-skill flow
+
+The diagram below is the complete manual workflow that `/dge-deliver` conducts for you.
+`/dge-execute-graph` (built on the read-only `dge next` accessor) automates the inner
 Work Node → Verify → Review → done cycle inside it.
 
 ```mermaid
@@ -160,8 +193,6 @@ flowchart TD
     X --> Y[Reusable learning]
     Y --> B
 ```
-
-</details>
 
 ## The skills
 
