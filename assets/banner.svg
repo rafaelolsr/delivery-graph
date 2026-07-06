@@ -1,0 +1,101 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="360" viewBox="0 0 1280 360" role="img" aria-label="Delivery Graph — the neutral ground where any agent's work is proven, not trusted">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0a0f16"/>
+      <stop offset="0.55" stop-color="#0d141d"/>
+      <stop offset="1" stop-color="#121a24"/>
+    </linearGradient>
+    <linearGradient id="teal" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#38bdf8"/>
+      <stop offset="1" stop-color="#2dd4bf"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#2dd4bf" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#2dd4bf" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="soft" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="6"/>
+    </filter>
+  </defs>
+
+  <!-- backdrop -->
+  <rect width="1280" height="360" fill="url(#bg)"/>
+  <rect width="1280" height="360" fill="none" stroke="#223145" stroke-width="2"/>
+
+  <!-- faint dotted grid -->
+  <g fill="#1b2a3d">
+    <g id="row">
+      <circle cx="0" cy="0" r="1.4"/>
+    </g>
+  </g>
+  <g fill="#17222f">
+    <!-- generated dot grid -->
+    <g transform="translate(60,60)">
+      <g>
+        <circle cx="0" cy="0" r="1.3"/><circle cx="48" cy="0" r="1.3"/><circle cx="96" cy="0" r="1.3"/><circle cx="144" cy="0" r="1.3"/><circle cx="192" cy="0" r="1.3"/><circle cx="240" cy="0" r="1.3"/>
+      </g>
+    </g>
+  </g>
+
+  <!-- ================= LEFT: wordmark + tagline ================= -->
+  <g transform="translate(72,116)">
+    <!-- eyebrow -->
+    <text x="2" y="0" font-family="'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace"
+          font-size="17" letter-spacing="6" fill="#2dd4bf">D G E</text>
+
+    <!-- wordmark -->
+    <text x="0" y="70" font-family="'Instrument Serif', Georgia, 'Times New Roman', serif"
+          font-size="88" fill="#f4f7fb">Delivery <tspan fill="#2dd4bf">Graph</tspan></text>
+
+    <!-- tagline -->
+    <text x="2" y="128" font-family="'IBM Plex Sans', system-ui, -apple-system, Segoe UI, sans-serif"
+          font-size="23" fill="#9fb0c6">The neutral ground where any agent&#39;s work is</text>
+    <text x="2" y="160" font-family="'IBM Plex Sans', system-ui, -apple-system, Segoe UI, sans-serif"
+          font-size="23" fill="#9fb0c6"><tspan fill="#e6edf6" font-style="italic">proven</tspan>, not trusted.</text>
+
+    <!-- chips -->
+    <g font-family="'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace" font-size="13">
+      <g transform="translate(2,192)">
+        <rect x="0" y="0" width="164" height="30" rx="15" fill="#101a26" stroke="#2e415b"/>
+        <text x="18" y="20" fill="#bccbe0">harness-agnostic</text>
+      </g>
+      <g transform="translate(178,192)">
+        <rect x="0" y="0" width="180" height="30" rx="15" fill="#101a26" stroke="#2e415b"/>
+        <text x="18" y="20" fill="#bccbe0">done means proven</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- ================= RIGHT: graph -> gate -> done motif ================= -->
+  <g transform="translate(858,60)">
+    <ellipse cx="150" cy="120" rx="180" ry="120" fill="url(#glow)"/>
+
+    <!-- edges -->
+    <g stroke="url(#teal)" stroke-width="2.5" fill="none" opacity="0.9">
+      <path d="M40 60 C 120 60, 140 120, 210 120"/>
+      <path d="M40 180 C 120 180, 140 120, 210 120"/>
+      <path d="M210 120 L 300 120"/>
+    </g>
+
+    <!-- upstream nodes -->
+    <g>
+      <circle cx="40" cy="60" r="20" fill="#101a26" stroke="#38bdf8" stroke-width="2.5"/>
+      <circle cx="40" cy="180" r="20" fill="#101a26" stroke="#38bdf8" stroke-width="2.5"/>
+      <circle cx="40" cy="120" r="15" fill="#101a26" stroke="#2e415b" stroke-width="2"/>
+    </g>
+
+    <!-- the evidence gate -->
+    <g transform="translate(210,120)">
+      <rect x="-34" y="-40" width="68" height="80" rx="12" fill="#0f1a24" stroke="#f5b042" stroke-width="2.5"/>
+      <path d="M-14 0 l 9 10 l 18 -22" fill="none" stroke="#f5b042" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="0" y="34" text-anchor="middle" font-family="'IBM Plex Mono', ui-monospace, Menlo, monospace" font-size="11" fill="#f5b042">gate</text>
+    </g>
+
+    <!-- done node -->
+    <g transform="translate(300,120)">
+      <circle cx="0" cy="0" r="26" fill="#0f2a24" stroke="#2dd4bf" stroke-width="3"/>
+      <path d="M-11 0 l 8 9 l 15 -18" fill="none" stroke="#2dd4bf" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="0" y="52" text-anchor="middle" font-family="'IBM Plex Mono', ui-monospace, Menlo, monospace" font-size="12" fill="#2dd4bf">done</text>
+    </g>
+  </g>
+</svg>
