@@ -6,6 +6,7 @@ import { resolveRuntimePath } from "../src/path-utils.mjs";
 import {
   ConcurrentModificationError,
   getNextReadyNode,
+  isNodeComplete,
   readGraph,
   readGraphRev,
   summarizeGraph,
@@ -27,6 +28,7 @@ import {
   findNode,
   removeEvidence,
   verifyNode,
+  waiveNode,
   writeCommandAttemptArtifact
 } from "../src/evidence-engine.mjs";
 import {
@@ -606,7 +608,12 @@ function runVerify(graphPath, args) {
 function runDone(graphPath, args) {
   const [nodeId] = args._;
   if (!nodeId) {
-    throw new Error("Usage: dge done NODE-### [--graph path] [--out review-report.md]");
+    throw new Error("Usage: dge done NODE-### [--waive <reason>] [--graph path] [--out review-report.md]");
+  }
+
+  if (typeof args.waive === "string") {
+    runWaive(graphPath, args, nodeId, args.waive);
+    return;
   }
 
   const graph = readGraph(graphPath);
@@ -620,7 +627,7 @@ function runDone(graphPath, args) {
   }
 
   const incompleteDependencies = node.depends_on.filter((dependencyId) =>
-    graph.nodes.find((candidate) => candidate.id === dependencyId)?.status !== "done"
+    !isNodeComplete(graph.nodes.find((candidate) => candidate.id === dependencyId))
   );
   if (incompleteDependencies.length > 0) {
     throw new Error(`${nodeId} cannot be done; incomplete dependencies: ${incompleteDependencies.join(", ")}`);
@@ -688,12 +695,57 @@ function runDone(graphPath, args) {
   console.log(renderNextSteps(nextItems, args));
 }
 
+// `dge done --waive <reason>` routes here. All enforcement (reason required,
+// review-only source, dependencies complete, no existing evidence) lives in
+// waiveNode() in the engine, so this raw CLI call is governed identically to
+// any other caller — the CLI adds no extra leniency or extra restriction.
+function runWaive(graphPath, args, nodeId, reason) {
+  const graph = readGraph(graphPath);
+  const { graph: waivedGraph } = waiveNode(graphPath, graph, nodeId, { reason });
+  writeGraph(graphPath, waivedGraph);
+
+  const waivedNode = findNode(waivedGraph, nodeId);
+  const unblocked = newlyUnblockedNodes(waivedGraph, nodeId);
+  const doneCount = waivedGraph.nodes.filter((candidate) => isNodeComplete(candidate)).length;
+  const readyCount = waivedGraph.nodes.filter((candidate) => candidate.status === "ready").length;
+
+  if (args.json) {
+    console.log(JSON.stringify({
+      node: { id: waivedNode.id, title: waivedNode.title, status: "done-waived" },
+      requirements: waivedNode.requirement_ids,
+      waiver: waivedNode.waiver,
+      unblocked,
+      progress: { done: doneCount, ready: readyCount, total: waivedGraph.nodes.length }
+    }, null, 2));
+    return;
+  }
+
+  const g = (name) => glyph(name, args);
+  console.log(`${g("done")} ${nodeId} done-waived — ${waivedNode.title}`);
+  console.log("");
+  console.log(`**${waivedNode.title}**`);
+  console.log("");
+  console.log(`   ${g("requirements")} requirements  ${waivedNode.requirement_ids.join(", ") || "-"}`);
+  console.log(`   reason        ${reason}`);
+  console.log(`   ${g("unblocked")} unblocked     ${unblocked.length ? unblocked.join(", ") : "none"}`);
+  console.log(`   ${g("progress")} progress      ${doneCount}/${waivedGraph.nodes.length} done · ${readyCount} ready`);
+  const nextItems = unblocked.length
+    ? [`Work ${unblocked.join(", ")} (newly unblocked)`]
+    : readyCount > 0
+      ? [`${readyCount} node(s) still ready — run dge next`]
+      : doneCount === waivedGraph.nodes.length
+        ? ["All nodes done — run /dge-review"]
+        : ["Nothing ready — resolve upstream nodes to unblock the queue"];
+  console.log("");
+  console.log(renderNextSteps(nextItems, args));
+}
+
 // Nodes that become ready because this node just completed: they depend on it
-// and all their dependencies are now done.
+// and all their dependencies are now complete (done or done-waived).
 function newlyUnblockedNodes(graph, doneNodeId) {
-  const doneIds = new Set(graph.nodes.filter((n) => n.status === "done").map((n) => n.id));
+  const completeIds = new Set(graph.nodes.filter((n) => isNodeComplete(n)).map((n) => n.id));
   return graph.nodes
-    .filter((n) => n.status === "ready" && n.depends_on.includes(doneNodeId) && n.depends_on.every((d) => doneIds.has(d)))
+    .filter((n) => n.status === "ready" && n.depends_on.includes(doneNodeId) && n.depends_on.every((d) => completeIds.has(d)))
     .map((n) => n.id);
 }
 
@@ -966,6 +1018,7 @@ Usage:
   dge evidence remove NODE-001 EVD-001
   dge verify NODE-001 [--graph path]
   dge done NODE-001 [--graph path]
+  dge done NODE-001 --waive "<reason>" [--graph path]
   dge review [--graph path] [--out path]
   dge sync linear [--graph path] [--out delivery-graph/sync/linear.json]
   dge sync ado [--graph path] [--out delivery-graph/sync/ado.json] [--org name] [--project name] [--area path] [--iteration path]
