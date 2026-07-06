@@ -37,10 +37,15 @@ The status output must include missing validation evidence.
 
 ## Output sections
 
+Follow the shared output convention (see `skills/README.md`): lead with a bold
+one-line synthesis of graph health (e.g. "N ready, M blocked, K validation gaps"),
+then the sections:
+
 - graph summary
 - kanban columns
 - ready next nodes
 - blockers
 - validation gaps
 - sync drift
-- recommended next command
+
+Then a `## Next` block with the recommended next command.

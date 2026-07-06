@@ -106,7 +106,9 @@ Create tracks and nodes through the CLI (`dge add-track`, `dge add-node`); it up
 
 ## Output
 
-Report:
+Follow the shared output convention (see `skills/README.md`): lead with a bold
+one-line synthesis (e.g. "Graph planned: N tracks, M nodes, K ready"), then the
+detail:
 
 - graph id
 - tracks created
@@ -114,7 +116,8 @@ Report:
 - ready nodes
 - blocked nodes
 - requirements without nodes, if any
-- next command: `/dge-sync` or `/dge-work-node NODE-###`
+
+Then a `## Next` block: `/dge-sync` or `/dge-work-node NODE-###`.
 
 ## CLI contract
 

@@ -75,8 +75,8 @@ adding a failure/ambiguous note to force a pass is forbidden (rules 2 and 4b).
 
 ## Output
 
-Report a final **summary** when the queue is dry, in the shared skeleton — lead with
-the synthesis, end with Next:
+Report a final **summary** when the queue is dry, following the shared output
+convention (see `skills/README.md`):
 
 - **A one-sentence "here's the story" synthesis first** — what this run accomplished
   (or where it stopped and why), before any per-node detail.

@@ -32,6 +32,13 @@ Execute only the selected node's scope, then produce evidence for `/dge-verify`.
 8. Update node status to `review`.
 9. Report changed files, evidence paths, and remaining validation.
 
+## Output
+
+Follow the shared output convention (see `skills/README.md`): lead the final
+reply with a bold one-line synthesis (e.g. "NODE-### implemented, evidence
+captured, ready for verify"), then changed files, evidence paths, and remaining
+validation, then a `## Next` block: `/dge-verify NODE-###`.
+
 ## Evidence format
 
 At minimum, create:

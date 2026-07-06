@@ -215,6 +215,13 @@ Return `ready_for_graph: true` only when:
 
 If blocker gaps remain, stop and report them instead of invoking `/dge-plan-graph`.
 
+## Output
+
+Follow the shared output convention (see `skills/README.md`): lead the final reply
+with a bold one-line synthesis — ready for `/dge-plan-graph`, or blocked on N
+gaps — then the detail (requirements captured, gaps open), then a `## Next` block:
+`/dge-plan-graph` when ready, or the specific blocker gaps to resolve when not.
+
 ## CLI contract
 
 The DGE CLI is required (see Preflight) and is the only writer of the canonical store. Use
