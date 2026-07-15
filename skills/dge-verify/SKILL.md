@@ -1,6 +1,6 @@
 ---
 name: dge-verify
-description: Verify a Delivery Graph node against its validation contract and block completion until evidence exists.
+description: Independently verify a Delivery Graph node against its validation contract and block completion until evidence and verifier independence exist.
 argument-hint: "NODE-### [optional graph path]"
 ---
 
@@ -18,18 +18,23 @@ Gate node completion on validation evidence. Verification is a first-class workf
 2. Required validation must match the node's validation contract.
 3. Missing evidence is a blocker, not a warning.
 4. Do not weaken validation to make a node pass.
-5. Sync external tracker state after verification when a sync target exists.
+5. Verification always runs in a fresh agent context separate from the builder run.
+6. Give the verifier only the contract, implementation diff, and evidence — never the builder's reasoning or conclusion.
+7. Standard-risk nodes may reuse the builder harness in a fresh run; high-risk nodes require a different harness and fail closed when none is available.
+8. A verifier failure returns the node for bounded repair; it never counts as verified.
+9. Sync external tracker state after verification when a sync target exists.
 
 ## Workflow
 
-1. Read the graph.
-2. Locate the node.
-3. Read the node evidence directory.
-4. Check each required validation item.
-5. Run missing local checks when possible.
-6. Mark node `verified` when validation passes.
-7. Mark node `done` only when review is not required, or after `/dge-review` passes.
-8. Write a verification report under `delivery-graph/evidence/NODE-###/verification.md`.
+1. Read the graph and locate the node.
+2. Determine verification risk with the agentic verification policy (`release` is high-risk by default; project policy may promote other nodes or types).
+3. Select a verifier: prefer a different harness for standard risk and require one for high risk.
+4. Start a fresh verifier run with only the contract, implementation diff, and evidence.
+5. Check each required validation item and run missing local checks when possible.
+6. On verifier failure, return the node for bounded repair; on verifier infrastructure failure, escalate rather than self-certifying.
+7. Mark node `verified` only after the independent verifier passes.
+8. Mark node `done` only when review is not required, or after `/dge-review` passes.
+9. Write a verification report under the node's demand-scoped evidence directory.
 
 ## Output
 

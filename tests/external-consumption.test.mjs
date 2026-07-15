@@ -8,7 +8,7 @@ import test from "node:test";
 const repoRoot = path.resolve(".");
 const REQUIRED_EVIDENCE = "Gap register and requirement artifact";
 
-test("installed package runs DGE intake and evidence loop from another repo", () => {
+test("installed package runs DGE design and evidence loop from another repo", () => {
   const packDir = fs.mkdtempSync(path.join(os.tmpdir(), "dge-pack-"));
   const consumerDir = fs.mkdtempSync(path.join(os.tmpdir(), "dge-consumer-"));
   const tarball = packPackage(packDir);
@@ -21,17 +21,17 @@ test("installed package runs DGE intake and evidence loop from another repo", ()
     consumerDir,
     "add-demand",
     "--title",
-    "Replace grill-me with DGE intake",
+    "Replace grill-me with DGE design",
     "--source",
     "user",
     "--problem",
     "Raw demands need structured challenge before planning",
     "--outcome",
-    "Intake produces machine-readable requirements and explicit gaps",
+    "Design produces machine-readable requirements and explicit gaps",
     "--constraint",
     "Ask one clarification at a time",
     "--non-goal",
-    "Implementation planning during intake"
+    "Implementation planning during design"
   );
   runDge(
     consumerDir,
@@ -39,7 +39,7 @@ test("installed package runs DGE intake and evidence loop from another repo", ()
     "--demand",
     "DEM-001",
     "--statement",
-    "Intake captures blocker gaps before planning",
+    "Design captures blocker gaps before planning",
     "--acceptance",
     "A blocker gap prevents track and node creation",
     "--evidence",
@@ -53,7 +53,7 @@ test("installed package runs DGE intake and evidence loop from another repo", ()
     "--severity",
     "blocker",
     "--question",
-    "What evidence proves the intake is complete?",
+    "What evidence proves the design is complete?",
     "--blocks",
     "REQ-001"
   );
@@ -105,11 +105,11 @@ test("installed package runs DGE intake and evidence loop from another repo", ()
     "--satisfies",
     REQUIRED_EVIDENCE,
     "--summary",
-    "Intake artifacts and blocker resolution are persisted in delivery-graph/",
+    "Design artifacts and blocker resolution are persisted in delivery-graph/",
     "--",
     process.execPath,
     "-e",
-    "console.log('intake evidence captured')"
+    "console.log('design evidence captured')"
   );
   const doneOutput = runDge(consumerDir, "done", "NODE-001");
   assert.match(doneOutput, /NODE-001 done/);

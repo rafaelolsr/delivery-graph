@@ -67,6 +67,8 @@ import { migrateStore } from "../src/store-migration.mjs";
 import { buildDemandView, renderDemandView } from "../src/show-renderer.mjs";
 import { buildGraphBrief, renderGraphBrief } from "../src/brief-renderer.mjs";
 import { findLearnings } from "../src/learnings-engine.mjs";
+import { planIndependentVerification } from "../src/agentic-verification.mjs";
+import { writeViewer } from "../src/viewer-renderer.mjs";
 
 const DEFAULT_GRAPH_PATH = "delivery-graph/graph.json";
 
@@ -123,6 +125,9 @@ function main() {
         break;
       case "verify":
         runVerify(graphPath, args);
+        break;
+      case "verification-plan":
+        runVerificationPlan(graphPath, args);
         break;
       case "done":
         runDone(graphPath, args);
@@ -195,7 +200,9 @@ function runInit(graphPath, args) {
     source: args.source
   });
   writeGraph(graphPath, graph);
+  const viewerPath = writeViewer(graphPath, graph);
   printRecord("graph", graph.graph, args);
+  printViewerLink(viewerPath, graphPath, args);
 }
 
 function runInstallSkills(args) {
@@ -230,7 +237,7 @@ function runValidate(graphPath) {
 // Every dge-* skill and the /dge-deliver conductor run `dge preflight` instead of
 // restating the CLI check + writer guardrail. Reaching this code proves the CLI is
 // installed and on PATH; it then confirms the graph is present and valid (unless
-// --no-graph, for intake before `dge init`) and prints the "CLI is the only writer"
+// --no-graph, for design before `dge init`) and prints the "CLI is the only writer"
 // reminder. Non-zero exit on a missing/invalid graph is the stop signal skills gate on.
 function runPreflight(graphPath, args = {}) {
   const lines = ["dge CLI: reachable"];
@@ -261,6 +268,7 @@ function runMigrate(graphPath, args = {}) {
   const graph = readGraph(graphPath);
   const { graph: migrated, moves, removedDirs } = migrateStore(graph, graphPath);
   writeGraph(graphPath, migrated);
+  writeViewer(graphPath, migrated);
 
   if (args.json) {
     console.log(JSON.stringify({ moves, removedDirs }, null, 2));
@@ -275,6 +283,7 @@ function runMigrate(graphPath, args = {}) {
 function runRegenerate(graphPath, args = {}) {
   const graph = readGraph(graphPath);
   const written = regenerateArtifacts(graphPath, graph);
+  writeViewer(graphPath, graph);
   if (args.json) {
     console.log(JSON.stringify({ written: written.map((p) => relativePath(p, graphPath)) }, null, 2));
     return;
@@ -292,6 +301,7 @@ function runRemoveDemand(graphPath, args = {}) {
   }
   const { graph, record } = removeDemand(readGraph(graphPath), demandId);
   writeGraph(graphPath, graph);
+  writeViewer(graphPath, graph);
 
   const folder = resolveRuntimePath(graphPath, `delivery-graph/demands/${demandId}`);
   let folderRemoved = false;
@@ -350,7 +360,7 @@ function runBrief(graphPath, args = {}) {
   throw new Error("Usage: dge brief demand DEM-### | dge brief graph [DEM-###] [--mermaid] [--json]");
 }
 
-// The READ side of the compound loop. dge-intake/dge-plan-graph call this to
+// The READ side of the compound loop. dge-design/dge-plan-graph call this to
 // surface relevant prior learnings before scoping new work, so the toolset
 // compounds across demands. Terms come from positional args and/or --about.
 function runLearnings(graphPath, args = {}) {
@@ -467,6 +477,7 @@ function runTransition(graphPath, args) {
 
   const nextGraph = transitionNode(graph, nodeId, nextStatus);
   writeGraph(graphPath, nextGraph);
+  writeViewer(graphPath, nextGraph);
   console.log(`${nodeId} -> ${nextStatus}`);
 }
 
@@ -483,11 +494,13 @@ function runEvidence(graphPath, args) {
       throw new Error("Usage: dge evidence remove NODE-### EVD-###");
     }
     const { record } = removeEvidence(graphPath, graph, nodeId, thirdArg);
+    writeViewer(graphPath, graph);
     console.log(`removed evidence ${record.id} from ${nodeId} (satisfied: ${record.satisfies})`);
     return;
   }
 
   const { record } = runEvidenceSubcommand(graphPath, graph, nodeId, subcommand, args);
+  writeViewer(graphPath, graph);
   printRecord("evidence", record, args);
 }
 
@@ -596,6 +609,7 @@ function runVerify(graphPath, args) {
 
   const { graph, evidenceStatus, verificationPath } = verifyNode(graphPath, readGraph(graphPath), nodeId);
   writeGraph(graphPath, graph);
+  writeViewer(graphPath, graph);
 
   if (args.json) {
     console.log(JSON.stringify({
@@ -610,6 +624,36 @@ function runVerify(graphPath, args) {
   const count = evidenceStatus.required.length;
   console.log(`${g("verified")} ${nodeId} verified — evidence ${count}/${count} passed`);
   console.log(`   ${g("reports")} report  ${relativePath(verificationPath, graphPath)}`);
+}
+
+function runVerificationPlan(graphPath, args) {
+  const [nodeId] = args._;
+  const builderRun = args["builder-run"] ?? args.builderRun;
+  const builderHarness = args["builder-harness"] ?? args.builderHarness;
+  const availableHarnesses = toList(args.harness);
+  if (!nodeId || !builderRun || !builderHarness || availableHarnesses.length === 0) {
+    throw new Error(
+      "Usage: dge verification-plan NODE-### --builder-run RUN-ID --builder-harness HARNESS --harness HARNESS [--harness HARNESS] [--risk standard|high]"
+    );
+  }
+
+  const node = findNode(readGraph(graphPath), nodeId);
+  const policy = args.risk ? { riskByNode: { [nodeId]: args.risk } } : {};
+  const plan = planIndependentVerification({
+    node,
+    builder: { runId: builderRun, harness: builderHarness, model: args["builder-model"] ?? args.builderModel },
+    availableHarnesses,
+    policy
+  });
+
+  if (args.json) {
+    console.log(JSON.stringify(plan, null, 2));
+    return;
+  }
+  console.log(`${glyph("verified", args)} ${nodeId} verification plan — ${plan.risk} risk`);
+  console.log(`   builder   ${plan.builder.harness} (${plan.builder.run_id})`);
+  console.log(`   verifier  ${plan.verifier.harness} (fresh context)`);
+  console.log(`   context   ${plan.context_policy}`);
 }
 
 function runDone(graphPath, args) {
@@ -654,9 +698,10 @@ function runDone(graphPath, args) {
     throw new Error(`Review blockers prevent done: ${blockers.map((finding) => finding.message).join("; ")}\nreview report: ${reviewPath}`);
   }
 
-  const verified = verifyNode(graphPath, graph, nodeId);
+  const verified = node.status === "verified" ? { graph } : verifyNode(graphPath, graph, nodeId);
   const doneGraph = transitionNode(verified.graph, nodeId, "done");
   writeGraph(graphPath, doneGraph);
+  writeViewer(graphPath, doneGraph);
 
   const doneNode = findNode(doneGraph, nodeId);
   const unblocked = newlyUnblockedNodes(doneGraph, nodeId);
@@ -710,6 +755,7 @@ function runWaive(graphPath, args, nodeId, reason) {
   const graph = readGraph(graphPath);
   const { graph: waivedGraph } = waiveNode(graphPath, graph, nodeId, { reason });
   writeGraph(graphPath, waivedGraph);
+  writeViewer(graphPath, waivedGraph);
 
   const waivedNode = findNode(waivedGraph, nodeId);
   const unblocked = newlyUnblockedNodes(waivedGraph, nodeId);
@@ -864,10 +910,17 @@ function runMutation(graphPath, mutate, args = {}) {
     }
   }
   const artifactPath = writeRecordArtifact(graphPath, record);
+  const viewerPath = writeViewer(graphPath, readGraph(graphPath));
   printRecord("record", record, args);
   if (artifactPath && !args.json) {
     console.log(`   ${glyph("reports", args)} ${relativePath(artifactPath, graphPath)}`);
   }
+  printViewerLink(viewerPath, graphPath, args);
+}
+
+function printViewerLink(viewerPath, graphPath, args = {}) {
+  if (args.json) return;
+  console.log(`   viewer  ${relativePath(viewerPath, graphPath)}`);
 }
 
 function mapDemandArgs(args) {
@@ -1024,6 +1077,7 @@ Usage:
   dge evidence playwright NODE-001 --satisfies "checkout works" --url http://localhost:3000 --script tests/e2e/checkout.spec.ts [--artifacts test-results]
   dge evidence remove NODE-001 EVD-001
   dge verify NODE-001 [--graph path]
+  dge verification-plan NODE-001 --builder-run RUN-ID --builder-harness claude --harness claude --harness copilot [--risk standard|high] [--json]
   dge done NODE-001 [--graph path]
   dge done NODE-001 --waive "<reason>" [--graph path]
   dge review [--graph path] [--out path]

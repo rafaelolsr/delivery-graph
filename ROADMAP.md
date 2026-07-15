@@ -17,36 +17,38 @@ The foundation for neutral, evidence-gated, multi-agent delivery already exists:
 - **Persistent dependency graph** with per-node validation contracts, versioned in `graph.json`.
 - **The `/dge-deliver` conductor**: intent → two judgment gates (Demand Brief, Graph Brief) →
   silent, evidence-gated execution → summary. Sequential, one node at a time.
-- **Compound learning loop**: `/dge-compound` writes learnings; `/dge-intake` reads them.
+- **Compound learning loop**: `/dge-compound` writes learnings; `/dge-design` reads them.
 - **CLI authoring + record editing**: create and correct demands/requirements/nodes without
   hand-editing `graph.json`.
 
-## The destination: parallel, cross-agent validation
+## The destination: autonomous, cross-agent engineering
 
 The headline claim — *different agents building and verifying each other's work against one
 objective source of truth* — is what no single harness can structurally do. Two pieces turn it
 from "built for" into "does":
 
-### 1. Concurrency-safe store (the unlock)
+### 1. Concurrency-safe store (local substrate implemented)
 
-**Problem:** `graph.json` is a single unlocked file. Two agents writing it concurrently corrupt
-it, so execution is deliberately sequential today. This blocks the "parallel" half of the pitch
-and caps team scale.
+**Implemented:** local writes use an exclusive store lock, atomic replacement, revision
+compare-and-swap, and bounded retry. Parallel harness tests prove concurrent node results persist
+without lost updates or graph corruption.
 
-**Direction:** split the canonical store so agents don't collide — per-node or per-demand graph
-fragments, or a merge-aware format / lightweight locking — while keeping `graph.json` as the
-logical source of truth. This is the single highest-leverage item on the roadmap: it makes
-"parallel" honest and unlocks team-scale collaboration.
+**Remaining:** isolate agent code changes in separate worktrees, add durable claims/leases and
+crash recovery, and define a distributed-store strategy for agents running on different hosts.
+The local lock protects `graph.json`; it does not isolate concurrent edits to the consuming repo.
 
 ### 2. Cross-agent verify role
 
-**Problem:** today the evidence gate validates *everyone's* output objectively, but there is no
-step where a *different agent* adversarially checks a node's work (design smells, missed edge
-cases — the things tests can't catch). "Validation" currently means the gate, not agent-checks-agent.
+**Policy substrate now implemented:** `src/agentic-verification.mjs` classifies node risk,
+selects an independent verifier, scopes its context to contract + diff + evidence, and fails
+closed unless the verifier returns an explicit structured pass. Standard-risk work may reuse a
+harness in a fresh run; high-risk work requires a different harness. `dge verification-plan`
+exposes the decision to conductors.
 
-**Direction:** a structured verify role where agent B independently reviews agent A's node
-against its contract, distinct from and on top of the objective evidence gate. Combined with (1),
-this delivers *"Claude builds, Kimi verifies, the engine proves"* — the full neutral-ground story.
+**Remaining integration:** wire this policy into the production execution control plane so every
+builder completion automatically dispatches its planned verifier and persists the run identity,
+verdict, and repair history before `done`. This delivers *"Claude builds, Kimi verifies, the
+engine proves"* — the full neutral-ground story.
 
 ## Validation before features (do this first)
 
@@ -60,10 +62,10 @@ Before building the above, capture the empirical proof the whole pitch rests on:
 
 ## Known limits (honest)
 
-- **Team scale is not ready.** Single unlocked `graph.json` → concurrent graph edits conflict.
-  Sharing is per-repo, per-team, opt-in-by-committing; there is no cross-team/cross-project
-  demand sharing (DGE is a one-to-many tool, team-blind by design).
-- **The workflow half is commoditized.** Intake→plan→gates→execute is table stakes that native
+- **Team scale is not ready.** Local graph writes are concurrency-safe, but agent code changes
+  are not worktree-isolated and the lock is not distributed across hosts. Sharing remains
+  per-repo and there is no cross-team/cross-project demand coordination.
+- **The workflow half is commoditized.** Design→plan→gates→execute is table stakes that native
   harnesses are absorbing. DGE's durable value is the persistent graph + enforced evidence +
   compound learning, not the flow.
 - **Adoption risk: ceremony vs. value.** The blocking evidence gate must pay for itself fast; a

@@ -33,18 +33,18 @@ $harness = if (Test-Path ".github") { "copilot" } else { "claude" }
 Write-Host ">> Installing /dge-* skills for harness: $harness" -ForegroundColor Cyan
 npx dge install-skills --harness $harness      # no --symlink on Windows (needs admin/Developer Mode)
 
-# --- 3. Graph store (empty; the demand is authored by intake, not by this script) ---
+# --- 3. Graph store (empty; the demand is authored by design, not by this script) ---
 if (-not (Test-Path "delivery-graph/graph.json")) {
   npx dge init --title "DCE Observability"
 }
 
 # --- 4. Handoff ---
 # No demand is seeded here. A demand is a judgment step: what "observability" means,
-# the DCE module boundary, and what proof counts as done. That belongs in the intake
-# conversation, not in a shell flag. dge-deliver runs intake for you, then plans and builds.
+# the DCE module boundary, and what proof counts as done. That belongs in the design
+# conversation, not in a shell flag. dge-deliver runs design for you, then plans and builds.
 npx dge preflight
 Write-Host "`n=== DGE ready. Open your harness (Claude Code / Copilot) in THIS repo and run: ===" -ForegroundColor Green
 Write-Host "`n  /delivery-graph:dge-deliver implement the project's observability stack into a new module named DCE`n" -ForegroundColor White
-Write-Host "There is no demand yet — dge-deliver will run intake first (what observability means," -ForegroundColor Gray
+Write-Host "There is no demand yet — dge-deliver will run design first (what observability means," -ForegroundColor Gray
 Write-Host "the DCE boundary, acceptance proof), author the demand, show you the plan to approve," -ForegroundColor Gray
 Write-Host 'then build it evidence-gated. No node reaches "done" without proof.' -ForegroundColor Gray

@@ -6,7 +6,7 @@ import test from "node:test";
 import { addDemand, addRequirement, addGap } from "../src/graph-authoring.mjs";
 import { assertValidGraph } from "../src/graph-engine.mjs";
 
-// DEM-006: the /dge-intake skill emits richer gap types (privacy, architecture,
+// DEM-006: the /dge-design skill emits richer gap types (privacy, architecture,
 // ownership) and a `major` severity that the engine schema previously rejected —
 // the StarBase migration hit both. The schema now accepts them so skill output
 // validates without lossy remapping.

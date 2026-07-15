@@ -396,14 +396,14 @@ export function isNodeComplete(node) {
 }
 
 // The demand lifecycle, coarser than node status: where a demand sits across
-// intake -> plan -> execute -> verify -> done. Always derived live from the
+// design -> plan -> execute -> verify -> done. Always derived live from the
 // graph's requirements/nodes for this demand — never stored — so it can never
 // drift from the data it summarizes.
-export const DEMAND_STAGES = ["intake", "plan", "execute", "verify", "done"];
+export const DEMAND_STAGES = ["design", "plan", "execute", "verify", "done"];
 
 // One demand's stage plus the counts a renderer needs alongside it. `stage` is
 // the first matching rule, in order:
-//   - no requirements yet                              -> intake
+//   - no requirements yet                              -> design
 //   - requirements, but no nodes yet                    -> plan
 //   - nodes exist, all complete (done/done-waived)       -> done
 //   - nodes exist, all incomplete ones are in `review`   -> verify
@@ -426,7 +426,7 @@ export function demandProgress(graph, demandId) {
 
   let stage;
   if (requirementCount === 0) {
-    stage = "intake";
+    stage = "design";
   } else if (totalNodes === 0) {
     stage = "plan";
   } else if (completeNodes === totalNodes) {

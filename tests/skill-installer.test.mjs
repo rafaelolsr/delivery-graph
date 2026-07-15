@@ -20,7 +20,7 @@ function tempRepo(...markers) {
 
 test("lists the packaged dge-* skills", () => {
   const skills = listPackagedSkills();
-  assert.ok(skills.includes("dge-intake"));
+  assert.ok(skills.includes("dge-design"));
   assert.ok(skills.includes("dge-execute-graph"));
   assert.ok(skills.every((skill) => skill.startsWith("dge-")));
 });
@@ -75,9 +75,9 @@ test("symlink mode links back to the packaged skill", () => {
   const result = installSkills({ repoRoot, symlink: true });
   assert.equal(result.mode, "symlink");
 
-  const linkPath = path.join(repoRoot, ".claude", "skills", "dge-intake");
+  const linkPath = path.join(repoRoot, ".claude", "skills", "dge-design");
   assert.ok(fs.lstatSync(linkPath).isSymbolicLink());
-  assert.equal(fs.realpathSync(linkPath), fs.realpathSync(path.join(packagedSkillsDir(), "dge-intake")));
+  assert.equal(fs.realpathSync(linkPath), fs.realpathSync(path.join(packagedSkillsDir(), "dge-design")));
 });
 
 test("re-running skips existing skills unless --force is passed", () => {

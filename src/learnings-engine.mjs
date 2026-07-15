@@ -4,7 +4,7 @@ import { graphRoot } from "./output.mjs";
 
 // Learnings are the compounded-knowledge artifact written by dge-compound. They
 // live as markdown files under <root>/delivery-graph/learnings/. This module is
-// the READ side of the compound loop: it lets intake/plan-graph surface relevant
+// the READ side of the compound loop: it lets design/plan-graph surface relevant
 // prior learnings before scoping new work, so the toolset compounds across
 // demands instead of only within one.
 //

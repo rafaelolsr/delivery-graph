@@ -2,10 +2,10 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { demandProgress, deriveDemandStage } from "../src/graph-engine.mjs";
 
-test("no requirements yet -> intake", () => {
+test("no requirements yet -> design", () => {
   const graph = makeGraph({ requirements: [], nodes: [] });
   assert.deepEqual(demandProgress(graph, "DEM-001"), {
-    stage: "intake",
+    stage: "design",
     requirementCount: 0,
     totalNodes: 0,
     completeNodes: 0,
