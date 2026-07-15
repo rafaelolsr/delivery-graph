@@ -69,7 +69,7 @@ function surfaces(options) {
 
   const setupResult = {
     ok: true,
-    installed: [{ harness: "claude", installed: ["dge-intake"], skipped: [], skillsDir: ".claude/skills" }]
+    installed: [{ harness: "claude", installed: ["dge-design"], skipped: [], skillsDir: ".claude/skills" }]
   };
 
   const rendered = [

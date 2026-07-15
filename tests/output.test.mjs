@@ -111,7 +111,7 @@ test("renderDemandProgressLine marks completed, current, and pending stages", ()
     { stage: "execute", totalNodes: 7, completeNodes: 3, blockedNodes: 0 },
     {}
   );
-  assert.equal(line, "Intake ✅ → Plan ✅ → Execute 🟡 (3/7) → Verify ⚪ → Done ⚪");
+  assert.equal(line, "Design ✅ → Plan ✅ → Execute 🟡 (3/7) → Verify ⚪ → Done ⚪");
 });
 
 test("renderDemandProgressLine omits the uninformative (0/0) fraction during plan", () => {
@@ -119,7 +119,7 @@ test("renderDemandProgressLine omits the uninformative (0/0) fraction during pla
     { stage: "plan", requirementCount: 1, totalNodes: 0, completeNodes: 0, blockedNodes: 0 },
     {}
   );
-  assert.equal(line, "Intake ✅ → Plan 🟡 → Execute ⚪ → Verify ⚪ → Done ⚪");
+  assert.equal(line, "Design ✅ → Plan 🟡 → Execute ⚪ → Verify ⚪ → Done ⚪");
 });
 
 test("renderDemandProgressLine renders the plan stage bare in ASCII too", () => {
@@ -127,7 +127,7 @@ test("renderDemandProgressLine renders the plan stage bare in ASCII too", () => 
     { stage: "plan", requirementCount: 1, totalNodes: 0, completeNodes: 0, blockedNodes: 0 },
     { ascii: true }
   );
-  assert.equal(line, "Intake [x] -> Plan [~] -> Execute [ ] -> Verify [ ] -> Done [ ]");
+  assert.equal(line, "Design [x] -> Plan [~] -> Execute [ ] -> Verify [ ] -> Done [ ]");
 });
 
 test("renderDemandProgressLine appends a blocked annotation to the active stage", () => {
@@ -135,7 +135,7 @@ test("renderDemandProgressLine appends a blocked annotation to the active stage"
     { stage: "execute", totalNodes: 7, completeNodes: 3, blockedNodes: 1 },
     {}
   );
-  assert.equal(line, "Intake ✅ → Plan ✅ → Execute 🟡 (3/7, 🚫1 blocked) → Verify ⚪ → Done ⚪");
+  assert.equal(line, "Design ✅ → Plan ✅ → Execute 🟡 (3/7, 🚫1 blocked) → Verify ⚪ → Done ⚪");
 });
 
 test("renderDemandProgressLine appends an in-review annotation during execute", () => {
@@ -143,7 +143,7 @@ test("renderDemandProgressLine appends an in-review annotation during execute", 
     { stage: "execute", totalNodes: 2, completeNodes: 0, blockedNodes: 0, reviewNodes: 1 },
     {}
   );
-  assert.equal(line, "Intake ✅ → Plan ✅ → Execute 🟡 (0/2, 1 in review) → Verify ⚪ → Done ⚪");
+  assert.equal(line, "Design ✅ → Plan ✅ → Execute 🟡 (0/2, 1 in review) → Verify ⚪ → Done ⚪");
 });
 
 test("renderDemandProgressLine shows both in-review and blocked annotations together", () => {
@@ -151,7 +151,7 @@ test("renderDemandProgressLine shows both in-review and blocked annotations toge
     { stage: "execute", totalNodes: 3, completeNodes: 0, blockedNodes: 1, reviewNodes: 1 },
     {}
   );
-  assert.equal(line, "Intake ✅ → Plan ✅ → Execute 🟡 (0/3, 1 in review, 🚫1 blocked) → Verify ⚪ → Done ⚪");
+  assert.equal(line, "Design ✅ → Plan ✅ → Execute 🟡 (0/3, 1 in review, 🚫1 blocked) → Verify ⚪ → Done ⚪");
 });
 
 test("renderDemandProgressLine does not repeat the in-review count during the verify stage", () => {
@@ -161,7 +161,7 @@ test("renderDemandProgressLine does not repeat the in-review count during the ve
     { stage: "verify", totalNodes: 2, completeNodes: 1, blockedNodes: 0, reviewNodes: 1 },
     {}
   );
-  assert.equal(line, "Intake ✅ → Plan ✅ → Execute ✅ → Verify 🟡 (1/2) → Done ⚪");
+  assert.equal(line, "Design ✅ → Plan ✅ → Execute ✅ → Verify 🟡 (1/2) → Done ⚪");
 });
 
 test("renderDemandProgressLine renders the terminal done stage with the done glyph", () => {
@@ -169,7 +169,7 @@ test("renderDemandProgressLine renders the terminal done stage with the done gly
     { stage: "done", totalNodes: 4, completeNodes: 4, blockedNodes: 0 },
     {}
   );
-  assert.equal(line, "Intake ✅ → Plan ✅ → Execute ✅ → Verify ✅ → Done 🎯");
+  assert.equal(line, "Design ✅ → Plan ✅ → Execute ✅ → Verify ✅ → Done 🎯");
 });
 
 test("renderDemandProgressLine renders the ASCII fallback with no raw emoji", () => {
@@ -177,7 +177,7 @@ test("renderDemandProgressLine renders the ASCII fallback with no raw emoji", ()
     { stage: "verify", totalNodes: 2, completeNodes: 1, blockedNodes: 0 },
     { ascii: true }
   );
-  assert.equal(line, "Intake [x] -> Plan [x] -> Execute [x] -> Verify [~] (1/2) -> Done [ ]");
+  assert.equal(line, "Design [x] -> Plan [x] -> Execute [x] -> Verify [~] (1/2) -> Done [ ]");
   assert.ok(!/\p{Emoji_Presentation}/u.test(line));
 });
 
@@ -186,6 +186,6 @@ test("renderDemandProgressLine renders the terminal done stage in ASCII with no 
     { stage: "done", totalNodes: 4, completeNodes: 4, blockedNodes: 0 },
     { ascii: true }
   );
-  assert.equal(line, "Intake [x] -> Plan [x] -> Execute [x] -> Verify [x] -> Done [done]");
+  assert.equal(line, "Design [x] -> Plan [x] -> Execute [x] -> Verify [x] -> Done [done]");
   assert.ok(!/\p{Emoji_Presentation}/u.test(line));
 });

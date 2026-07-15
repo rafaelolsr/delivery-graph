@@ -82,7 +82,7 @@ delivery-graph/
 ```
 
 **Share the compound-loop learnings** (recommended for a single team on one repo). The
-`learnings/` folder is what `/dge-intake` reads before scoping new work, so sharing it is
+`learnings/` folder is what `/dge-design` reads before scoping new work, so sharing it is
 how the toolset gets smarter across the team — without sharing the churnier, conflict-prone
 rest:
 
@@ -104,10 +104,10 @@ ignore `delivery-graph/` at all, and commit it.
 > (pull before editing, small commits). This is a per-repo decision — DGE neither knows nor
 > tracks team boundaries.
 
-## 1. Intake a demand
+## 1. Design a demand
 
 ```text
-/dge-intake add a validation gate for advisor eval regressions
+/dge-design add a validation gate for advisor eval regressions
 ```
 
 ## 2. Plan the graph

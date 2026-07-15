@@ -6,7 +6,7 @@ argument-hint: "[optional graph path, demand id, or requirements path]"
 
 # DGE Plan Graph
 
-Use this skill after `/dge-intake` has produced ready requirements.
+Use this skill after `/dge-design` has produced ready requirements.
 
 ## Purpose
 
@@ -37,7 +37,7 @@ the **only** writer of `delivery-graph/graph.json`; never hand-write or hand-edi
 
 ## Workflow
 
-### 1. Load intake artifacts
+### 1. Load design artifacts
 
 Read `delivery-graph/graph.json` or the user-provided graph path. Confirm:
 

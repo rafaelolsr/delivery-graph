@@ -29,7 +29,7 @@ test("dge preflight passes on a valid graph and prints the writer reminder", () 
   assert.match(out, /ONLY writer/);
 });
 
-test("dge preflight --no-graph passes before init (intake's case)", () => {
+test("dge preflight --no-graph passes before init (design's case)", () => {
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "dge-preflight-"));
   const graphPath = path.join(tempDir, "delivery-graph", "graph.json");
   // No init: the graph does not exist yet.

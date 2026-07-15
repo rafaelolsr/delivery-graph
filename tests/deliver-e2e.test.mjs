@@ -17,14 +17,14 @@ function run(...args) {
 // DEM-008 / NODE-032 (REQ-026, REQ-036): the scripted proof that the mechanical
 // chain the /dge-deliver conductor drives runs end to end through the CLI, from
 // demand to an evidence-gated `done`, producing both gate-brief artifacts along
-// the way. The conductor's *conversational* parts (intake grill, gate approvals)
+// the way. The conductor's *conversational* parts (design grill, gate approvals)
 // are prose; this proves the CLI spine they sit on is complete and continuous.
 
 test("the /dge-deliver spine runs demand -> brief -> plan -> graph -> execute -> done", () => {
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "dge-e2e-"));
   const graphPath = path.join(tempDir, "delivery-graph", "graph.json");
 
-  // Intake phase (CLI writes; conductor would drive this from the grill).
+  // Design phase (CLI writes; conductor would drive this from the grill).
   run("init", "--graph", graphPath, "--title", "E2E demand");
   run("add-demand", "--graph", graphPath, "--title", "Ship it", "--source", "user", "--outcome", "done with proof");
   run("add-requirement", "--graph", graphPath, "--demand", "DEM-001",

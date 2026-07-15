@@ -25,13 +25,13 @@ harness=$([ -d .github ] && echo copilot || echo claude)
 echo ">> Installing /dge-* skills for harness: $harness"
 npx dge install-skills --harness "$harness"    # add --symlink on macOS/Linux if you prefer
 
-# --- 3. Graph store (empty; the demand is authored by intake, not by this script) ---
+# --- 3. Graph store (empty; the demand is authored by design, not by this script) ---
 [ -f delivery-graph/graph.json ] || npx dge init --title "DCE Observability"
 
 # --- 4. Handoff ---
 # No demand is seeded here. A demand is a judgment step: what "observability" means,
-# the DCE module boundary, and what proof counts as done. That belongs in the intake
-# conversation, not in a shell flag. dge-deliver runs intake for you, then plans and builds.
+# the DCE module boundary, and what proof counts as done. That belongs in the design
+# conversation, not in a shell flag. dge-deliver runs design for you, then plans and builds.
 npx dge preflight
 cat <<'EOF'
 
@@ -39,7 +39,7 @@ cat <<'EOF'
 
   /delivery-graph:dge-deliver implement the project's observability stack into a new module named DCE
 
-There is no demand yet — dge-deliver will run intake first (asking what observability
+There is no demand yet — dge-deliver will run design first (asking what observability
 means, the DCE boundary, acceptance proof), author the demand from your answers, show
 you the plan to approve, then build it evidence-gated. No node reaches "done" without proof.
 EOF

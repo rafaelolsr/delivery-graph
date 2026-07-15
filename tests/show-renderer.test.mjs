@@ -133,13 +133,13 @@ test("buildDemandView includes the derived progress for the demand", () => {
 test("renderDemandView includes the progress line in emoji mode", () => {
   const { graphPath, graph } = setup();
   const out = renderDemandView(buildDemandView(graphPath, graph, "DEM-001"), {});
-  assert.match(out, /Intake ✅ → Plan ✅ → Execute ✅ → Verify ✅ → Done 🎯/);
+  assert.match(out, /Design ✅ → Plan ✅ → Execute ✅ → Verify ✅ → Done 🎯/);
 });
 
 test("renderDemandView includes the progress line in ascii mode with no raw emoji", () => {
   const { graphPath, graph } = setup();
   const out = renderDemandView(buildDemandView(graphPath, graph, "DEM-001"), { ascii: true });
-  assert.match(out, /Intake \[x\] -> Plan \[x\] -> Execute \[x\] -> Verify \[x\] -> Done \[done\]/);
+  assert.match(out, /Design \[x\] -> Plan \[x\] -> Execute \[x\] -> Verify \[x\] -> Done \[done\]/);
 });
 
 test("renderDemandView renders each node's status as a glyph plus its status word in emoji mode", () => {

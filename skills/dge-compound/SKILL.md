@@ -31,7 +31,7 @@ Convert execution knowledge into reusable learning for future DGE loops.
 
 Add a small YAML frontmatter block so `dge learnings --about "<topic>"` can match
 this learning by tag and related id (the read side of the compound loop that
-`/dge-intake` and `/dge-plan-graph` run before scoping new work). The frontmatter
+`/dge-design` and `/dge-plan-graph` run before scoping new work). The frontmatter
 is optional and legacy learnings without it still list — but new learnings should
 carry it so future demands actually find them.
 
@@ -65,7 +65,6 @@ should list it. A learning no future demand can find is not compounding.
 Follow the shared output convention (see `skills/README.md`): lead the final
 reply with a bold one-line synthesis of what was captured (e.g. "Learning
 captured: <slug>" or "Nothing new to compound"), then any schema/skill-instruction
-suggestion from workflow step 5, then a `## Next` block: `/dge-intake` or
+suggestion from workflow step 5, then a `## Next` block: `/dge-design` or
 `/dge-plan-graph` for the next demand, or a single "nothing pending" line when
 there is none.
-

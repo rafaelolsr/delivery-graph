@@ -22,6 +22,7 @@ Walk the dependency-aware ready queue, implement each ready node with `/dge-work
 5. Do not edit `graph.json` directly; move state only through the CLI.
 6. After each `done`, re-query `npx dge next` because a completed node may have unblocked others.
 7. Respect an optional `--max N` cap on how many nodes to execute per run, and a `--max-retries N` cap on transient retries per node (default 1). Always stop when the queue is dry.
+8. After implementation evidence passes, dispatch `/dge-verify` in a fresh agent context. Standard-risk nodes may reuse the builder harness in a fresh run; high-risk nodes require a different harness. A verifier failure returns the node for repair and cannot flow to `done`.
 
 ## Failure classification
 
@@ -48,7 +49,11 @@ Repeat this loop until `next` is null or the `--max` cap is reached:
 3. Capture validation evidence:
    - `npx dge evidence run NODE-### --satisfies "<contract item>" -- <validation command>`
    - Use `npx dge evidence playwright NODE-### ...` for browser or UX validation.
-4. Close the node with `npx dge done NODE-###`.
+4. Dispatch independent verification using the agentic verification policy. Give the verifier only the validation contract, implementation diff, and evidence; never give it the builder's reasoning.
+   - On verifier pass, continue to closure.
+   - On verifier work failure, return to step 2 for bounded repair.
+   - On verifier infrastructure failure, or when a high-risk node has no different verifier harness, escalate and STOP.
+5. Close the node with `npx dge done NODE-###`.
    - On success, return to step 1.
    - On a **structural** failure, run `npx dge transition NODE-### blocked`, surface the CLI error and the review report path, and STOP.
    - On a **transient** failure, if the node has retries left (`--max-retries`, default 1): diagnose and fix the cause, re-run step 2-3 to produce fresh evidence, and try `dge done` again. If retries are exhausted, treat it as blocked: `npx dge transition NODE-### blocked`, report the last error, and STOP.
@@ -69,9 +74,10 @@ what is *gated* — every rule above still holds, especially the evidence gate.
   report path, and STOP (stop-on-failure is unchanged).
 - **Ambiguity:** break quiet, pause once, ask one question, resume (rule 4b).
 
-Quiet mode has **no path to `done` that skips evidence.** Suppressing narration must never
-suppress the gate: `dge done` still requires real evidence on disk. Weakening a contract or
-adding a failure/ambiguous note to force a pass is forbidden (rules 2 and 4b).
+Quiet mode has **no path to `done` that skips evidence or independent verification.**
+Suppressing narration must never suppress either gate: `dge done` still requires real evidence
+on disk, and the verifier still runs in a fresh scoped context. Weakening a contract or adding a
+failure/ambiguous note to force a pass is forbidden (rules 2 and 4b).
 
 ## Output
 

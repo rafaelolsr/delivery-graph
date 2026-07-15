@@ -1,6 +1,6 @@
 ---
 name: dge-deliver
-description: Drive a raw demand all the way to done from a single command - intake, plan, and evidence-gated execution - stopping only at two judgment gates and on genuine failure or ambiguity.
+description: Drive a raw demand all the way to done from a single command - design, plan, and evidence-gated execution - stopping only at two judgment gates and on genuine failure or ambiguity.
 argument-hint: "[raw demand, issue link, feature idea, or an in-progress DEM-### to resume]"
 ---
 
@@ -29,8 +29,8 @@ judgment gates** and surfaces genuine failure/ambiguity (judgment). It never ask
 ## Core rules
 
 1. **One entry verb.** After `/dge-deliver`, the user is never asked to invoke another
-   `dge-*` skill. The conductor runs intake → brief → plan → graph → execute → summary.
-2. **Two judgment gates, and only two.** Gate 1 = the Demand Brief (after intake).
+   `dge-*` skill. The conductor runs design → brief → plan → graph → execute → summary.
+2. **Two judgment gates, and only two.** Gate 1 = the Demand Brief (after design).
    Gate 2 = the Graph Brief with the dependency tree + per-node change/validation summary
    (after planning); `--mermaid` adds the DAG diagram for large graphs in a rendering surface.
    Gate 2 is **always required** — never auto-skip it.
@@ -42,10 +42,11 @@ judgment gates** and surfaces genuine failure/ambiguity (judgment). It never ask
    fabricates evidence to keep the loop flowing. `done` requires real evidence, always.
 6. **Silent on success, loud on failure/ambiguity.** During execution, clean nodes flow
    without narration; only failure (stop) and ambiguity (pause-once) surface.
+7. **Verification is independent.** Every builder is followed by a fresh verifier run that sees only the contract, diff, and evidence. High-risk nodes require a different harness; verifier failure returns work for bounded repair and never reaches `done`.
 
 ## Preflight
 
-Run the shared preflight before anything else (intake runs before `dge init`, so skip
+Run the shared preflight before anything else (design runs before `dge init`, so skip
 the graph check on a brand-new demand):
 
 ```bash
@@ -70,17 +71,17 @@ demand with an approved graph, **resume from the ready queue** instead of restar
 dge next --json   # returns the queue head; done nodes stay done
 ```
 
-If a graph exists and has ready/incomplete nodes, skip intake/plan and both gates
+If a graph exists and has ready/incomplete nodes, skip design/plan and both gates
 (already approved) and jump straight to **Phase 4 (execute)**. Announce that you are
 resuming, not restarting.
 
 ## Workflow
 
-### Phase 1 — Intake (human contact)
+### Phase 1 — Design (human contact)
 
-Run the `/dge-intake` discipline: grill the demand one question at a time, survey prior
+Run the `/dge-design` discipline: grill the demand one question at a time, survey prior
 art and learnings, expose gaps, and write testable requirements through the CLI. This is
-the only conversational phase; it ends when the intake readiness gate passes with no
+the only conversational phase; it ends when the design readiness gate passes with no
 blocker gaps.
 
 ### Phase 2 — Gate 1: the Demand Brief
@@ -108,7 +109,7 @@ Do not proceed until the user explicitly approves.
 
 On Gate 1 approval, **auto-advance** into the `/dge-plan-graph` discipline (no user
 command): create tracks, nodes, dependency edges, and validation contracts through the
-CLI, carrying the intake context forward (a validation ambiguity surfaced in Phase 1
+CLI, carrying the design context forward (a validation ambiguity surfaced in Phase 1
 should shape how you split nodes and write contracts).
 
 Then render and present the Graph Brief:
@@ -144,6 +145,9 @@ Drive the ready queue end to end, one node at a time, evidence-gated:
   "Failure classification".
 
 Never fabricate evidence or weaken a contract to keep the loop flowing.
+After each builder produces evidence, apply the agentic verification policy before closure:
+standard-risk nodes prefer another harness but may reuse the builder harness in a fresh run;
+high-risk nodes require a different harness and stop for escalation when none is available.
 
 ### Phase 5 — Summary
 

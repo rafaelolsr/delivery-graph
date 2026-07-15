@@ -25,6 +25,25 @@ plan before execution, work in isolated units, validate before completion, revie
 capture learnings — and models delivery as a **graph** rather than a linear checklist. But the
 discipline is table stakes; the enforced, evidence-gated, agent-neutral `done` is the point.
 
+## See the delivery graph
+
+Every graph also has a local, self-contained viewer at `delivery-graph/view/index.html`. It turns
+the canonical store into a desktop workspace: choose a demand, follow its dependency graph, see
+which validation criteria are proven, and inspect a node only when you select it. The viewer stays
+offline and refreshes at a user-selected rate, so it is a readable projection of the graph rather
+than another source of truth.
+
+<p align="center">
+  <img src="assets/delivery-graph-viewer.png" alt="Delivery Graph's offline viewer showing a demand rail, dependency graph, proven work nodes, and refresh controls" width="100%">
+</p>
+
+Generate or refresh the viewer whenever you work with the graph:
+
+```bash
+npx dge status
+# Open delivery-graph/view/index.html in your browser
+```
+
 ## Why it's different
 
 Every coding agent today trusts *itself* to declare work complete — and agents are documented to
@@ -41,13 +60,13 @@ path — not even a "quiet" or automated one — that reaches `done` without pro
   dependency edges and validation contracts, versioned in `graph.json` — the source of truth
   harnesses treat as ephemeral.
 - **Compounds across demands.** Completed work leaves behind evidence and learnings that the next
-  intake reads, so the toolset gets smarter with each demand.
+  design reads, so the toolset gets smarter with each demand.
 
 > **Built for what no single harness can do.** Because the ground is neutral and completion is
 > objective, DGE is designed toward *different agents building and verifying each other's work
 > against one source of truth*. That parallel, cross-agent validation is on the
-> [roadmap](ROADMAP.md) — the substrate exists today; concurrency-safe storage and a cross-agent
-> verify role are what make it fully real.
+> [roadmap](ROADMAP.md) — local concurrency and risk-based verifier-policy substrates exist today;
+> production control-plane wiring, isolated worktrees, and durable run history make it fully real.
 
 ## 60-second quickstart
 
@@ -96,7 +115,7 @@ Two loops compound the work.
                                            /dge-execute-graph  (drives the inner loop, on dge next)
                                            |---------------------------------|
                                            v                                 v
-Intake -> Requirements -> Graph -> Sync -> Work Node -> Verify -> Review -> done
+Design -> Requirements -> Graph -> Sync -> Work Node -> Verify -> Review -> done
    ^                                                                          |
    |------------------------------ Compound ----------------------------------|
 ```
@@ -105,7 +124,7 @@ Intake -> Requirements -> Graph -> Sync -> Work Node -> Verify -> Review -> done
   `Work Node -> Verify -> Review -> done` one ready node at a time, re-querying `dge next` after
   each node so completing one can unblock the next.
 - **Outer loop** compounds across demands: every completed node leaves behind validation evidence,
-  decisions, reusable patterns, and follow-up context that the next intake reads.
+  decisions, reusable patterns, and follow-up context that the next design reads.
 
 ### One command, two approvals: `/dge-deliver`
 
@@ -116,7 +135,7 @@ auto-advances through every phase on its own, and **stops for you at exactly two
 
 ```mermaid
 flowchart LR
-    I([Raw idea]) --> A["/dge-intake"]
+    I([Raw idea]) --> A["/dge-design"]
     A --> G1{{"🧑 Gate 1<br/>Demand Brief<br/>— you approve or edit —"}}
     G1 -->|approved| P["/dge-plan-graph"]
     P --> G2{{"🧑 Gate 2<br/>Graph Brief + dependency tree<br/>— you approve or edit —"}}
@@ -135,7 +154,7 @@ flowchart LR
 
 | Gate | When | What you review | How you respond |
 | --- | --- | --- | --- |
-| **Gate 1 — Demand Brief** | After intake, before planning | The clarified demand: goal, requirements, resolved gaps | Approve, or ask for edits in plain language (the conductor applies them via the CLI and re-renders). Blocker gaps must be resolved before you can approve. |
+| **Gate 1 — Demand Brief** | After design, before planning | The clarified demand: goal, requirements, resolved gaps | Approve, or ask for edits in plain language (the conductor applies them via the CLI and re-renders). Blocker gaps must be resolved before you can approve. |
 | **Gate 2 — Graph Brief** | After planning, before any code | The dependency tree + per-node change/validation summary | Approve, or edit the same way. **Gate 2 is always required** — execution never starts without it. |
 
 After Gate 2, execution runs **silently and evidence-gated**: it only surfaces again on the final
@@ -153,7 +172,7 @@ Work Node → Verify → Review → done cycle inside it.
 
 ```mermaid
 flowchart TD
-    A[Raw demand] --> B["/dge-intake"]
+    A[Raw demand] --> B["/dge-design"]
     B --> C[Demand record]
     B --> D[Testable requirements]
     B --> E[Gap register]
@@ -198,7 +217,7 @@ flowchart TD
 
 | Skill | Purpose | Primary output |
 | --- | --- | --- |
-| `/dge-intake` | Brainstorm the demand, expose gaps, and create testable requirements | `demands/DEM-<id>/`, `demands/DEM-<id>/requirements/` |
+| `/dge-design` | Map a raw request into a structured demand, expose gaps, and create testable requirements | `demands/DEM-<id>/`, `demands/DEM-<id>/requirements/` |
 | `/dge-plan-graph` | Break requirements into tracks, nodes, dependencies, validation contracts | `graph.json` |
 | `/dge-sync` | Create or update tracker records from graph nodes | Linear issues, ADO tasks, `sync/` |
 | `/dge-work-node` | Execute one ready atomic node | Code/docs changes plus node evidence |
@@ -242,7 +261,7 @@ manage plugins with the `/plugin` slash command **inside the `copilot` prompt** 
 
 Both harnesses read the same `.claude-plugin/plugin.json` at the repo root, auto-scan the
 top-level `skills/` directory, and put `bin/dge` on PATH. Skills appear namespaced (e.g.
-`/delivery-graph:dge-intake`). With the marketplace handling both surfaces, you only need
+`/delivery-graph:dge-design`). With the marketplace handling both surfaces, you only need
 `dge init` — skip both the npm install and `dge install-skills`.
 
 </details>
@@ -376,7 +395,7 @@ another graph file.
 # Create the canonical graph
 npx dge init --title "Advisor eval regression gate"
 
-# Intake outputs
+# Design outputs
 npx dge add-demand --title "Safer eval gates" --source "user" --outcome "Block quality regressions before merge"
 npx dge add-requirement --demand DEM-001 --statement "PRs fail when eval quality drops" --acceptance "CI fails below threshold" --evidence "CI check output"
 npx dge add-gap --type validation --severity blocker --question "What threshold blocks a PR?" --blocks REQ-001
@@ -475,7 +494,7 @@ DGE should be proven from a real consuming repository, not by creating all runti
 this tool repository. Install DGE as a dev dependency in a separate project and use it to manage one
 real delivery demand end to end. The battle test should prove:
 
-- `/dge-intake` turns raw asks into explicit demands, testable requirements, and blocker gaps.
+- `/dge-design` turns raw asks into explicit demands, testable requirements, and blocker gaps.
 - `/dge-plan-graph` converts requirements into tracks, nodes, dependencies, and validation contracts.
 - `/dge-work-node` keeps implementation scoped to one ready node.
 - `/dge-verify` blocks completion until evidence exists and writes user-visible proof under
@@ -546,9 +565,9 @@ A node can only move to `done` when:
 
 | Asset | Saved in | Created by |
 | --- | --- | --- |
-| Demand record | `demands/DEM-<id>/DEM-<id>.md` | `/dge-intake` |
-| Requirements | `demands/DEM-<id>/requirements/REQ-<id>.md` | `/dge-intake` |
-| Gap register | `graph.json` under `gaps` | `/dge-intake` |
+| Demand record | `demands/DEM-<id>/DEM-<id>.md` | `/dge-design` |
+| Requirements | `demands/DEM-<id>/requirements/REQ-<id>.md` | `/dge-design` |
+| Gap register | `graph.json` under `gaps` | `/dge-design` |
 | Canonical graph | `graph.json` | `/dge-plan-graph` |
 | Linear sync map | `sync/linear.json` | `/dge-sync` |
 | ADO sync map | `sync/ado.json` | `/dge-sync` |
@@ -604,4 +623,4 @@ DGE is honest about what delivers its "proven, not trusted" claim **today** vers
 **destination** — especially parallel, cross-agent validation. See **[ROADMAP.md](ROADMAP.md)** for
 what ships today (the harness-neutral engine, engine-enforced `done`, the persistent graph, the
 `/dge-deliver` conductor, the compound-learning loop) versus what's coming (concurrency-safe storage
-and a cross-agent verify role).
+and production wiring for the cross-agent verify role).

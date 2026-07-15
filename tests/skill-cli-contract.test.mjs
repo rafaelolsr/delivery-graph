@@ -11,7 +11,7 @@ function readSkill(name) {
   return fs.readFileSync(path.join(skillsDir, name, "SKILL.md"), "utf8");
 }
 
-const AUTHORING_SKILLS = ["dge-intake", "dge-plan-graph"];
+const AUTHORING_SKILLS = ["dge-design", "dge-plan-graph"];
 
 // DEM-005: skills must require the CLI and never silently hand-write graph.json
 // (the StarBase drift root cause). Guard both invariants so a future edit can't
@@ -97,14 +97,14 @@ test("dge-deliver holds the intent-driven posture (one verb, two gates, sacred e
   assert.match(text, /resume from the ready queue|resume, not restart/i);
   assert.match(text, /[Aa]bandon is clean|preserved and resumable/);
   // It sequences the existing skills rather than reimplementing them.
-  assert.match(text, /sequences the nine|does not replace the nine|dge-intake/);
+  assert.match(text, /sequences the nine|does not replace the nine|dge-design/);
 });
 
-// dge-intake must carry the grill-me interrogation mechanics (map, one-question
+// dge-design must carry the grill-me interrogation mechanics (map, one-question
 // push-back, recommended answers, lock-in) so a future edit can't quietly revert
 // it to a form that accepts fuzzy input.
-test("dge-intake carries the grill-me interrogation mechanics", () => {
-  const text = readSkill("dge-intake");
+test("dge-design carries the grill-me interrogation mechanics", () => {
+  const text = readSkill("dge-design");
   assert.match(text, /Map the decision tree/i);
   assert.match(text, /one question at a time/i);
   assert.match(text, /My recommendation:/);
@@ -112,22 +112,30 @@ test("dge-intake carries the grill-me interrogation mechanics", () => {
   assert.match(text, /Confirmed decisions/i);
 });
 
-// DEM-013 / NODE-054: intake must capture a one-line summary and cap the outcome so
+// DEM-013 / NODE-054: design must capture a one-line summary and cap the outcome so
 // the captured prose stops becoming a wall of text. Guard the behavior (a summary
 // discipline + an outcome length cap + the --summary CLI affordance), not the exact
 // phrasing (per learning skill-prose-can-drift-from-code).
-test("dge-intake captures a one-line summary and caps the outcome length", () => {
-  const text = readSkill("dge-intake");
+test("dge-design captures a one-line summary and caps the outcome length", () => {
+  const text = readSkill("dge-design");
   assert.match(text, /summary/i);
   assert.match(text, /--summary/);            // the CLI affordance is offered
   assert.match(text, /at most 3 sentences|3 sentences|wall of text/i); // outcome cap
+});
+
+test("dge-verify requires risk-based independent verification", () => {
+  const text = readSkill("dge-verify");
+  assert.match(text, /fresh agent context/i);
+  assert.match(text, /contract, implementation diff, and evidence/i);
+  assert.match(text, /high-risk nodes require a different harness/i);
+  assert.match(text, /failure returns the node for bounded repair/i);
 });
 
 // DEM-013 / NODE-054: the run summaries must lead with a synthesis and end with a
 // Next block — the same skeleton the CLI surfaces use. Guard the behavior so a
 // future edit can't revert them to a flat enumeration.
 const ALL_SKILLS = [
-  "dge-intake", "dge-plan-graph", "dge-review", "dge-status", "dge-work-node",
+  "dge-design", "dge-plan-graph", "dge-review", "dge-status", "dge-work-node",
   "dge-verify", "dge-compound", "dge-sync", "dge-deliver", "dge-execute-graph"
 ];
 
@@ -163,11 +171,11 @@ test("skills/README.md defines the output convention", () => {
 });
 
 // Demand-level progress indicator: the 5 skills that mutate a demand's
-// requirements/nodes must each print the derived lifecycle line (Intake ->
+// requirements/nodes must each print the derived lifecycle line (Design ->
 // Plan -> Execute -> Verify -> Done) between the synthesis and the detail.
 // Guard the behavior (a reference to the progress indicator convention), not
 // exact phrasing, per skill-prose-can-drift-from-code.
-const PROGRESS_SKILLS = ["dge-intake", "dge-plan-graph", "dge-work-node", "dge-execute-graph", "dge-verify"];
+const PROGRESS_SKILLS = ["dge-design", "dge-plan-graph", "dge-work-node", "dge-execute-graph", "dge-verify"];
 
 for (const skill of PROGRESS_SKILLS) {
   test(`${skill} references the demand progress indicator`, () => {
@@ -179,7 +187,7 @@ for (const skill of PROGRESS_SKILLS) {
 test("skills/README.md defines the demand progress indicator convention", () => {
   const text = fs.readFileSync(path.join(skillsDir, "README.md"), "utf8");
   assert.match(text, /progress indicator/i);
-  assert.match(text, /Intake.*Plan.*Execute.*Verify.*Done/s);
+  assert.match(text, /Design.*Plan.*Execute.*Verify.*Done/s);
 });
 
 // DEM-013 (and the standing mirror rule): when a local .claude/skills/ mirror

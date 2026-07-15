@@ -1,10 +1,10 @@
 ---
-name: dge-intake
-description: Brainstorm a raw demand into a structured demand record, gap register, requirements, and acceptance criteria for Delivery Graph Engineering.
+name: dge-design
+description: Design a structured demand from a raw request, including its gap register, requirements, and acceptance criteria for Delivery Graph Engineering.
 argument-hint: "[raw demand, issue link, meeting note, or feature idea]"
 ---
 
-# DGE Intake
+# DGE Design
 
 Use this skill when starting a new piece of work. It is the brainstorm and gap-exposure step for Delivery Graph Engineering.
 
@@ -19,7 +19,7 @@ Turn a raw demand into testable requirements without designing the implementatio
 3. Lock in each concrete answer by restating it before it becomes a requirement.
 4. Expose gaps explicitly; do not hide uncertainty in prose.
 5. Do not produce work nodes or implementation tracks here.
-6. Do not mark the intake ready while blocker gaps are unresolved.
+6. Do not mark the design ready while blocker gaps are unresolved.
 7. Use the canonical DGE IDs: `DEM-###`, `REQ-###`, `GAP-###`.
 
 ## Inputs
@@ -31,7 +31,7 @@ If no demand is provided, ask the user what demand, problem, or request they wan
 ## Preflight: require the DGE CLI
 
 Before writing anything, run the shared preflight (one callable place for every
-`dge-*` skill and the `/dge-deliver` conductor). Intake runs before `dge init`, so
+`dge-*` skill and the `/dge-deliver` conductor). Design runs before `dge init`, so
 skip the graph check:
 
 ```bash
@@ -47,7 +47,7 @@ If it exits non-zero, **stop** and tell the user to install the DGE CLI first �
 > ```bash
 > npm install --save-dev github:rafaelolsr/delivery-graph
 > ```
-> Then re-run `/dge-intake`.
+> Then re-run `/dge-design`.
 
 The `dge` CLI is the **only** writer of `delivery-graph/graph.json`. Never hand-write or
 hand-edit `graph.json`. If the CLI is missing, the correct action is to install it, not to emulate it.
@@ -222,6 +222,9 @@ with a bold one-line synthesis — ready for `/dge-plan-graph`, or blocked on N
 gaps — then the demand's progress indicator (see `skills/README.md`), then the
 detail (requirements captured, gaps open), then a `## Next` block:
 `/dge-plan-graph` when ready, or the specific blocker gaps to resolve when not.
+After a successful save, include the stable local viewer link
+`delivery-graph/view/index.html` so the user can open the graph without running a
+separate viewer command.
 
 ## CLI contract
 

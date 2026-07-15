@@ -114,16 +114,16 @@ export function renderNextSteps(items, options = {}) {
 }
 
 const DEMAND_STAGE_LABELS = {
-  intake: "Intake",
+  design: "Design",
   plan: "Plan",
   execute: "Execute",
   verify: "Verify",
   done: "Done"
 };
-const DEMAND_STAGE_ORDER = ["intake", "plan", "execute", "verify", "done"];
+const DEMAND_STAGE_ORDER = ["design", "plan", "execute", "verify", "done"];
 
 // The one-line demand lifecycle indicator every demand-scoped surface shows:
-// `Intake ✅ → Plan ✅ → Execute 🟡 (3/7, 1 in review, 🚫1 blocked) → Verify ⚪ → Done ⚪`.
+// `Design ✅ → Plan ✅ → Execute 🟡 (3/7, 1 in review, 🚫1 blocked) → Verify ⚪ → Done ⚪`.
 // `progress` is the shape returned by graph-engine's `demandProgress`. Stages
 // before the current one render done, the current one renders current (with
 // counts and blocked/in-review annotations when relevant), later ones render

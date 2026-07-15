@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+- Renamed the request-shaping skill and lifecycle phase from `dge-intake` / Intake to
+  `dge-design` / Design to reflect that it maps a raw request into a structured demand.
+- Added risk-based independent verification policy and `dge verification-plan`: every verifier
+  uses a fresh scoped context, high-risk nodes require a different harness, and only an explicit
+  structured pass verdict counts as verified.
+
 ## 0.2.2
 
 Zero-dependency CLI — the marketplace now genuinely ships a working engine, no npm needed.

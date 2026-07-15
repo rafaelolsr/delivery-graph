@@ -78,11 +78,29 @@ test("CLI status --demand scopes the board and progress line to one demand", () 
   const scoped = run("status", "--graph", graphPath, "--demand", "DEM-001");
   assert.match(scoped, /Node one/);
   assert.doesNotMatch(scoped, /Node two/);
-  assert.match(scoped, /Intake ✅ → Plan ✅ → Execute 🟡 \(0\/1\) → Verify ⚪ → Done ⚪/);
+  assert.match(scoped, /Design ✅ → Plan ✅ → Execute 🟡 \(0\/1\) → Verify ⚪ → Done ⚪/);
 
   const unscoped = run("status", "--graph", graphPath);
   assert.match(unscoped, /Node one/);
   assert.match(unscoped, /Node two/);
+});
+
+test("CLI closes an independently verified node without re-verifying it", () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "dge-cli-"));
+  const graphPath = path.join(tempDir, "delivery-graph", "graph.json");
+
+  run("init", "--graph", graphPath, "--title", "Verified completion");
+  run("add-demand", "--graph", graphPath, "--title", "Demand", "--source", "test", "--outcome", "Done");
+  run("add-requirement", "--graph", graphPath, "--demand", "DEM-001", "--statement", "Complete", "--acceptance", "Done", "--evidence", "proof");
+  run("add-track", "--graph", graphPath, "--title", "Implementation");
+  run("add-node", "--graph", graphPath, "--title", "Node", "--type", "implementation", "--track", "TRK-implementation", "--requirements", "REQ-001", "--validation", "proof");
+  run("evidence", "add", "NODE-001", "--graph", graphPath, "--satisfies", "proof", "--summary", "Passed");
+  run("verify", "NODE-001", "--graph", graphPath);
+  const output = run("done", "NODE-001", "--graph", graphPath);
+
+  assert.match(output, /NODE-001 done/);
+  const graph = JSON.parse(fs.readFileSync(graphPath, "utf8"));
+  assert.equal(graph.nodes[0].status, "done");
 });
 
 test("CLI writes Azure DevOps dry-run sync map", () => {

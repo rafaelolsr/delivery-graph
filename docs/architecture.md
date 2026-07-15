@@ -32,6 +32,19 @@ Scripts under `scripts/` call the engine instead of duplicating graph rules.
 
 The unified CLI lives in `bin/dge.mjs` and is the preferred command surface for skills and humans.
 
+## Agentic verification policy
+
+`src/agentic-verification.mjs` turns verifier independence into an engine policy:
+
+- every verifier uses a fresh run with only the contract, diff, and evidence
+- standard-risk nodes prefer another harness but may reuse the builder harness in a fresh run
+- high-risk nodes require another harness and fail closed when none is available
+- only an explicit structured `pass` verdict verifies; failure requests repair and missing verdicts escalate
+
+`dge verification-plan` exposes the risk decision and verifier assignment to conductors without
+mutating the graph. Harness adapters can then dispatch that scoped verifier task and retain the
+returned plan and verdict as an audit record.
+
 ## Linear projection
 
 The first tracker adapter lives in `src/adapters/linear.mjs`.
