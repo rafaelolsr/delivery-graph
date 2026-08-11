@@ -187,7 +187,7 @@ for (const skill of PROGRESS_SKILLS) {
 test("skills/README.md defines the demand progress indicator convention", () => {
   const text = fs.readFileSync(path.join(skillsDir, "README.md"), "utf8");
   assert.match(text, /progress indicator/i);
-  assert.match(text, /Design.*Plan.*Execute.*Verify.*Done/s);
+  assert.match(text, /Intent.*Spec.*Build.*Prove.*Result/s);
 });
 
 // DEM-013 (and the standing mirror rule): when a local .claude/skills/ mirror
