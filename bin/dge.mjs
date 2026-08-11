@@ -64,6 +64,7 @@ import {
 } from "../src/graph-authoring.mjs";
 import { installSkills } from "../src/skill-installer.mjs";
 import { migrateStore } from "../src/store-migration.mjs";
+import { sealContract } from "../src/seal.mjs";
 import { buildDemandView, renderDemandView } from "../src/show-renderer.mjs";
 import { buildGraphBrief, renderGraphBrief } from "../src/brief-renderer.mjs";
 import { findLearnings } from "../src/learnings-engine.mjs";
@@ -74,6 +75,12 @@ const DEFAULT_GRAPH_PATH = "delivery-graph/graph.json";
 
 // Bounded retries for the optimistic-concurrency mutation loop before failing loud.
 const MUTATION_RETRY_LIMIT = 10;
+
+// DEM-020 Track 1 / NODE-081: the phrase a human types to confirm a seal in a
+// non-interactive context. A `dge-*` skill is forbidden to pass it, so an
+// autonomous run cannot seal. Declared at module top so it is initialized before
+// main() dispatches (a const is not hoisted like a function).
+const SEAL_CONFIRM_PHRASE = "i-approve-this-contract";
 
 main();
 
@@ -173,6 +180,9 @@ function main() {
         break;
       case "set-validation":
         runMutation(graphPath, (graph) => setNodeValidation(graph, args._[0] ?? args.id, args.validation), args);
+        break;
+      case "seal-contract":
+        runSealContract(graphPath, args);
         break;
       case "install-skills":
         runInstallSkills(args);
@@ -916,6 +926,38 @@ function runMutation(graphPath, mutate, args = {}) {
     console.log(`   ${glyph("reports", args)} ${relativePath(artifactPath, graphPath)}`);
   }
   printViewerLink(viewerPath, graphPath, args);
+}
+
+function runSealContract(graphPath, args) {
+  const nodeId = args._[0] ?? args.id;
+  if (!nodeId) {
+    throw new Error("Usage: dge seal-contract NODE-### --by <signer> [--reseal] [--confirm i-approve-this-contract]");
+  }
+  const sealedBy = args.by ?? args.signer;
+  if (!sealedBy) {
+    throw new Error("seal-contract requires --by <signer>: the seal records who approved the contract");
+  }
+
+  // Human gate. An interactive TTY is treated as the human being present; a
+  // non-TTY (headless agent, CI, pipe) must carry the explicit typed phrase, which
+  // a skill may not supply. Either way, without human intent there is no seal.
+  const interactive = Boolean(process.stdin.isTTY);
+  const confirmed = args.confirm === SEAL_CONFIRM_PHRASE;
+  if (!interactive && !confirmed) {
+    console.error(
+      "seal-contract refused: no interactive terminal detected and the confirmation phrase was not provided.\n" +
+        "Sealing is a human-only action — an autonomous agent run cannot complete it.\n" +
+        `If you are a human running headless, re-run with: --confirm ${SEAL_CONFIRM_PHRASE}`
+    );
+    process.exit(1);
+  }
+
+  const sealedAt = new Date().toISOString();
+  runMutation(
+    graphPath,
+    (graph) => sealContract(graph, nodeId, { sealedBy, sealedAt, reseal: Boolean(args.reseal) }),
+    args
+  );
 }
 
 function printViewerLink(viewerPath, graphPath, args = {}) {
