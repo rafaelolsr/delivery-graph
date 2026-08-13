@@ -195,7 +195,13 @@ function parseList(lines, start, indent) {
     const line = lines[i];
     if (indentOf(line) !== indent || !line.slice(indent).startsWith("- ")) break;
     const firstContent = line.slice(indent + 2);
-    const inlineMatch = firstContent.match(/^([^:]+):(.*)$/);
+    // A list item is a mapping ONLY when it is a bare `key: value` — an UNQUOTED
+    // key followed by `: `. A quoted scalar (`- "Manual: do X"`) is a string, even
+    // though it contains a colon; without this guard a bulleted string that happens
+    // to contain `: ` is silently misparsed as a `{key: value}` object.
+    const inlineMatch = firstContent.startsWith('"')
+      ? null
+      : firstContent.match(/^([^":]+):\s(.*)$/);
     if (inlineMatch) {
       // List-of-mappings: the dash sits at `indent`; the first key is inline after
       // `- ` and every subsequent key of the same mapping aligns to `indent + 2`
