@@ -64,6 +64,9 @@ import {
 } from "../src/graph-authoring.mjs";
 import { installSkills } from "../src/skill-installer.mjs";
 import { migrateStore } from "../src/store-migration.mjs";
+import { graphToBundle, writeBundle, OKF_BUNDLE_SUBDIR } from "../src/okf-bundle.mjs";
+import { roundTrip, diffGraphs } from "../src/okf-compat.mjs";
+import { validateBundle } from "../src/okf-conformance.mjs";
 import { sealContract } from "../src/seal.mjs";
 import { buildDemandView, renderDemandView } from "../src/show-renderer.mjs";
 import { buildGraphBrief, renderGraphBrief } from "../src/brief-renderer.mjs";
@@ -108,6 +111,9 @@ function main() {
         break;
       case "migrate":
         runMigrate(graphPath, args);
+        break;
+      case "okf":
+        runOkf(graphPath, args);
         break;
       case "regenerate":
         runRegenerate(graphPath, args);
@@ -286,6 +292,62 @@ function runMigrate(graphPath, args = {}) {
   }
   console.log(`${glyph("reports", args)} migrated store to demand-centric layout`);
   console.log(`   ${moves.length} paths relocated, ${removedDirs.length} empty dirs removed`);
+}
+
+// OKF bundle projection (DEM-021). Two subcommands, both leaving graph.json untouched:
+//   dge okf preview [--json]  -> read-only: render a semantic diff + conformance, WRITE NOTHING
+//   dge okf write --confirm    -> explicit: emit the bundle under delivery-graph/okf/
+// The preview never writes, and the write requires --confirm, so there is no silent
+// migration (ADR-001 D4). Neither path ever writes back to graph.json.
+function runOkf(graphPath, args = {}) {
+  const sub = args._[0];
+  const graph = readGraph(graphPath);
+
+  if (sub === "preview" || sub === undefined) {
+    // Semantic diff: prove the projection loses nothing over the bundle's fields.
+    const diffs = diffGraphs(graph, roundTrip(graph));
+    const bundle = graphToBundle(graph);
+    const conformance = validateBundle(bundle);
+    const summary = {
+      action: "preview",
+      wrote: false,
+      bundle_subdir: OKF_BUNDLE_SUBDIR,
+      files: Object.keys(bundle).length,
+      round_trip_lossless: diffs.length === 0,
+      semantic_diff: diffs,
+      conformant: conformance.conformant,
+      conformance_errors: conformance.errors
+    };
+    if (args.json) {
+      console.log(JSON.stringify(summary, null, 2));
+      return;
+    }
+    console.log(`${glyph("reports", args)} OKF bundle preview (nothing written)`);
+    console.log(`   ${summary.files} concept files would be emitted under ${OKF_BUNDLE_SUBDIR}/`);
+    console.log(`   round-trip lossless: ${summary.round_trip_lossless ? "yes" : "NO"}`);
+    if (diffs.length) diffs.slice(0, 10).forEach((d) => console.log(`     - ${d}`));
+    console.log(`   OKF v0.2 conformant: ${summary.conformant ? "yes" : "NO"}`);
+    if (!conformance.conformant) {
+      conformance.errors.slice(0, 10).forEach((e) => console.log(`     - ${e.file}: ${e.message} (${e.rule})`));
+    }
+    console.log(`   to write it: dge okf write --confirm`);
+    return;
+  }
+
+  if (sub === "write") {
+    if (!args.confirm) {
+      throw new Error("Refusing to write the OKF bundle without --confirm. Run `dge okf preview` first, then `dge okf write --confirm`.");
+    }
+    const written = writeBundle(graphPath, graph);
+    if (args.json) {
+      console.log(JSON.stringify({ action: "write", wrote: true, files: written.map((p) => relativePath(p, graphPath)) }, null, 2));
+      return;
+    }
+    console.log(`${glyph("reports", args)} wrote ${written.length} OKF concept files under ${OKF_BUNDLE_SUBDIR}/`);
+    return;
+  }
+
+  throw new Error(`Unknown okf subcommand "${sub}". Use: dge okf preview | dge okf write --confirm`);
 }
 
 // Re-emit all demand/requirement markdown from graph.json. Proves the folder tree is
@@ -1109,6 +1171,8 @@ Usage:
   dge install-skills [--harness claude|copilot] [--symlink] [--force]
   dge validate [--graph path]
   dge migrate [--graph path] [--json]
+  dge okf preview [--graph path] [--json]      # read-only: semantic diff + conformance, writes nothing
+  dge okf write --confirm [--graph path]        # explicit: emit the OKF bundle under delivery-graph/okf/
   dge regenerate [--graph path] [--json]
   dge show DEM-001 [--graph path] [--json]
   dge learnings [search terms...] [--about "topic"] [--graph path] [--json]
