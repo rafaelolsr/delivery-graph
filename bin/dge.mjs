@@ -65,6 +65,7 @@ import {
 import { installSkills } from "../src/skill-installer.mjs";
 import { migrateStore } from "../src/store-migration.mjs";
 import { graphToBundle, writeBundle, OKF_BUNDLE_SUBDIR } from "../src/okf-bundle.mjs";
+import { planGovernance } from "../src/governance/govern-cli.mjs";
 import { roundTrip, diffGraphs } from "../src/okf-compat.mjs";
 import { validateBundle } from "../src/okf-conformance.mjs";
 import { sealContract } from "../src/seal.mjs";
@@ -114,6 +115,9 @@ function main() {
         break;
       case "okf":
         runOkf(graphPath, args);
+        break;
+      case "govern":
+        runGovern(graphPath, args);
         break;
       case "regenerate":
         runRegenerate(graphPath, args);
@@ -348,6 +352,45 @@ function runOkf(graphPath, args = {}) {
   }
 
   throw new Error(`Unknown okf subcommand "${sub}". Use: dge okf preview | dge okf write --confirm`);
+}
+
+// Run the adaptive governor over the ready nodes and show what it WOULD allocate, with
+// a governance report. This is the live wiring of the governance engine into the CLI.
+// It is READ-ONLY: allocation is a planning decision, so it never mutates graph.json
+// (applying a mutation stays behind the mutation gate + explicit write). Candidates and
+// policy come from an explicitly-configured governance config (never a home-dir default).
+function runGovern(graphPath, args = {}) {
+  const graph = readGraph(graphPath);
+  const demandId = args.demand ?? args._[0] ?? null;
+  const config = loadGovernConfig(args.config);
+  const { allocations, report, readyCount, candidateCount } = planGovernance(graph, config, { demandId });
+
+  if (args.json) {
+    console.log(JSON.stringify({ demand: demandId, readyCount, candidateCount, allocations, report }, null, 2));
+    return;
+  }
+
+  console.log(`${glyph("reports", args)} Governor plan${demandId ? ` for ${demandId}` : ""} — ${readyCount} ready node(s), ${candidateCount} candidate(s)`);
+  if (candidateCount === 0) {
+    console.log("   no candidates configured — pass --config <path> with a governance config (candidates, policy).");
+    console.log("   cold start: allocation cannot select without candidates. This is honest, not a failure.");
+  }
+  for (const a of allocations) {
+    const mark = a.gate.verdict === "PASS" ? glyph("done", args) : glyph("blocked", args);
+    console.log(`   ${mark} ${a.node_id} → ${a.selected ?? "(none eligible)"} [${a.risk}] — ${a.rationale ?? a.reason}`);
+    if (a.gate.verdict !== "PASS") console.log(`      gate ${a.gate.verdict}: ${a.gate.explanation}`);
+  }
+  console.log("");
+  console.log("Run `dge govern --json` for the full governance report (allocations, expectations, gates).");
+}
+
+// Load a governance config from an EXPLICIT path only (honors the no-home-dir rule).
+// Returns {} when no path is given, so the governor runs in honest cold-start mode.
+function loadGovernConfig(configPath) {
+  if (!configPath) return {};
+  const resolved = path.resolve(configPath);
+  if (!fs.existsSync(resolved)) throw new Error(`governance config not found: ${resolved}`);
+  return JSON.parse(fs.readFileSync(resolved, "utf8"));
 }
 
 // Re-emit all demand/requirement markdown from graph.json. Proves the folder tree is
@@ -1173,6 +1216,7 @@ Usage:
   dge migrate [--graph path] [--json]
   dge okf preview [--graph path] [--json]      # read-only: semantic diff + conformance, writes nothing
   dge okf write --confirm [--graph path]        # explicit: emit the OKF bundle under delivery-graph/okf/
+  dge govern [DEM-###] [--config path] [--json]  # run the adaptive governor over ready nodes (read-only plan + report)
   dge regenerate [--graph path] [--json]
   dge show DEM-001 [--graph path] [--json]
   dge learnings [search terms...] [--about "topic"] [--graph path] [--json]
