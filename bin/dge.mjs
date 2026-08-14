@@ -66,6 +66,7 @@ import { installSkills } from "../src/skill-installer.mjs";
 import { migrateStore } from "../src/store-migration.mjs";
 import { graphToBundle, writeBundle, OKF_BUNDLE_SUBDIR } from "../src/okf-bundle.mjs";
 import { planGovernance } from "../src/governance/govern-cli.mjs";
+import { orchestrateGoal } from "../src/autonomy/orchestrate.mjs";
 import { roundTrip, diffGraphs } from "../src/okf-compat.mjs";
 import { validateBundle } from "../src/okf-conformance.mjs";
 import { sealContract } from "../src/seal.mjs";
@@ -118,6 +119,9 @@ function main() {
         break;
       case "govern":
         runGovern(graphPath, args);
+        break;
+      case "orchestrate":
+        runOrchestrate(args);
         break;
       case "regenerate":
         runRegenerate(graphPath, args);
@@ -382,6 +386,56 @@ function runGovern(graphPath, args = {}) {
   }
   console.log("");
   console.log("Run `dge govern --json` for the full governance report (allocations, expectations, gates).");
+}
+
+// Stage 6 — autonomous orchestration. From a BARE GOAL, the system constructs its own
+// agent organization and self-reorganizes through the governance gates. Deterministic +
+// offline: the executor is a config-driven quality map (a fake), never a live agent.
+//   dge orchestrate "reduce cloud cost by 20%" --config <registry+candidates+quality.json>
+function runOrchestrate(args = {}) {
+  const statement = args._[0] ?? args.goal;
+  if (!statement) throw new Error('Usage: dge orchestrate "<goal statement>" --config <path> [--json]');
+  const config = loadGovernConfig(args.config);
+  const registry = config.registry ?? [];
+  const candidates = config.candidates ?? [];
+  const strongerCandidates = config.strongerCandidates ?? candidates;
+
+  // A deterministic sim executor from the config's quality map: quality[role] (with an
+  // optional quality[role + "-v2"] to model a stronger replacement). Defaults to healthy.
+  const quality = config.quality ?? {};
+  const executor = (agent) => {
+    const key = agent.id.endsWith("-v2") ? `${agent.role}-v2` : agent.role;
+    const q = quality[key] ?? quality[agent.role] ?? 0.9;
+    return { quality: q, evidence: `${agent.id}:sim` };
+  };
+
+  const result = orchestrateGoal({
+    goal: { id: config.goalId ?? "GOAL", statement, successCriteria: config.successCriteria ?? [], constraints: config.constraints ?? [], riskTolerance: config.riskTolerance ?? "medium" },
+    registry, candidates, strongerCandidates, executor,
+    maxRounds: config.maxRounds ?? 3, threshold: config.threshold ?? 0.5, at: config.at ?? null
+  });
+
+  if (args.json) {
+    console.log(JSON.stringify(result, null, 2));
+    return;
+  }
+
+  console.log(`${glyph("reports", args)} Autonomous orchestration — goal: ${statement}`);
+  if (!result.organization) {
+    console.log(`   ${glyph("blocked", args)} ${result.reason}`);
+    return;
+  }
+  console.log(`   subgoals: ${result.subgoals.map((s) => s.id).join(" → ")}`);
+  console.log(`   constructed org: ${result.organization.agentCount} agents — ${result.organization.agents.map((a) => `${a.role}:${a.model ?? "?"}`).join(", ")}`);
+  console.log(`   topology: ${result.organization.topology.join(", ")}`);
+  for (const l of result.ledger) {
+    if (l.action === "reorganized") console.log(`   ${glyph("done", args)} reorganized: replaced ${l.replaced} → ${l.with} (benefit +${l.observedBenefit.toFixed(2)})`);
+    else if (l.action === "rolled_back") console.log(`   ${glyph("blocked", args)} rolled back a reorg of ${l.agent} (no benefit)`);
+    else if (l.action === "escalated") console.log(`   ${glyph("blocked", args)} escalated to human: ${l.worst ?? l.proposalId}`);
+  }
+  console.log(`   ${result.goalMet ? glyph("done", args) : glyph("blocked", args)} goal ${result.goalMet ? "MET" : "NOT met"} after ${result.rounds} round(s)`);
+  console.log("");
+  console.log("Run with --json for the full org, ledger, and governance report.");
 }
 
 // Load a governance config from an EXPLICIT path only (honors the no-home-dir rule).
@@ -1217,6 +1271,7 @@ Usage:
   dge okf preview [--graph path] [--json]      # read-only: semantic diff + conformance, writes nothing
   dge okf write --confirm [--graph path]        # explicit: emit the OKF bundle under delivery-graph/okf/
   dge govern [DEM-###] [--config path] [--json]  # run the adaptive governor over ready nodes (read-only plan + report)
+  dge orchestrate "<goal>" [--config path] [--json]  # Stage 6: system builds & self-reorganizes its own agent org from a bare goal
   dge regenerate [--graph path] [--json]
   dge show DEM-001 [--graph path] [--json]
   dge learnings [search terms...] [--about "topic"] [--graph path] [--json]
