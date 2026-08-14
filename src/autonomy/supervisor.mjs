@@ -13,6 +13,7 @@
 
 import { evaluateProposal, applyProposal, evaluateAfterApplication, makeProposal, PROPOSAL_STATES } from "../governance/mutation.mjs";
 import { coversAllCapabilities, synthesizeAgent } from "./organization.mjs";
+import { counterfactualAB } from "./counterfactual.mjs";
 
 // Evaluate one agent's simulated output. `executor(agent, subgoal) -> { evidence,
 // quality }` is injected; quality in [0,1]. An agent is underperforming when its quality
@@ -91,7 +92,8 @@ export function proposeAddCapability({ org, capability, candidates, at = null })
 // every reorg (proposed → gate verdict → applied/escalated/rejected → retained/rolled_back).
 export function runSupervisor({
   goal, subgoals, org, executor, strongerCandidates = [],
-  maxRounds = 3, threshold = 0.5, policy = {}, approvals = [], at = null
+  maxRounds = 3, threshold = 0.5, policy = {}, approvals = [],
+  heldOutSubgoals = null, minMargin = 0.05, at = null
 }) {
   let current = org;
   const ledger = [];
@@ -126,19 +128,31 @@ export function runSupervisor({
     });
     const { proposal: applied, graph: nextOrg, previousGraph } = applyProposal(evaluated, current, applier, { at });
 
-    // Re-evaluate after application: did the replacement actually help?
-    const afterEvals = evaluateAgents(nextOrg, subgoals, executor, { threshold });
-    const afterWorst = afterEvals.find((e) => e.agent === replacement.id);
-    const observedBenefit = afterWorst ? (afterWorst.quality - worst.quality) : -1;
+    // Decide whether to KEEP the reorg. Two modes:
+    //   (a) counterfactual A/B (preferred): when a held-out set is provided, measure the
+    //       BEFORE and AFTER orgs on the SAME held-out work and keep the reorg only if it
+    //       MEASURABLY wins — the system does not grade its own homework.
+    //   (b) self-assigned benefit (fallback): the original Stage-6 behavior when no
+    //       held-out set exists.
+    let observedBenefit;
+    let ab = null;
+    if (heldOutSubgoals && heldOutSubgoals.length) {
+      ab = counterfactualAB({ before: current, after: nextOrg, heldOutSubgoals, executor, minMargin, at });
+      observedBenefit = ab.keptAfter ? (ab.margin ?? 1) : -1; // drive the gate's post-eval
+    } else {
+      const afterEvals = evaluateAgents(nextOrg, subgoals, executor, { threshold });
+      const afterWorst = afterEvals.find((e) => e.agent === replacement.id);
+      observedBenefit = afterWorst ? (afterWorst.quality - worst.quality) : -1;
+    }
     const { proposal: settled, graph: rolledBack } = evaluateAfterApplication(applied, { observedBenefit, previousGraph, rollbacker: (g) => g, at });
 
     if (settled.state === PROPOSAL_STATES.RETAINED) {
       current = nextOrg;
-      ledger.push({ round, action: "reorganized", replaced: worst.agent, with: replacement.id, observedBenefit, version: nextOrg.version });
+      ledger.push({ round, action: "reorganized", replaced: worst.agent, with: replacement.id, observedBenefit, counterfactual: ab, version: nextOrg.version });
     } else {
       current = rolledBack ?? previousGraph;
-      ledger.push({ round, action: "rolled_back", agent: worst.agent, observedBenefit });
-      break; // the reorg didn't help and was reverted — stop rather than thrash
+      ledger.push({ round, action: "rolled_back", agent: worst.agent, observedBenefit, counterfactual: ab });
+      break; // the reorg didn't earn its place — revert and stop rather than thrash
     }
   }
 
