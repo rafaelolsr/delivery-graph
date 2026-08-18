@@ -1,12 +1,23 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import fs from "node:fs";
+import { fileURLToPath } from "node:url";
+import path from "node:path";
 import { validateBundle } from "../src/okf-conformance.mjs";
 import { graphToBundle } from "../src/okf-bundle.mjs";
 
+// Anchor on the repo root (this file's parent's parent), not process.cwd(),
+// so the test finds the canonical store regardless of where it is invoked.
+const GRAPH_PATH = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "..",
+  "delivery-graph",
+  "graph.json",
+);
+
 function goodBundle() {
   // Generate from the real canonical store so the positive fixture is real output.
-  const graph = JSON.parse(fs.readFileSync("delivery-graph/graph.json", "utf8"));
+  const graph = JSON.parse(fs.readFileSync(GRAPH_PATH, "utf8"));
   return graphToBundle(graph);
 }
 

@@ -1,8 +1,19 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import fs from "node:fs";
+import { fileURLToPath } from "node:url";
+import path from "node:path";
 import { graphToBundle } from "../src/okf-bundle.mjs";
 import { bundleToGraph, roundTrip, diffGraphs } from "../src/okf-compat.mjs";
+
+// Anchor on the repo root, not process.cwd(), so the live store is found
+// regardless of the invoking working directory.
+const GRAPH_PATH = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "..",
+  "delivery-graph",
+  "graph.json",
+);
 
 // A hand-built "new format" graph exercising every field the bundle preserves.
 function newFormatGraph() {
@@ -90,13 +101,13 @@ test("dependencies, validation contracts, and state survive the round trip", () 
 test("the real canonical graph.json survives the round trip losslessly", () => {
   // The live store doubles as a golden legacy fixture: whatever DGE actually holds
   // must round-trip through the bundle with no loss over the bundle's fields.
-  const graph = JSON.parse(fs.readFileSync("delivery-graph/graph.json", "utf8"));
+  const graph = JSON.parse(fs.readFileSync(GRAPH_PATH, "utf8"));
   const diffs = diffGraphs(graph, roundTrip(graph));
   assert.deepEqual(diffs, [], `real graph.json lost data in round trip: ${diffs.slice(0, 5).join("; ")}`);
 });
 
 test("every node id and dependency edge in the real graph is preserved", () => {
-  const graph = JSON.parse(fs.readFileSync("delivery-graph/graph.json", "utf8"));
+  const graph = JSON.parse(fs.readFileSync(GRAPH_PATH, "utf8"));
   const back = bundleToGraph(graphToBundle(graph));
   const srcNodes = new Map(graph.nodes.map((n) => [n.id, n]));
   assert.equal(back.nodes.length, graph.nodes.length, "node count preserved");
