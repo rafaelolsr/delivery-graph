@@ -6,13 +6,14 @@ import path from "node:path";
 import { graphToBundle } from "../src/okf-bundle.mjs";
 import { bundleToGraph, roundTrip, diffGraphs } from "../src/okf-compat.mjs";
 
-// Anchor on the repo root, not process.cwd(), so the live store is found
-// regardless of the invoking working directory.
+// A committed golden snapshot of the canonical delivery-graph/graph.json.
+// The live store is gitignored, so the test reads this fixture — which stands
+// in as the real-graph legacy fixture — in CI and fresh clones.
+// Refresh with: cp delivery-graph/graph.json tests/fixtures/canonical-graph.json
 const GRAPH_PATH = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
-  "..",
-  "delivery-graph",
-  "graph.json",
+  "fixtures",
+  "canonical-graph.json",
 );
 
 // A hand-built "new format" graph exercising every field the bundle preserves.

@@ -6,13 +6,14 @@ import path from "node:path";
 import { validateBundle } from "../src/okf-conformance.mjs";
 import { graphToBundle } from "../src/okf-bundle.mjs";
 
-// Anchor on the repo root (this file's parent's parent), not process.cwd(),
-// so the test finds the canonical store regardless of where it is invoked.
+// A committed golden snapshot of the canonical delivery-graph/graph.json.
+// The live store is gitignored (.gitignore ignores delivery-graph/), so the
+// test cannot read it in CI or a fresh clone — it reads this fixture instead.
+// Refresh with: cp delivery-graph/graph.json tests/fixtures/canonical-graph.json
 const GRAPH_PATH = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
-  "..",
-  "delivery-graph",
-  "graph.json",
+  "fixtures",
+  "canonical-graph.json",
 );
 
 function goodBundle() {
