@@ -64,6 +64,12 @@ import {
 } from "../src/graph-authoring.mjs";
 import { installSkills } from "../src/skill-installer.mjs";
 import { migrateStore } from "../src/store-migration.mjs";
+import { graphToBundle, writeBundle, OKF_BUNDLE_SUBDIR } from "../src/okf-bundle.mjs";
+import { planGovernance } from "../src/governance/govern-cli.mjs";
+import { orchestrateGoal } from "../src/autonomy/orchestrate.mjs";
+import { roundTrip, diffGraphs } from "../src/okf-compat.mjs";
+import { validateBundle } from "../src/okf-conformance.mjs";
+import { sealContract } from "../src/seal.mjs";
 import { buildDemandView, renderDemandView } from "../src/show-renderer.mjs";
 import { buildGraphBrief, renderGraphBrief } from "../src/brief-renderer.mjs";
 import { findLearnings } from "../src/learnings-engine.mjs";
@@ -74,6 +80,12 @@ const DEFAULT_GRAPH_PATH = "delivery-graph/graph.json";
 
 // Bounded retries for the optimistic-concurrency mutation loop before failing loud.
 const MUTATION_RETRY_LIMIT = 10;
+
+// DEM-020 Track 1 / NODE-081: the phrase a human types to confirm a seal in a
+// non-interactive context. A `dge-*` skill is forbidden to pass it, so an
+// autonomous run cannot seal. Declared at module top so it is initialized before
+// main() dispatches (a const is not hoisted like a function).
+const SEAL_CONFIRM_PHRASE = "i-approve-this-contract";
 
 main();
 
@@ -101,6 +113,15 @@ function main() {
         break;
       case "migrate":
         runMigrate(graphPath, args);
+        break;
+      case "okf":
+        runOkf(graphPath, args);
+        break;
+      case "govern":
+        runGovern(graphPath, args);
+        break;
+      case "orchestrate":
+        runOrchestrate(args);
         break;
       case "regenerate":
         runRegenerate(graphPath, args);
@@ -173,6 +194,9 @@ function main() {
         break;
       case "set-validation":
         runMutation(graphPath, (graph) => setNodeValidation(graph, args._[0] ?? args.id, args.validation), args);
+        break;
+      case "seal-contract":
+        runSealContract(graphPath, args);
         break;
       case "install-skills":
         runInstallSkills(args);
@@ -276,6 +300,151 @@ function runMigrate(graphPath, args = {}) {
   }
   console.log(`${glyph("reports", args)} migrated store to demand-centric layout`);
   console.log(`   ${moves.length} paths relocated, ${removedDirs.length} empty dirs removed`);
+}
+
+// OKF bundle projection (DEM-021). Two subcommands, both leaving graph.json untouched:
+//   dge okf preview [--json]  -> read-only: render a semantic diff + conformance, WRITE NOTHING
+//   dge okf write --confirm    -> explicit: emit the bundle under delivery-graph/okf/
+// The preview never writes, and the write requires --confirm, so there is no silent
+// migration (ADR-001 D4). Neither path ever writes back to graph.json.
+function runOkf(graphPath, args = {}) {
+  const sub = args._[0];
+  const graph = readGraph(graphPath);
+
+  if (sub === "preview" || sub === undefined) {
+    // Semantic diff: prove the projection loses nothing over the bundle's fields.
+    const diffs = diffGraphs(graph, roundTrip(graph));
+    const bundle = graphToBundle(graph);
+    const conformance = validateBundle(bundle);
+    const summary = {
+      action: "preview",
+      wrote: false,
+      bundle_subdir: OKF_BUNDLE_SUBDIR,
+      files: Object.keys(bundle).length,
+      round_trip_lossless: diffs.length === 0,
+      semantic_diff: diffs,
+      conformant: conformance.conformant,
+      conformance_errors: conformance.errors
+    };
+    if (args.json) {
+      console.log(JSON.stringify(summary, null, 2));
+      return;
+    }
+    console.log(`${glyph("reports", args)} OKF bundle preview (nothing written)`);
+    console.log(`   ${summary.files} concept files would be emitted under ${OKF_BUNDLE_SUBDIR}/`);
+    console.log(`   round-trip lossless: ${summary.round_trip_lossless ? "yes" : "NO"}`);
+    if (diffs.length) diffs.slice(0, 10).forEach((d) => console.log(`     - ${d}`));
+    console.log(`   OKF v0.2 conformant: ${summary.conformant ? "yes" : "NO"}`);
+    if (!conformance.conformant) {
+      conformance.errors.slice(0, 10).forEach((e) => console.log(`     - ${e.file}: ${e.message} (${e.rule})`));
+    }
+    console.log(`   to write it: dge okf write --confirm`);
+    return;
+  }
+
+  if (sub === "write") {
+    if (!args.confirm) {
+      throw new Error("Refusing to write the OKF bundle without --confirm. Run `dge okf preview` first, then `dge okf write --confirm`.");
+    }
+    const written = writeBundle(graphPath, graph);
+    if (args.json) {
+      console.log(JSON.stringify({ action: "write", wrote: true, files: written.map((p) => relativePath(p, graphPath)) }, null, 2));
+      return;
+    }
+    console.log(`${glyph("reports", args)} wrote ${written.length} OKF concept files under ${OKF_BUNDLE_SUBDIR}/`);
+    return;
+  }
+
+  throw new Error(`Unknown okf subcommand "${sub}". Use: dge okf preview | dge okf write --confirm`);
+}
+
+// Run the adaptive governor over the ready nodes and show what it WOULD allocate, with
+// a governance report. This is the live wiring of the governance engine into the CLI.
+// It is READ-ONLY: allocation is a planning decision, so it never mutates graph.json
+// (applying a mutation stays behind the mutation gate + explicit write). Candidates and
+// policy come from an explicitly-configured governance config (never a home-dir default).
+function runGovern(graphPath, args = {}) {
+  const graph = readGraph(graphPath);
+  const demandId = args.demand ?? args._[0] ?? null;
+  const config = loadGovernConfig(args.config);
+  const { allocations, report, readyCount, candidateCount } = planGovernance(graph, config, { demandId });
+
+  if (args.json) {
+    console.log(JSON.stringify({ demand: demandId, readyCount, candidateCount, allocations, report }, null, 2));
+    return;
+  }
+
+  console.log(`${glyph("reports", args)} Governor plan${demandId ? ` for ${demandId}` : ""} — ${readyCount} ready node(s), ${candidateCount} candidate(s)`);
+  if (candidateCount === 0) {
+    console.log("   no candidates configured — pass --config <path> with a governance config (candidates, policy).");
+    console.log("   cold start: allocation cannot select without candidates. This is honest, not a failure.");
+  }
+  for (const a of allocations) {
+    const mark = a.gate.verdict === "PASS" ? glyph("done", args) : glyph("blocked", args);
+    console.log(`   ${mark} ${a.node_id} → ${a.selected ?? "(none eligible)"} [${a.risk}] — ${a.rationale ?? a.reason}`);
+    if (a.gate.verdict !== "PASS") console.log(`      gate ${a.gate.verdict}: ${a.gate.explanation}`);
+  }
+  console.log("");
+  console.log("Run `dge govern --json` for the full governance report (allocations, expectations, gates).");
+}
+
+// Stage 6 — autonomous orchestration. From a BARE GOAL, the system constructs its own
+// agent organization and self-reorganizes through the governance gates. Deterministic +
+// offline: the executor is a config-driven quality map (a fake), never a live agent.
+//   dge orchestrate "reduce cloud cost by 20%" --config <registry+candidates+quality.json>
+function runOrchestrate(args = {}) {
+  const statement = args._[0] ?? args.goal;
+  if (!statement) throw new Error('Usage: dge orchestrate "<goal statement>" --config <path> [--json]');
+  const config = loadGovernConfig(args.config);
+  const registry = config.registry ?? [];
+  const candidates = config.candidates ?? [];
+  const strongerCandidates = config.strongerCandidates ?? candidates;
+
+  // A deterministic sim executor from the config's quality map: quality[role] (with an
+  // optional quality[role + "-v2"] to model a stronger replacement). Defaults to healthy.
+  const quality = config.quality ?? {};
+  const executor = (agent) => {
+    const key = agent.id.endsWith("-v2") ? `${agent.role}-v2` : agent.role;
+    const q = quality[key] ?? quality[agent.role] ?? 0.9;
+    return { quality: q, evidence: `${agent.id}:sim` };
+  };
+
+  const result = orchestrateGoal({
+    goal: { id: config.goalId ?? "GOAL", statement, successCriteria: config.successCriteria ?? [], constraints: config.constraints ?? [], riskTolerance: config.riskTolerance ?? "medium" },
+    registry, candidates, strongerCandidates, executor,
+    maxRounds: config.maxRounds ?? 3, threshold: config.threshold ?? 0.5, at: config.at ?? null
+  });
+
+  if (args.json) {
+    console.log(JSON.stringify(result, null, 2));
+    return;
+  }
+
+  console.log(`${glyph("reports", args)} Autonomous orchestration — goal: ${statement}`);
+  if (!result.organization) {
+    console.log(`   ${glyph("blocked", args)} ${result.reason}`);
+    return;
+  }
+  console.log(`   subgoals: ${result.subgoals.map((s) => s.id).join(" → ")}`);
+  console.log(`   constructed org: ${result.organization.agentCount} agents — ${result.organization.agents.map((a) => `${a.role}:${a.model ?? "?"}`).join(", ")}`);
+  console.log(`   topology: ${result.organization.topology.join(", ")}`);
+  for (const l of result.ledger) {
+    if (l.action === "reorganized") console.log(`   ${glyph("done", args)} reorganized: replaced ${l.replaced} → ${l.with} (benefit +${l.observedBenefit.toFixed(2)})`);
+    else if (l.action === "rolled_back") console.log(`   ${glyph("blocked", args)} rolled back a reorg of ${l.agent} (no benefit)`);
+    else if (l.action === "escalated") console.log(`   ${glyph("blocked", args)} escalated to human: ${l.worst ?? l.proposalId}`);
+  }
+  console.log(`   ${result.goalMet ? glyph("done", args) : glyph("blocked", args)} goal ${result.goalMet ? "MET" : "NOT met"} after ${result.rounds} round(s)`);
+  console.log("");
+  console.log("Run with --json for the full org, ledger, and governance report.");
+}
+
+// Load a governance config from an EXPLICIT path only (honors the no-home-dir rule).
+// Returns {} when no path is given, so the governor runs in honest cold-start mode.
+function loadGovernConfig(configPath) {
+  if (!configPath) return {};
+  const resolved = path.resolve(configPath);
+  if (!fs.existsSync(resolved)) throw new Error(`governance config not found: ${resolved}`);
+  return JSON.parse(fs.readFileSync(resolved, "utf8"));
 }
 
 // Re-emit all demand/requirement markdown from graph.json. Proves the folder tree is
@@ -918,6 +1087,38 @@ function runMutation(graphPath, mutate, args = {}) {
   printViewerLink(viewerPath, graphPath, args);
 }
 
+function runSealContract(graphPath, args) {
+  const nodeId = args._[0] ?? args.id;
+  if (!nodeId) {
+    throw new Error("Usage: dge seal-contract NODE-### --by <signer> [--reseal] [--confirm i-approve-this-contract]");
+  }
+  const sealedBy = args.by ?? args.signer;
+  if (!sealedBy) {
+    throw new Error("seal-contract requires --by <signer>: the seal records who approved the contract");
+  }
+
+  // Human gate. An interactive TTY is treated as the human being present; a
+  // non-TTY (headless agent, CI, pipe) must carry the explicit typed phrase, which
+  // a skill may not supply. Either way, without human intent there is no seal.
+  const interactive = Boolean(process.stdin.isTTY);
+  const confirmed = args.confirm === SEAL_CONFIRM_PHRASE;
+  if (!interactive && !confirmed) {
+    console.error(
+      "seal-contract refused: no interactive terminal detected and the confirmation phrase was not provided.\n" +
+        "Sealing is a human-only action — an autonomous agent run cannot complete it.\n" +
+        `If you are a human running headless, re-run with: --confirm ${SEAL_CONFIRM_PHRASE}`
+    );
+    process.exit(1);
+  }
+
+  const sealedAt = new Date().toISOString();
+  runMutation(
+    graphPath,
+    (graph) => sealContract(graph, nodeId, { sealedBy, sealedAt, reseal: Boolean(args.reseal) }),
+    args
+  );
+}
+
 function printViewerLink(viewerPath, graphPath, args = {}) {
   if (args.json) return;
   console.log(`   viewer  ${relativePath(viewerPath, graphPath)}`);
@@ -1067,6 +1268,10 @@ Usage:
   dge install-skills [--harness claude|copilot] [--symlink] [--force]
   dge validate [--graph path]
   dge migrate [--graph path] [--json]
+  dge okf preview [--graph path] [--json]      # read-only: semantic diff + conformance, writes nothing
+  dge okf write --confirm [--graph path]        # explicit: emit the OKF bundle under delivery-graph/okf/
+  dge govern [DEM-###] [--config path] [--json]  # run the adaptive governor over ready nodes (read-only plan + report)
+  dge orchestrate "<goal>" [--config path] [--json]  # Stage 6: system builds & self-reorganizes its own agent org from a bare goal
   dge regenerate [--graph path] [--json]
   dge show DEM-001 [--graph path] [--json]
   dge learnings [search terms...] [--about "topic"] [--graph path] [--json]

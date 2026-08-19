@@ -1,0 +1,4344 @@
+{
+  "graph": {
+    "id": "DGE-001",
+    "title": "DGE marketplace/plugin packaging (Claude Code, Copilot CLI, Kimi CLI)",
+    "status": "draft",
+    "source": "local",
+    "created_at": "2026-07-01T13:10:28.286Z",
+    "updated_at": "2026-08-13T18:28:46.210Z",
+    "rev": 268
+  },
+  "demands": [
+    {
+      "id": "DEM-001",
+      "title": "Make DGE installable via marketplace/plugin for Claude Code and Copilot CLI",
+      "source": "user",
+      "outcome": "Users install DGE from a GitHub-hosted marketplace (no npm publish); /dge-* skills load in Claude Code and Copilot CLI",
+      "constraints": [],
+      "non_goals": []
+    },
+    {
+      "id": "DEM-002",
+      "title": "Quiet, emoji-forward, scannable CLI output for node completion",
+      "source": "user",
+      "outcome": "dge done/verify/review/add-* print a concise emoji-forward summary by default (relative paths, no raw JSON); full detail via --json; emoji-free via --ascii/NO_EMOJI; persisted report files unchanged",
+      "constraints": [],
+      "non_goals": []
+    },
+    {
+      "id": "DEM-003",
+      "title": "Harden the evidence model so it cannot falsely satisfy a contract",
+      "source": "user (dogfooding: DEM-001 NODE-003/NODE-004)",
+      "outcome": "evidence add cannot mark a contract item satisfied with a failure; corrected records don't require hand-editing evidence.json; correctness contracts aren't satisfiable by mere substring presence",
+      "constraints": [],
+      "non_goals": []
+    },
+    {
+      "id": "DEM-004",
+      "title": "Make node/validation authoring correctable and comma-safe",
+      "source": "user (dogfooding: DEM-002 NODE-009/NODE-010)",
+      "outcome": "Validation items can contain commas without fragmenting; authoring mistakes are fixable via CLI (remove/edit node) instead of hand-editing graph.json",
+      "constraints": [],
+      "non_goals": []
+    },
+    {
+      "id": "DEM-005",
+      "title": "Couple the CLI to the plugin so skills never silently hand-write incompatible JSON",
+      "source": "user (root-cause of StarBase schema drift)",
+      "outcome": "Any project with the DGE plugin has a working dge command; skills fail loudly if it is missing and never fall back to hand-writing graph.json",
+      "constraints": [],
+      "non_goals": []
+    },
+    {
+      "id": "DEM-006",
+      "title": "Widen the gap-type enum so skill-authored gap types are engine-valid",
+      "source": "user (StarBase migration: skill emitted privacy/architecture/ownership gap types the schema rejects)",
+      "outcome": "The engine schema accepts the richer gap vocabulary skills produce (privacy architecture ownership) so intake output validates without lossy remapping",
+      "constraints": [],
+      "non_goals": []
+    },
+    {
+      "id": "DEM-007",
+      "title": "Demand-centric store + dge show observability",
+      "source": "user (dogfooding: store layout inquiry)",
+      "outcome": "Everything derived from a demand lives under demands/DEM-###/ (its requirements and nodes/NODE-###/evidence); dge show <DEM> renders the demand -> requirements -> nodes -> status/evidence tree; graph.json stays the single validated source of truth; a node belongs to exactly one demand (all its requirement_ids share one demand_id)",
+      "constraints": [],
+      "non_goals": []
+    },
+    {
+      "id": "DEM-008",
+      "title": "Intent-driven /dge-deliver conductor: user owns intent+judgment, harness owns procedure",
+      "source": "user (Rafael) brainstorm — session 2026-07-02",
+      "problem": "Every delivery tool on the market (Kiro, Devin, Spec Kit, Cursor, Claude Code) and DGE today are command palettes: the user is the orchestrator and must remember what to run next, the skill names, and the sequence. DGE has nine dge-* verbs the human sequences by hand, which feels verbose and 'too similar to the market'.",
+      "outcome": "After a single /dge-deliver entry verb, the user never types a skill name again; the conductor sequences the existing DGE skills across phases and stops only at two judgment gates and on failure/ambiguity, with the evidence gate and all state-machine invariants intact.",
+      "constraints": [
+        "The state machine",
+        "evidence engine",
+        "and verified/done invariants (verified is CLI-minted-only; done requires verified) must not be modified.",
+        "graph.json is written only through the dge CLI; the conductor never hand-edits it.",
+        "Reuse existing surfaces: /dge-execute-graph loop",
+        "DEM-002 quiet output",
+        "status/show renderers — do not build a parallel execution engine."
+      ],
+      "non_goals": [
+        "Rewriting or removing the nine existing dge-* skills (they remain the power-user surface).",
+        "Redesigning the phase decomposition — deferred until testing proves the nine phases are wrong.",
+        "Real tracker API writes (sync stays dry-run as today).",
+        "Plain-language auto-routing that removes even the first /dge-deliver verb (deferred to a later version)."
+      ]
+    },
+    {
+      "id": "DEM-009",
+      "title": "CLI record-editing: correct a requirement or demand without remove-demand",
+      "source": "dogfooding friction, DEM-008 session (see learning dge-cli-missing-record-editing)",
+      "problem": "The dge CLI can create requirements and demands but cannot correct them: no remove-requirement, no edit-requirement, no way to add constraints/non-goals to an existing demand. Since hand-editing graph.json is forbidden, a mis-stored requirement can only be fixed with remove-demand, which cascades and deletes ALL of that demand's requirements + gaps. This bit the DEM-008 intake twice.",
+      "outcome": "A mis-authored requirement or demand field is correctable through the CLI alone, with no remove-demand and no hand-editing of graph.json, and with the graph staying schema-valid and referentially consistent.",
+      "constraints": [
+        "graph.json is written only through the CLI; assertValidGraph must pass after every mutation.",
+        "Mirror existing authoring patterns (removeNode/setNodeValidation) for consistency."
+      ],
+      "non_goals": [
+        "A general transactional undo/history — this is targeted record editing",
+        "not versioning.",
+        "Editing node fields beyond what setNodeValidation already covers."
+      ]
+    },
+    {
+      "id": "DEM-010",
+      "title": "Reduce DGE first-run friction: no-ceremony first run + single-step setup",
+      "source": "user (dogfooding: first-run DX)",
+      "outcome": "A fresh repo reaches a working DGE store in one obvious step: dge init title is optional (sensible default), the first add-* auto-creates graph.json at the default store path with a printed notice (never silently in the wrong place), and installing DGE is a single cross-platform action; dge init still works as the explicit 'start here'",
+      "constraints": [],
+      "non_goals": []
+    },
+    {
+      "id": "DEM-011",
+      "title": "Multi-harness agent orchestration — DGE routes each node to the best-fit harness/model, with evidence-gated fallback and cost-aware selection",
+      "source": "user (Rafael) — roadmap destination feature",
+      "outcome": "DGE becomes harness-agnostic: for each node it recommends a harness (Claude Code, Copilot, Kimi, opencode, Codex, …) and model based on node traits, logs the rationale, and lets config pin any node to override. Different harnesses build different nodes in parallel against one source of truth. When a PRIMARY harness fails on INFRASTRUCTURE (CLI missing, auth, network, timeout — never on a failed evidence gate), DGE falls back to the next harness in the chain. Model selection is cost-aware, matching cheaper models to cheaper tasks. The evidence gate remains sovereign: no routing or fallback path can reach 'done' without proof.",
+      "constraints": [
+        "Parallel execution is REQUIRED — different harnesses build different nodes at once — creating a hard dependency on the concurrency-safe store (graph.json is a single unlocked file today; concurrent writes corrupt it). See GAP-010.",
+        "The evidence gate stays sovereign: no routing / retry / fallback path may reach verified or done without proof on disk.",
+        "Fallback triggers on INFRASTRUCTURE failure only (CLI missing / auth / network / timeout) — a failed evidence gate must never trigger a harness swap.",
+        "The dynamic router is itself an agent judgment; every routing decision must be logged with rationale and be overridable by pinning the node harness/model in config."
+      ],
+      "non_goals": [
+        "An installer or marketplace-wiring script — that is first-run setup (DEM-010) not orchestration",
+        "A GUI or dashboard for routing; config-driven plus logged rationale is enough for v1",
+        "Cross-agent adversarial verify role where agent B reviews agent A — a separate roadmap item that rides on top of this"
+      ],
+      "problem": "DGE runs on a single harness today, so it cannot exploit the comparative strengths of different agents/models (e.g. one for coding, another for planning), has no fallback when a harness is offline, and cannot lower cost by matching cheaper models to cheaper tasks. Its own roadmap names harness-neutral, parallel, cross-agent delivery as the destination; nothing delivers it yet."
+    },
+    {
+      "id": "DEM-012",
+      "title": "Concurrency-safe delivery store — the canonical graph survives concurrent writes without corruption",
+      "source": "user (Rafael) — roadmap #1 unlock; surfaced by GAP-010 during DEM-011 intake",
+      "outcome": "The canonical delivery store stops being a single unlocked file that concurrent writers corrupt. Two or more agents completing independent ready nodes at the same time persist their results with no lost or corrupted writes, and the logical source of truth (graph.json or its fragment set) stays valid and consistent after concurrent completion. This is the sequential bootstrap that unlocks all parallel multi-harness work (DEM-011); it is itself delivered on a single harness because the capability it provides does not yet exist while it is being built.",
+      "constraints": [
+        "graph.json (or its logical equivalent) must remain THE source of truth — any split/fragment/lock design keeps one coherent logical graph.",
+        "Backward compatibility: existing single-writer flows (conductor / CLI authoring) must keep working unchanged.",
+        "Concurrency safety must be proven by an automated test that actually races writers — not argued in prose."
+      ],
+      "non_goals": [
+        "The routing / fallback / cost engine — that is DEM-011 and rides on top of this",
+        "Distributed / multi-machine stores or a server; local concurrent processes on one repo is the v1 scope",
+        "Cross-team or cross-project demand sharing (DGE stays one-to-many and team-blind by design)"
+      ],
+      "problem": "graph.json is a single unlocked file. Two agents writing it concurrently corrupt it — so execution is deliberately sequential today. This blocks the parallel half of DGE's pitch (DEM-011 REQ-047) and caps team scale. It is the roadmap's single highest-leverage unlock."
+    },
+    {
+      "id": "DEM-013",
+      "title": "Cleaner scannable output on every surface DGE renders",
+      "source": "user (Rafael) — usability feedback on DGE demand/gate output prose",
+      "problem": "Every user-facing surface DGE renders — the two gate briefs, the status board, the done block, the review report, the setup output, and the LLM-narrated run summary — reads as a flat list of equal-weight lines. There is no one-line synthesis of what matters. Next steps are buried in narration or absent. Captured outcome prose often becomes a dense wall of text (DEM-012 outcome is one ~90-word paragraph). A human cannot grasp the state at a glance.",
+      "outcome": "Every user-facing output DGE renders leads with a bold one-line TL;DR and ends with a clear Next block so a human reads the point and the next action at a glance. A demand can carry an optional one-line summary that becomes that lead; when absent the lead falls back to the outcome so existing demands render cleanly. The shared skeleton is enforced by a cross-renderer test rather than hoped for.",
+      "constraints": [
+        "The dge CLI stays the only writer of graph.json; renderers remain pure projections and no second stored source of truth is introduced",
+        "The two-approval-gate model is unchanged; no new gate or step is added",
+        "ASCII fallback via glyph(name options) is preserved on every surface so output stays readable with --ascii or NO_EMOJI",
+        "skills/ and .claude/skills/ stay byte-identical mirrors; every SKILL.md edit lands in both copies",
+        "Skill prose is guarded by behavior-level tests not exact phrase matches (per learning skill-prose-can-drift-from-code)"
+      ],
+      "non_goals": [
+        "A template-file or template-engine system; the shared skeleton is a code helper plus a convention plus an enforcing test",
+        "New emoji glyphs beyond what the Next block needs",
+        "Restyling the internals of the Mermaid dependency diagram",
+        "A CLI-enforced hard length limit on the summary field; length stays an intake authoring norm"
+      ],
+      "summary": "Every output DGE renders leads with a one-line TL;DR and ends with clear next steps."
+    },
+    {
+      "id": "DEM-014",
+      "title": "Auditable waiver escape hatch for the evidence gate",
+      "source": "user (Claude-suggested improvement)",
+      "summary": "Let un-provable trivial changes reach a distinct done-waived state with a required reason, so small work stays inside the audited graph instead of bypassing DGE.",
+      "outcome": "A node with no evidence and completed dependencies can reach a new terminal done-waived status via a required non-empty reason, keeping regular done reserved for proven work. This retires the ROADMAP 'ceremony vs value' known limit. Prove-later and failing-evidence overrides are out of scope.",
+      "constraints": [
+        "All waiver enforcement lives in the dge CLI; skills may only narrate",
+        "done stays reserved for evidence-proven work; done-waived is a separate terminal status"
+      ],
+      "non_goals": [
+        "Prove-later / evidence-debt IOU tracking",
+        "Waiving over failing or present evidence"
+      ]
+    },
+    {
+      "id": "DEM-015",
+      "title": "Extend output skeleton (TL;DR lead + Next block) to every skill's conversational replies",
+      "source": "user (Rafael) — screenshot showed dge-intake reply as flat bullet list with no bold lead or Next block",
+      "summary": "8 of 10 dge-* skills lack the DEM-013 TL;DR-lead + Next-block instruction for their own conversational replies",
+      "outcome": "Every dge-* skill's final conversational reply leads with a bold one-line synthesis and ends with a ## Next block, driven by one canonical convention referenced from all 10 SKILL.md files (not duplicated prose), enforced by a behavior-level test.",
+      "constraints": [
+        "Not a template-file or template-engine system: one convention paragraph plus per-skill application referenced not duplicated",
+        "skills/ and .claude/skills/ stay byte-identical mirrors: every SKILL.md edit lands in both copies",
+        "Enforcement is behavior-level regex assertions on SKILL.md prose (tests/skill-cli-contract.test.mjs pattern) not exact-phrase matching",
+        "No change to src/output.mjs schema or CLI renderers -- code-side skeleton is already correct"
+      ],
+      "non_goals": [
+        "Restyling or changing the two-approval-gate model",
+        "New emoji glyphs or CLI-level output changes"
+      ]
+    },
+    {
+      "id": "DEM-016",
+      "title": "Local delivery graph viewer",
+      "source": "user",
+      "summary": "Generate one beautiful offline viewer that makes every demand, active task, validation criterion, and uncertainty visible.",
+      "problem": "DGE currently exposes graph state through CLI, Markdown, status tables, and optional Mermaid briefs, but it has no persistent visual workspace. Users cannot open one stable page to select demands, inspect the executable dependency graph, identify ongoing agent work, or see whether validation proof is complete. Existing demand, graph brief, status, and evidence renderers should be extended as prior art rather than replaced.",
+      "outcome": "After design, DGE provides one stable local link to an exquisite read-only viewer for the repository. The viewer lets users select demands, follow the live dependency graph, and distinguish proven work from incomplete, failed, ambiguous, stale, or malformed state.",
+      "constraints": [
+        "Generate and update the viewer only through DGE-owned runtime code; graph.json remains canonical",
+        "Run entirely locally and offline with no external assets or network dependency",
+        "Require no CDN and no account",
+        "Optimize version one for desktop and laptop screens",
+        "Regenerate after every graph mutation and preserve user context across automatic refreshes"
+      ],
+      "non_goals": [
+        "Mobile-specific interaction or layout in version one",
+        "Editing graph state from the viewer",
+        "Remote hosting or publishing",
+        "Authentication or collaboration"
+      ]
+    },
+    {
+      "id": "DEM-017",
+      "title": "Contextual inspector visibility",
+      "source": "user",
+      "requester": "Rafael",
+      "summary": "Show the inspector only for selected work nodes so the graph uses the full workspace when no detail is needed.",
+      "problem": "The Delivery Graph viewer permanently reserves inspector space and displays an unhelpful Nothing selected state when no work node is selected.",
+      "outcome": "The inspector appears only while a valid work node is selected and disappears on every supported deselection path. The graph expands or contracts and refits without overlap while selection state remains restorable and accessible.",
+      "constraints": [
+        "Desktop and laptop layouts only",
+        "Reuse the existing inspector content and graph selection model",
+        "Preserve offline operation with URL hash state and session restoration"
+      ],
+      "non_goals": [
+        "Mobile layout",
+        "Changing inspector content",
+        "Redesigning graph nodes"
+      ]
+    },
+    {
+      "id": "DEM-018",
+      "title": "Newest-first and running-aware demand rail",
+      "source": "user",
+      "requester": "Rafael",
+      "summary": "Show newest demands first and default to active work so the viewer opens on the most relevant delivery context.",
+      "problem": "The viewer lists demands oldest-first and defaults to an unrelated historical demand while currently running work can remain unselected and visually indistinct.",
+      "outcome": "The demand rail is ordered newest-first by numeric demand ID. Running demands are clearly identified and the viewer selects the newest running demand only when no valid URL or session selection exists.",
+      "constraints": [
+        "Desktop and laptop viewer behavior only",
+        "Preserve URL hash and session restoration precedence",
+        "Derive running state only from in_progress and review nodes",
+        "Preserve offline refresh behavior without stealing user selection"
+      ],
+      "non_goals": [
+        "Grouping running demands outside numeric order",
+        "Auto-selecting pending or blocked demands",
+        "Mobile layout changes",
+        "Changing graph node content"
+      ]
+    },
+    {
+      "id": "DEM-019",
+      "title": "User-controlled offline viewer refresh",
+      "source": "user",
+      "requester": "Rafael",
+      "summary": "Replace flickering two-second reloads with calm, user-controlled viewer refresh.",
+      "problem": "The offline viewer unconditionally reloads every two seconds, causing visible flicker and interrupting users while they inspect delivery work. Existing session preservation survives the reload but does not make the cadence controllable.",
+      "outcome": "The desktop viewer refreshes only at a user-selected rate or on demand, with a 15-second default and no legacy two-second reload. The toolbar makes the selected rate and last successful refresh visible while preserving viewer context across refreshes.",
+      "constraints": [
+        "Extend src/viewer-renderer.mjs and existing offline refresh session behavior; retain local offline operation with no network dependency.",
+        "Pause automatic refresh while the page is hidden and resume the selected cadence when it is visible.",
+        "Use accessible native controls in the existing desktop graph toolbar."
+      ],
+      "non_goals": [
+        "Mobile-specific refresh UI or responsive redesign.",
+        "Live streaming or network-based synchronization.",
+        "Changing graph content.",
+        "Changing node semantics.",
+        "Changing evidence behavior."
+      ]
+    },
+    {
+      "id": "DEM-020",
+      "title": "Harden the evidence gate against an adversarial builder",
+      "source": "user",
+      "summary": "Seal, cross-family refutation, and holdout criteria so DGE's proven-not-claimed gate holds against an adversarial builder, not just a well-behaved one.",
+      "outcome": "The evidence gate survives a builder that edits its own contract, overfits to visible checks, or is verified by its own model family. Three tracks: HMAC-sealed validation contracts (Track 1, ~80% of value, ships and is proven first), cross-family refutation for high-risk nodes, and holdout criteria withheld from the builder. Each track is proven by an adversarial attack that must fail, not a feature that must pass.",
+      "constraints": [
+        "Preserve the DAG model the concurrency-safe store (rev-CAS plus exclusive lock) and the append-only evidence manifest",
+        "Do not weaken or bypass the waiver escape hatch (done-waived) or the ambiguous-key adjudication rule",
+        "All three mechanisms harden the trust primitive and add no new execution capability",
+        "The HMAC signing key never enters git; sealing writes go through the existing rev-CAS mutation path",
+        "Every gate is fail-closed: an uncheckable seal a missing cross-family verifier or an absent key blocks verification rather than self-certifying"
+      ],
+      "non_goals": [
+        "OS-keychain key storage (deferred future hardening; key is a git-ignored chmod-600 file for now)",
+        "CI-only or verifier-side holdout storage that is truly unreachable from a fully-adversarial local builder (deferred; committed holdout file is the pragmatic 90%)",
+        "Any new execution or orchestration capability beyond hardening the existing evidence gate"
+      ]
+    },
+    {
+      "id": "DEM-021",
+      "title": "OKF-aligned knowledge core + compatibility (Governed Adaptive CP, M1+M2)",
+      "source": "Architectural mandate: evolve DGE into a Governed Adaptive Control Plane (attached spec). This demand covers Milestones 1-2 only.",
+      "summary": "Represent DGE's canonical graph as an OKF v0.2 bundle projection, with a pinned concept mapping, ADR, and a no-rewrite migration preview.",
+      "outcome": "DGE gains a pinned DGE→OKF v0.2 concept mapping and ADR, plus a knowledge core that emits an OKF bundle as a projection of the canonical graph.json. Legacy graphs load and preview losslessly without ever being rewritten, proven by round-trip and conformance tests.",
+      "constraints": [
+        "graph.json remains the sole canonical writer and entry point; the OKF bundle is a projection and never a second write path",
+        "OKF pinned to v0.2 commit 3fcbb9f828c2f23d109c855ee403c3a4c81f3a96 (GoogleCloudPlatform/knowledge-catalog Apache-2.0); do not invent OKF field meanings",
+        "DGE-specific concepts use a versioned namespaced extension key; never overload native OKF fields",
+        "reading or previewing a legacy graph must never rewrite it (no silent migration)"
+      ],
+      "non_goals": [
+        "the adaptive governor policy/authority engine capability registry org-store observation and graph mutation (Milestones 3-8)",
+        "lifecycle stage rename (already shipped) except where the ADR must reference it"
+      ]
+    }
+  ],
+  "requirements": [
+    {
+      "id": "REQ-001",
+      "demand_id": "DEM-001",
+      "statement": "The repo exposes a Claude Code plugin via .claude-plugin/plugin.json so /dge-* skills load when installed",
+      "priority": "must",
+      "acceptance": [
+        "claude plugin validate . passes; .claude-plugin/plugin.json is valid JSON with a kebab-case name; skills/ auto-scan requires no skills field"
+      ],
+      "validation": {
+        "method": "manual-review",
+        "required_evidence": [
+          "Output of 'claude plugin validate .' (or JSON schema/parse check) captured under evidence"
+        ]
+      }
+    },
+    {
+      "id": "REQ-002",
+      "demand_id": "DEM-001",
+      "statement": "The repo is a GitHub-hosted Claude Code marketplace via .claude-plugin/marketplace.json listing the delivery-graph plugin with source ./",
+      "priority": "must",
+      "acceptance": [
+        "marketplace.json is valid JSON with required name/owner/plugins fields; plugin entry has name+source; claude plugin validate . passes"
+      ],
+      "validation": {
+        "method": "manual-review",
+        "required_evidence": [
+          "claude plugin validate . output plus JSON-parse check of marketplace.json"
+        ]
+      }
+    },
+    {
+      "id": "REQ-003",
+      "demand_id": "DEM-001",
+      "statement": "Copilot CLI can install the same plugin: .claude-plugin/plugin.json is discoverable by Copilot and skills/ maps to its skills convention",
+      "priority": "must",
+      "acceptance": [
+        "plugin.json lives at a Copilot-discovered path (.claude-plugin/plugin.json); documented copilot plugin marketplace add + install commands are correct per docs"
+      ],
+      "validation": {
+        "method": "manual-review",
+        "required_evidence": [
+          "Manual: copilot plugin marketplace add + install transcript once pushed (deferred manual evidence)"
+        ]
+      }
+    },
+    {
+      "id": "REQ-004",
+      "demand_id": "DEM-001",
+      "statement": "The superseded manifests/claude and manifests/copilot stubs are removed so the repo has one correct install story per harness",
+      "priority": "must",
+      "acceptance": [
+        "manifests/claude/ and manifests/copilot/ no longer exist; README/docs point to the marketplace install; other manifests/ dirs untouched"
+      ],
+      "validation": {
+        "method": "manual-review",
+        "required_evidence": [
+          "git status / ls showing the two dirs removed; grep of README showing updated install instructions"
+        ]
+      }
+    },
+    {
+      "id": "REQ-005",
+      "demand_id": "DEM-002",
+      "statement": "dge done prints a concise summary by default: node title, requirement ids, evidence N/N, unblocked node(s), and progress - not raw JSON",
+      "priority": "must",
+      "acceptance": [
+        "Default 'done' output contains the requirement ids",
+        "an evidence N/N count",
+        "and the unblocked node id; it does NOT contain a raw JSON object dump"
+      ],
+      "validation": {
+        "method": "manual-review",
+        "required_evidence": [
+          "npm test assertion on default done output"
+        ]
+      }
+    },
+    {
+      "id": "REQ-006",
+      "demand_id": "DEM-002",
+      "statement": "All CLI output uses paths relative to the graph root, never absolute filesystem paths",
+      "priority": "must",
+      "acceptance": [
+        "done/verify/review output contains 'delivery-graph/...' relative paths and does not contain the absolute repo prefix"
+      ],
+      "validation": {
+        "method": "manual-review",
+        "required_evidence": [
+          "npm test assertion that output has no absolute path / leading slash prefix"
+        ]
+      }
+    },
+    {
+      "id": "REQ-007",
+      "demand_id": "DEM-002",
+      "statement": "done, verify, review, and add-* accept --json to emit the full structured payload for machine consumption",
+      "priority": "must",
+      "acceptance": [
+        "With --json",
+        "output is a single valid parseable JSON object carrying node/evidence/paths/unblocked/progress; without it",
+        "no JSON dump appears"
+      ],
+      "validation": {
+        "method": "manual-review",
+        "required_evidence": [
+          "npm test: JSON.parse succeeds on --json output; default output is not JSON"
+        ]
+      }
+    },
+    {
+      "id": "REQ-008",
+      "demand_id": "DEM-002",
+      "statement": "Output is emoji-forward by default but falls back to emoji-free ASCII via --ascii flag or NO_EMOJI env var",
+      "priority": "must",
+      "acceptance": [
+        "Default output contains at least one emoji glyph; --ascii (or NO_EMOJI=1) output contains no emoji and stays readable"
+      ],
+      "validation": {
+        "method": "manual-review",
+        "required_evidence": [
+          "npm test: default contains emoji; --ascii output matches a no-emoji assertion"
+        ]
+      }
+    },
+    {
+      "id": "REQ-009",
+      "demand_id": "DEM-002",
+      "statement": "The redesign changes only terminal output; persisted verification.md, review-*.md, and evidence.json are written exactly as before",
+      "priority": "must",
+      "acceptance": [
+        "Existing evidence/review/verification file contents and paths are unchanged; the full existing test suite still passes"
+      ],
+      "validation": {
+        "method": "manual-review",
+        "required_evidence": [
+          "npm test: full suite green including existing evidence/review file assertions"
+        ]
+      }
+    },
+    {
+      "id": "REQ-010",
+      "demand_id": "DEM-003",
+      "statement": "dge evidence add requires an explicit pass/fail result and refuses to satisfy a contract item when the result is fail",
+      "priority": "must",
+      "acceptance": [
+        "evidence add --result fail records the note but does NOT count toward evidence completeness; dge done still reports the item missing; only --result pass satisfies it"
+      ],
+      "validation": {
+        "method": "manual-review",
+        "required_evidence": [
+          "npm test: a fail-result evidence add leaves the node's evidence incomplete; done rejects it"
+        ]
+      }
+    },
+    {
+      "id": "REQ-011",
+      "demand_id": "DEM-003",
+      "statement": "Evidence records can be corrected or removed through the CLI without hand-editing evidence.json",
+      "priority": "must",
+      "acceptance": [
+        "A command (e.g. dge evidence remove/replace NODE-### EVD-###) updates evidence.json and re-checks completeness; manual JSON edits are not required"
+      ],
+      "validation": {
+        "method": "manual-review",
+        "required_evidence": [
+          "npm test: remove/replace updates the manifest and completeness recomputes"
+        ]
+      }
+    },
+    {
+      "id": "REQ-012",
+      "demand_id": "DEM-003",
+      "statement": "The done gate treats a failed/again-unmet contract item as blocking even if an evidence note exists for it",
+      "priority": "must",
+      "acceptance": [
+        "A node with only fail-result evidence for a required item cannot reach done; the CLI error names the still-unmet item"
+      ],
+      "validation": {
+        "method": "manual-review",
+        "required_evidence": [
+          "npm test: done throws 'missing validation evidence' when the only matching evidence is a fail result"
+        ]
+      }
+    },
+    {
+      "id": "REQ-013",
+      "demand_id": "DEM-004",
+      "statement": "A single validation item may contain commas without being split into multiple items",
+      "priority": "must",
+      "acceptance": [
+        "A repeatable --validation-item flag (or quoted form) preserves commas; each flag is exactly one contract item"
+      ],
+      "validation": {
+        "method": "manual-review",
+        "required_evidence": [
+          "npm test: a validation item with commas stays one required item"
+        ]
+      }
+    },
+    {
+      "id": "REQ-014",
+      "demand_id": "DEM-004",
+      "statement": "A node can be removed through the CLI so authoring mistakes are correctable",
+      "priority": "must",
+      "acceptance": [
+        "dge remove-node NODE-### deletes the node and rejects removal when other nodes depend on it"
+      ],
+      "validation": {
+        "method": "manual-review",
+        "required_evidence": [
+          "npm test: remove-node deletes a leaf node; refuses a node with dependents"
+        ]
+      }
+    },
+    {
+      "id": "REQ-015",
+      "demand_id": "DEM-004",
+      "statement": "A node validation contract can be re-set through the CLI without hand-editing graph.json",
+      "priority": "must",
+      "acceptance": [
+        "dge set-validation NODE-### replaces validation.required with the given items"
+      ],
+      "validation": {
+        "method": "manual-review",
+        "required_evidence": [
+          "npm test: set-validation replaces the contract and re-checks completeness"
+        ]
+      }
+    },
+    {
+      "id": "REQ-016",
+      "demand_id": "DEM-005",
+      "statement": "The plugin exposes an executable dge command on the harness PATH without a separate npm install",
+      "priority": "must",
+      "acceptance": [
+        "A bin/dge (no extension) with a node shebang exists so the plugin PATH entry runs the CLI as bare dge"
+      ],
+      "validation": {
+        "method": "manual-review",
+        "required_evidence": [
+          "npm test proves bin/dge exists and is executable and runs the same CLI as bin/dge.mjs"
+        ]
+      }
+    },
+    {
+      "id": "REQ-017",
+      "demand_id": "DEM-005",
+      "statement": "Store-writing skills check for the dge command first and stop with an install instruction when it is absent",
+      "priority": "must",
+      "acceptance": [
+        "dge-intake and dge-plan-graph begin with a preflight that halts if dge is unavailable"
+      ],
+      "validation": {
+        "method": "manual-review",
+        "required_evidence": [
+          "SKILL.md preflight sections present and reviewed; documented behavior when dge is missing"
+        ]
+      }
+    },
+    {
+      "id": "REQ-018",
+      "demand_id": "DEM-005",
+      "statement": "Skills never hand-write graph.json as a fallback; the CLI is the only writer of the canonical store",
+      "priority": "must",
+      "acceptance": [
+        "SKILL.md instructions remove the manual-JSON fallback and require CLI authoring for graph.json"
+      ],
+      "validation": {
+        "method": "manual-review",
+        "required_evidence": [
+          "grep shows no skill instructs writing graph.json directly; CLI-only authoring documented"
+        ]
+      }
+    },
+    {
+      "id": "REQ-019",
+      "demand_id": "DEM-006",
+      "statement": "The graph schema accepts privacy architecture and ownership as valid gap types alongside the existing set",
+      "priority": "must",
+      "acceptance": [
+        "A gap with type privacy architecture or ownership passes dge validate; the existing types still pass"
+      ],
+      "validation": {
+        "method": "manual-review",
+        "required_evidence": [
+          "npm test adds gaps of the new types and validates the graph"
+        ]
+      }
+    },
+    {
+      "id": "REQ-020",
+      "demand_id": "DEM-007",
+      "statement": "A node belongs to exactly one demand: all of a node's requirement_ids must resolve to the same demand_id, and add-node rejects a cross-demand set with a clear error",
+      "priority": "must",
+      "acceptance": [
+        "add-node given requirements from two different demands exits non-zero with an explanatory message; dge validate flags any pre-existing node whose requirements span demands"
+      ],
+      "validation": {
+        "method": "manual-review",
+        "required_evidence": [
+          "Captured command output of add-node rejecting a cross-demand requirement set (non-zero exit) and dge validate flagging a seeded cross-demand node"
+        ]
+      }
+    },
+    {
+      "id": "REQ-021",
+      "demand_id": "DEM-007",
+      "statement": "The on-disk store is demand-centric: a demand's markdown, its requirement markdown files, and its nodes' evidence all materialize under demands/DEM-###/ (demands/DEM-###/requirements/REQ-###.md and demands/DEM-###/nodes/NODE-###/evidence/)",
+      "priority": "must",
+      "acceptance": [
+        "After add-demand/add-requirement/add-node the files land at the nested demand-centric paths; no flat requirements/ or evidence/NODE-*/ directories are created"
+      ],
+      "validation": {
+        "method": "manual-review",
+        "required_evidence": [
+          "Directory listing showing nested demands/DEM-###/requirements and demands/DEM-###/nodes/NODE-###/evidence paths and absence of flat requirements/ and evidence/NODE-*/ dirs"
+        ]
+      }
+    },
+    {
+      "id": "REQ-022",
+      "demand_id": "DEM-007",
+      "statement": "dge show <DEM-###> renders the demand, its requirements, the nodes serving them, and each node's status and evidence presence, emoji-forward by default with --json for full detail",
+      "priority": "must",
+      "acceptance": [
+        "dge show DEM-001 lists its requirements and nodes with statuses and evidence yes/no; dge show on an unknown demand id exits non-zero"
+      ],
+      "validation": {
+        "method": "manual-review",
+        "required_evidence": [
+          "Captured dge show DEM-001 output (default and --json) plus non-zero exit for an unknown demand id"
+        ]
+      }
+    },
+    {
+      "id": "REQ-023",
+      "demand_id": "DEM-007",
+      "statement": "graph.json remains the single validated source of truth; the demand-centric folder tree is a materialized layout derived from it, never a second authority, and skills still fail loudly rather than hand-write JSON",
+      "priority": "must",
+      "acceptance": [
+        "Deleting and rebuilding the folder tree from graph.json reproduces the markdown artifacts byte-for-byte; dge validate reads only graph.json"
+      ],
+      "validation": {
+        "method": "manual-review",
+        "required_evidence": [
+          "Diff showing regenerated markdown artifacts are identical to originals after tree rebuild from graph.json; dge validate output"
+        ]
+      }
+    },
+    {
+      "id": "REQ-024",
+      "demand_id": "DEM-007",
+      "statement": "A one-time migration relocates existing demand/requirement markdown and evidence/NODE-*/ into the nested demand-centric tree, rewrites every node's evidence_path, and updates the evidence-path invariant in both graph-engine.mjs and the schema regex",
+      "priority": "must",
+      "acceptance": [
+        "Running the migration on the current store leaves dge validate passing",
+        "all node evidence resolvable at the new nested paths",
+        "and no orphaned flat directories"
+      ],
+      "validation": {
+        "method": "manual-review",
+        "required_evidence": [
+          "dge validate output post-migration",
+          "a listing confirming nested evidence paths for all nodes",
+          "and confirmation no flat evidence/NODE-*/ dirs remain"
+        ]
+      }
+    },
+    {
+      "id": "REQ-025",
+      "demand_id": "DEM-007",
+      "statement": "dge remove-demand DEM-### retires a demand atomically: it deletes the scoped folder demands/DEM-###/ and purges the demand, its requirements, its nodes, and its resolved gaps from graph.json, refusing if a node in another demand depends_on one of its nodes",
+      "priority": "must",
+      "acceptance": [
+        "remove-demand on a demand with no external dependents leaves no demands/DEM-###/ folder and no trace of its demand/requirement/node/gap ids in graph.json",
+        "with dge validate still passing; remove-demand refuses (non-zero) when another demand's node depends_on one of its nodes"
+      ],
+      "validation": {
+        "method": "manual-review",
+        "required_evidence": [
+          "Captured remove-demand output plus a before/after listing showing the folder gone and grep of graph.json showing the ids purged; captured non-zero refusal when a cross-demand dependent exists"
+        ]
+      }
+    },
+    {
+      "id": "REQ-026",
+      "demand_id": "DEM-008",
+      "statement": "A single /dge-deliver \"<intent>\" command drives the whole delivery arc; after invoking it the user never types another dge-* skill name to reach done. The conductor performs all phase sequencing and handoffs internally.",
+      "priority": "must",
+      "acceptance": [
+        "An end-to-end run of one demand via /dge-deliver reaches done with zero skill-name commands typed by the user between the entry verb and completion.",
+        "The conductor sequences intake -> brief -> plan -> graph -> execute -> summary with no user-issued intermediate commands."
+      ],
+      "validation": {
+        "method": "automated-test",
+        "required_evidence": [
+          "Scripted end-to-end run asserting no dge-* skill command is issued by the user after /dge-deliver."
+        ]
+      }
+    },
+    {
+      "id": "REQ-027",
+      "demand_id": "DEM-008",
+      "statement": "The conductor is a thin-but-smart wrapper: it sequences the existing nine dge-* skills and carries context across phase boundaries, without rewriting them and without modifying the state machine, evidence engine, or verified/done invariants.",
+      "priority": "must",
+      "acceptance": [
+        "The existing engine test suite (state machine",
+        "verified-is-CLI-minted-only",
+        "done-requires-verified) remains green after the conductor is added.",
+        "The nine existing skills' invariant-bearing logic is unchanged; only auto-advance/handoff wiring is added."
+      ],
+      "validation": {
+        "method": "automated-test",
+        "required_evidence": [
+          "npm test output showing the full engine suite passing.",
+          "Diff showing existing skills' invariant-bearing logic unchanged."
+        ]
+      }
+    },
+    {
+      "id": "REQ-028",
+      "demand_id": "DEM-008",
+      "statement": "The conductor stops for the user at exactly two judgment gates and nowhere else for procedure: (1) a Demand Brief after intake, (2) a Graph Brief with a rendered Mermaid DAG and per-node blast radius after planning. Both must be approved before execution; gate 2 is never auto-skipped.",
+      "priority": "must",
+      "acceptance": [
+        "A run surfaces exactly two approval gates; no 'shall I run the next skill?' prompts appear between them.",
+        "The Graph Brief renders the dependency DAG as Mermaid plus a per-node change/blast-radius summary and the ready-queue order.",
+        "Execution cannot begin until gate 2 is explicitly approved."
+      ],
+      "validation": {
+        "method": "artifact-review",
+        "required_evidence": [
+          "The rendered Demand Brief and Graph Brief artifacts under delivery-graph/reports/.",
+          "Transcript showing execution blocked until gate 2 approval."
+        ]
+      }
+    },
+    {
+      "id": "REQ-029",
+      "demand_id": "DEM-008",
+      "statement": "At each gate the user edits in natural language; the conductor translates edits into dge CLI mutations and re-renders the brief. Users never hand-edit the brief markdown or type CLI commands, and graph.json is only ever written by the CLI. The only way out of a gate is explicit user approval.",
+      "priority": "must",
+      "acceptance": [
+        "A plain-language edit ('drop REQ-x'",
+        "'split NODE-y') results in the corresponding dge CLI mutation and a re-rendered brief.",
+        "graph.json is written exclusively through the dge CLI during gate editing (no hand-edits)."
+      ],
+      "validation": {
+        "method": "artifact-review",
+        "required_evidence": [
+          "Transcript showing a plain-language edit -> CLI mutation -> re-render loop.",
+          "Before/after brief renders reflecting the edit."
+        ]
+      }
+    },
+    {
+      "id": "REQ-030",
+      "demand_id": "DEM-008",
+      "statement": "Execution reuses the existing /dge-execute-graph loop and DEM-002 quiet output; the conductor invokes it with per-node build/validate narration suppressed while keeping stop-on-failure loud. No new execution engine is built.",
+      "priority": "must",
+      "acceptance": [
+        "Execution is driven by the existing dge next / dge done loop",
+        "not a reimplemented one.",
+        "A clean node produces no intra-node narration; a failing node surfaces loudly and halts (stop-on-failure)."
+      ],
+      "validation": {
+        "method": "automated-test",
+        "required_evidence": [
+          "Test showing a clean node emits only the compact completion line and a failing node halts the run.",
+          "Diff showing execution delegates to the existing execute-graph loop."
+        ]
+      }
+    },
+    {
+      "id": "REQ-031",
+      "demand_id": "DEM-008",
+      "statement": "Each build->validate pass yields one of three outcomes: PASS, FAIL (retry then stop), or AMBIGUOUS. AMBIGUOUS covers fix-ambiguity (multiple viable ways to pass) and result-ambiguity (pass/fail is a judgment call, e.g. present-but-wrong evidence). On AMBIGUOUS the loop pauses at most once per node, asks exactly one question, applies the answer, and resumes; it never self-certifies a weak pass.",
+      "priority": "must",
+      "acceptance": [
+        "A node triggering fix-ambiguity pauses once",
+        "asks one question",
+        "and resumes after the answer.",
+        "A node triggering result-ambiguity (present-but-wrong evidence) pauses rather than counting the contract item satisfied.",
+        "AMBIGUOUS pausing is distinct from FAIL (no retry) and from PASS (no silent continue)."
+      ],
+      "validation": {
+        "method": "automated-test",
+        "required_evidence": [
+          "Test cases for fix-ambiguity and result-ambiguity each pausing exactly once.",
+          "Test that weak/present-but-wrong evidence is not auto-counted as a pass."
+        ]
+      }
+    },
+    {
+      "id": "REQ-032",
+      "demand_id": "DEM-008",
+      "statement": "Mid-run pause triggers are structural and graph-detectable, not subjective: a missing/non-executable validation contract, an unresolved blocker GAP on a node's requirement, or a node whose actual diff exceeds the blast radius it declared in the approved Graph Brief. Everything else flows silently to done; hard failures remain stop-on-failure.",
+      "priority": "should",
+      "acceptance": [
+        "A node whose diff exceeds its approved blast radius pauses as a structural trigger.",
+        "A node with a missing/non-executable validation contract pauses rather than proceeding."
+      ],
+      "validation": {
+        "method": "automated-test",
+        "required_evidence": [
+          "Test for blast-radius-overrun pause and missing-contract pause."
+        ]
+      }
+    },
+    {
+      "id": "REQ-033",
+      "demand_id": "DEM-008",
+      "statement": "The user can abandon at any gate, leaving the graph in a clean, resumable state. A gate edit that reintroduces a blocker gap (orphaned node, unresolved GAP, must-requirement with no node) cannot be approved until resolved, reusing intake's readiness gate and plan-graph's coverage check. Re-running /dge-deliver on an in-progress demand resumes from the ready queue rather than restarting from intake.",
+      "priority": "should",
+      "acceptance": [
+        "Abandoning at a gate stops cleanly and preserves the current graph; a later /dge-deliver resumes it.",
+        "An edit that orphans a node or leaves a blocker GAP blocks gate approval until resolved.",
+        "/dge-deliver on an in-progress demand resumes from dge next",
+        "keeping done nodes done."
+      ],
+      "validation": {
+        "method": "automated-test",
+        "required_evidence": [
+          "Tests for abandon-and-resume",
+          "blocked-approval-on-reintroduced-gap",
+          "and resume-from-queue."
+        ]
+      }
+    },
+    {
+      "id": "REQ-034",
+      "demand_id": "DEM-008",
+      "statement": "During execution the user watches a live status board that re-renders once per node transition as a projection of graph.json (the single controlling source of truth). The board redraw is periodic (per node transition), not a continuous stream, and intra-node narration stays suppressed.",
+      "priority": "should",
+      "acceptance": [
+        "The status board re-renders after each node transition",
+        "reflecting the current graph.json state.",
+        "The board is rendered from graph.json (no separate progress log that could drift); intra-node narration remains suppressed."
+      ],
+      "validation": {
+        "method": "artifact-review",
+        "required_evidence": [
+          "Captured sequence of board renders across an execution run",
+          "each matching graph.json state at that point."
+        ]
+      }
+    },
+    {
+      "id": "REQ-035",
+      "demand_id": "DEM-008",
+      "statement": "No quiet/silent execution path may reach done without a genuine evidence artifact on disk. The quiet mode changes reporting only, never gating; this productizes the evidence-add-can-falsely-satisfy learning so a suppressed-narration run cannot fabricate a pass.",
+      "priority": "must",
+      "acceptance": [
+        "A test proves that in quiet mode a node cannot reach done without an evidence artifact present.",
+        "The verified/done invariants (verified is CLI-minted-only; done requires verified) still hold under the conductor's quiet path."
+      ],
+      "validation": {
+        "method": "automated-test",
+        "required_evidence": [
+          "Test asserting quiet-mode done is impossible without evidence on disk.",
+          "Engine invariant tests passing under the conductor path."
+        ]
+      }
+    },
+    {
+      "id": "REQ-036",
+      "demand_id": "DEM-008",
+      "statement": "Plain-language auto-routing (detecting delivery intent in free text and launching the conductor without the user typing /dge-deliver) is explicitly deferred beyond v1 and is not required for the stated outcome.",
+      "priority": "could",
+      "acceptance": [
+        "Deferred: not implemented in v1; recorded so the success claim is scoped to 'after the first /dge-deliver'",
+        "not 'no command ever'."
+      ],
+      "validation": {
+        "method": "artifact-review",
+        "required_evidence": [
+          "This requirement recorded as could/deferred in graph.json."
+        ]
+      }
+    },
+    {
+      "id": "REQ-037",
+      "demand_id": "DEM-009",
+      "statement": "dge remove-requirement REQ-### deletes a requirement and refuses when a node still references it (would orphan the node's requirement_ids), leaving the graph valid.",
+      "priority": "must",
+      "acceptance": [
+        "Removing an unreferenced requirement succeeds and the graph validates.",
+        "Removing a requirement still referenced by a node is refused with a message naming the referencing node(s).",
+        "Any gap that blocks only the removed requirement is handled without leaving a dangling reference."
+      ],
+      "validation": {
+        "method": "automated-test",
+        "required_evidence": [
+          "Tests: remove unreferenced ok; remove referenced refused; gap reference handled."
+        ]
+      }
+    },
+    {
+      "id": "REQ-038",
+      "demand_id": "DEM-009",
+      "statement": "dge edit-requirement REQ-### can change a requirement's statement, priority, acceptance, and validation method/evidence in place, leaving the graph valid and other fields untouched.",
+      "priority": "must",
+      "acceptance": [
+        "Editing statement/priority updates only those fields; the id and demand_id are unchanged.",
+        "An invalid priority or validation method is rejected (schema enforced)",
+        "not silently stored."
+      ],
+      "validation": {
+        "method": "automated-test",
+        "required_evidence": [
+          "Tests: field edits apply; invalid values rejected; id/demand_id stable."
+        ]
+      }
+    },
+    {
+      "id": "REQ-039",
+      "demand_id": "DEM-009",
+      "statement": "dge edit-demand DEM-### can set/replace the problem, outcome, constraints, and non_goals of an existing demand, so these need not be right at add-demand time.",
+      "priority": "should",
+      "acceptance": [
+        "Adding non-goals/constraints to a demand created without them succeeds and validates.",
+        "Editing problem/outcome replaces those fields; id/title/source are unchanged."
+      ],
+      "validation": {
+        "method": "automated-test",
+        "required_evidence": [
+          "Tests: non-goals/constraints added post-hoc; problem/outcome replaced; identity fields stable."
+        ]
+      }
+    },
+    {
+      "id": "REQ-040",
+      "demand_id": "DEM-010",
+      "statement": "dge init works without --title: createGraph applies a deterministic default title (overridable with --title) so the graph is schema-valid without forcing a title decision",
+      "priority": "must",
+      "acceptance": [
+        "dge init (no --title) creates a schema-valid graph.json whose graph.title is the default; dge init --title X still sets X; dge validate passes in both cases"
+      ],
+      "validation": {
+        "method": "manual-review",
+        "required_evidence": [
+          "Captured dge init (no title) output + graph.json showing default title",
+          "and dge init --title X showing the override",
+          "both passing dge validate"
+        ]
+      }
+    },
+    {
+      "id": "REQ-041",
+      "demand_id": "DEM-010",
+      "statement": "The first mutation (add-demand/add-requirement/add-node/...) in a repo with no graph auto-creates the store at the DEFAULT path delivery-graph/graph.json and prints a one-line notice; when an explicit --graph points at a missing file, it still fails loudly (no accidental second store)",
+      "priority": "must",
+      "acceptance": [
+        "add-demand with no pre-existing graph at the default path creates it",
+        "prints a 'created delivery-graph/graph.json' notice",
+        "and succeeds; add-demand --graph some/missing.json exits non-zero without creating a file"
+      ],
+      "validation": {
+        "method": "manual-review",
+        "required_evidence": [
+          "Captured add-demand run in an empty temp dir (store created + notice + success) and add-demand --graph missing.json (non-zero",
+          "no file created)"
+        ]
+      }
+    },
+    {
+      "id": "REQ-042",
+      "demand_id": "DEM-010",
+      "statement": "A single npx one-shot bootstrap ('npx github:rafaelolsr/delivery-graph setup') sets up everything DGE owns on a new machine: it installs the dge CLI and installs the /dge-* skills for the harness(es) the user selects (claude and/or copilot), reusing dge install-skills. It does NOT install the harness itself or Node; instead it detects when a selected harness (or Node) is missing and prints a clear 'install X first' message rather than silently half-configuring. One cross-platform code path (no per-OS shell script).",
+      "priority": "must",
+      "acceptance": [
+        "From a clean repo",
+        "one documented step (e.g. one npm command or one dge subcommand) results in the /dge-* skills installed for the detected harness; works on macOS/Linux/Windows without a .sh/.ps1; dge init still available as the explicit start-here"
+      ],
+      "validation": {
+        "method": "manual-review",
+        "required_evidence": [
+          "Captured a single 'npx github:… setup' (or equivalent local bin invocation) run end-to-end: CLI usable",
+          "/dge-* skills present under the chosen harness skills dir; plus a run where a selected harness is absent showing the explicit missing-harness warning; confirmation no .sh/.ps1 is required"
+        ]
+      }
+    },
+    {
+      "id": "REQ-043",
+      "demand_id": "DEM-011",
+      "statement": "DGE dispatches a node's work through a harness-agnostic adapter interface, so any supported harness (Claude Code, Copilot, Kimi, opencode, Codex) can execute a node against the same graph.json contract.",
+      "priority": "must",
+      "acceptance": [
+        "A node can be executed by at least two different harness adapters and both write results back through the same interface.",
+        "Adding a new harness requires only a new adapter",
+        "no change to the engine/gate."
+      ],
+      "validation": {
+        "method": "automated-test",
+        "required_evidence": [
+          "Automated test: same node dispatched through two adapter stubs; both produce a well-formed result the engine accepts."
+        ]
+      }
+    },
+    {
+      "id": "REQ-044",
+      "demand_id": "DEM-011",
+      "statement": "For each node, DGE recommends a harness and model from node traits, records the decision with a rationale artifact, and honors a config pin that overrides the recommendation for any node.",
+      "priority": "must",
+      "acceptance": [
+        "Every routing decision emits an inspectable record: node → chosen harness/model + why.",
+        "A config pin for a node forces that harness/model regardless of the recommendation."
+      ],
+      "validation": {
+        "method": "automated-test",
+        "required_evidence": [
+          "Automated test: routed node produces a rationale artifact; a pinned node ignores the recommender and uses the pinned target."
+        ]
+      }
+    },
+    {
+      "id": "REQ-045",
+      "demand_id": "DEM-011",
+      "statement": "When a primary harness fails on an INFRASTRUCTURE error (CLI missing, auth failure, network error, timeout), DGE falls back to the next harness in the configured chain; a FAILED evidence gate never triggers fallback and blocks the node.",
+      "priority": "must",
+      "acceptance": [
+        "An infra failure on the primary causes dispatch to the next harness in the chain.",
+        "A node whose evidence gate FAILS is blocked",
+        "not re-dispatched to another harness.",
+        "Fallback classification distinguishes infra failure from work/evidence failure."
+      ],
+      "validation": {
+        "method": "automated-test",
+        "required_evidence": [
+          "Automated test: simulated infra error → fallback fires; simulated failing evidence → node blocked",
+          "no fallback",
+          "gate stays sovereign."
+        ]
+      }
+    },
+    {
+      "id": "REQ-046",
+      "demand_id": "DEM-011",
+      "statement": "Model selection is cost-aware: DGE can be configured to prefer cheaper models for lower-complexity nodes, and the chosen model is part of the logged routing rationale.",
+      "priority": "must",
+      "acceptance": [
+        "Given a cost policy",
+        "a low-complexity node resolves to a cheaper model than a high-complexity node.",
+        "The selected model appears in the routing rationale artifact."
+      ],
+      "validation": {
+        "method": "automated-test",
+        "required_evidence": [
+          "Automated test: two nodes of differing complexity under one cost policy resolve to the expected cheaper/costlier model."
+        ]
+      }
+    },
+    {
+      "id": "REQ-047",
+      "demand_id": "DEM-011",
+      "statement": "Different harnesses can execute different ready nodes in parallel without corrupting the canonical store; concurrent writes are safe and the logical source of truth stays consistent.",
+      "priority": "must",
+      "acceptance": [
+        "Two harnesses executing two independent ready nodes concurrently both persist results with no lost/corrupted writes.",
+        "graph.json (or its fragment set) remains valid after concurrent completion."
+      ],
+      "validation": {
+        "method": "automated-test",
+        "required_evidence": [
+          "Automated test: concurrent completion of two nodes by two adapters leaves the store valid with both results recorded."
+        ]
+      }
+    },
+    {
+      "id": "REQ-048",
+      "demand_id": "DEM-012",
+      "statement": "Concurrent completion of two independent ready nodes by two writers leaves the store valid with both results recorded and no lost or corrupted writes.",
+      "priority": "must",
+      "acceptance": [
+        "Two writers finishing two independent nodes at the same time both persist; neither overwrites the other.",
+        "The store validates (dge validate passes) after concurrent completion."
+      ],
+      "validation": {
+        "method": "automated-test",
+        "required_evidence": [
+          "Automated race test: N concurrent writers complete N distinct nodes; final store is valid and contains all N results."
+        ]
+      }
+    },
+    {
+      "id": "REQ-049",
+      "demand_id": "DEM-012",
+      "statement": "Existing single-writer flows (the conductor and CLI authoring/editing) continue to work unchanged against the new store format.",
+      "priority": "must",
+      "acceptance": [
+        "The existing 177-test suite passes against the new store.",
+        "No change required to conductor or CLI-authoring call sites for single-writer use."
+      ],
+      "validation": {
+        "method": "automated-test",
+        "required_evidence": [
+          "Automated test: full existing suite green on the new store; a single-writer authoring round-trip is unchanged."
+        ]
+      }
+    },
+    {
+      "id": "REQ-050",
+      "demand_id": "DEM-013",
+      "statement": "A demand carries an optional summary field captured through the dge CLI (--summary on add-demand and edit-demand); it is stored on the demand in graph.json and is never required by the schema so all existing demands stay valid",
+      "priority": "must",
+      "acceptance": [
+        "add-demand --summary persists the value and edit-demand --summary backfills it on an existing demand",
+        "assertValidGraph accepts a demand with no summary; DEM-001 through DEM-012 still validate",
+        "the summary is never run through requireText (it returns void) — a demand with no summary round-trips as undefined not empty-string"
+      ],
+      "validation": {
+        "method": "manual-review",
+        "required_evidence": [
+          "graph-authoring round-trip test: add then edit summary; and a validation test proving an existing summary-less demand passes assertValidGraph"
+        ]
+      }
+    },
+    {
+      "id": "REQ-051",
+      "demand_id": "DEM-013",
+      "statement": "Every demand-scoped rendered surface (demand brief; graph brief; demand markdown artifact) opens with a bold one-line TL;DR lead: the demand summary when present else the first sentence of outcome",
+      "priority": "must",
+      "acceptance": [
+        "renderDemandView and renderGraphBrief emit the bold summary as the lead line when summary is set",
+        "when summary is absent the lead falls back to the first sentence of outcome so the surface always has a lead",
+        "writeDemandArtifact writes the bold TL;DR line under the H1"
+      ],
+      "validation": {
+        "method": "manual-review",
+        "required_evidence": [
+          "renderer tests asserting the bold lead line for a demand with summary and for one without (outcome fallback)"
+        ]
+      }
+    },
+    {
+      "id": "REQ-052",
+      "demand_id": "DEM-013",
+      "statement": "A single shared renderNextSteps helper in src/output.mjs emits an identical-shaped Next section; every gate and report surface ends with exactly one Next block that names the correct next action",
+      "priority": "must",
+      "acceptance": [
+        "renderNextSteps exists in src/output.mjs and is glyph-aware (emoji and ASCII forms)",
+        "demand brief; graph brief; status board; done block; review report each end with exactly one Next section",
+        "the Next content is correct for the state: approve-to-plan; approve-to-execute naming the ready-queue head; ready-node or blocker or all-done for the board"
+      ],
+      "validation": {
+        "method": "manual-review",
+        "required_evidence": [
+          "a cross-renderer guard test that iterates every surface and asserts exactly one Next section on each; plus a unit test of renderNextSteps in emoji and ASCII modes"
+        ]
+      }
+    },
+    {
+      "id": "REQ-053",
+      "demand_id": "DEM-013",
+      "statement": "The status board leads with a deterministic headline done/total done · N ready · N blocked derived from summarizeGraph counts and rendered in bold under the H1",
+      "priority": "must",
+      "acceptance": [
+        "renderStatus emits the bold headline line computed from statuses; readyNodes; blockerGaps",
+        "the headline is correct in the all-done state and the nothing-ready state"
+      ],
+      "validation": {
+        "method": "manual-review",
+        "required_evidence": [
+          "renderStatus test asserting the headline regex on a mixed graph and on an all-done graph"
+        ]
+      }
+    },
+    {
+      "id": "REQ-054",
+      "demand_id": "DEM-013",
+      "statement": "One cross-renderer guard test enforces the shared skeleton across every user-facing surface DGE renders: each output has a bold lead line and exactly one Next section; this test is what makes the template enforced rather than intended",
+      "priority": "must",
+      "acceptance": [
+        "the guard iterates all surfaces (demand brief; graph brief; status board; done block; review report; setup output) and fails if any lacks a bold lead or the single Next section",
+        "the guard runs in both emoji and ASCII modes"
+      ],
+      "validation": {
+        "method": "manual-review",
+        "required_evidence": [
+          "the cross-renderer guard test file present and passing; a deliberately-broken renderer makes it fail (demonstrated in the node evidence)"
+        ]
+      }
+    },
+    {
+      "id": "REQ-055",
+      "demand_id": "DEM-013",
+      "statement": "Every renderer handles the three mandatory edge states without a blank or a crash: empty/zero states (no nodes; no ready; no findings; all done); ASCII mode; and demand-scoped derivation where scoped counts and the Next target reflect only that demand",
+      "priority": "must",
+      "acceptance": [
+        "each surface renders a correct non-empty Next in its zero state (all-done; nothing-ready; no-findings)",
+        "each surface is readable in ASCII mode with no raw emoji",
+        "a demand-scoped render derives headline counts and the Next target from that demand's nodes and gaps only (per learning demand-scoped-renderers-scope-all-derived-data)"
+      ],
+      "validation": {
+        "method": "manual-review",
+        "required_evidence": [
+          "per-renderer tests covering the empty state; the ASCII state; and a scoped-count case proving no cross-demand leakage"
+        ]
+      }
+    },
+    {
+      "id": "REQ-056",
+      "demand_id": "DEM-013",
+      "statement": "The LLM-narrated surfaces are brought to the same skeleton via SKILL.md prose in both mirrors: the Phase 5 final summary leads with a one-paragraph here-is-the-story synthesis before the per-node list and ends with a mandatory Next block; the intake discipline captures a one-line summary and keeps outcome to at most three sentences",
+      "priority": "should",
+      "acceptance": [
+        "dge-deliver and dge-execute-graph SKILL.md (and their .claude/skills mirrors) require synthesis-first plus a Next block in the final summary",
+        "dge-intake SKILL.md instructs capturing a one-line summary and capping outcome length; the --summary flag appears in its CLI contract",
+        "the skill-sync test confirms skills/ and .claude/skills/ stay byte-identical"
+      ],
+      "validation": {
+        "method": "manual-review",
+        "required_evidence": [
+          "the skill-mirror sync test passes; a behavior-level assertion (not a phrase match) that the summary/Next instruction is present per learning skill-prose-can-drift-from-code"
+        ]
+      }
+    },
+    {
+      "id": "REQ-057",
+      "demand_id": "DEM-014",
+      "statement": "A node with no evidence and all dependencies complete can transition from review to a new terminal status done-waived when given a non-empty reason",
+      "priority": "must",
+      "acceptance": [
+        "Given a review node with no evidence and done deps",
+        "dge done --waive with a reason moves it to done-waived",
+        "The reason is persisted on the node in graph.json"
+      ],
+      "validation": {
+        "method": "manual-review",
+        "required_evidence": [
+          "Automated test asserting the transition and persisted reason"
+        ]
+      }
+    },
+    {
+      "id": "REQ-058",
+      "demand_id": "DEM-014",
+      "statement": "done-waived is a distinct terminal status; regular done still requires verified plus evidence and is never produced by a waiver",
+      "priority": "must",
+      "acceptance": [
+        "done-waived appears in NODE_STATUSES as terminal (no outgoing transitions)",
+        "The existing done gate is unchanged: done still requires verified and an evidence path"
+      ],
+      "validation": {
+        "method": "manual-review",
+        "required_evidence": [
+          "Automated test covering the state machine: done-waived is terminal and done gate is intact"
+        ]
+      }
+    },
+    {
+      "id": "REQ-059",
+      "demand_id": "DEM-014",
+      "statement": "The waiver is rejected when the node is blocked, has incomplete dependencies, has any evidence present (pass or fail), or is given a blank reason",
+      "priority": "must",
+      "acceptance": [
+        "Waiving a blocked node exits non-zero",
+        "Waiving a node with incomplete deps exits non-zero",
+        "Waiving a node that has any evidence record exits non-zero",
+        "Waiving with an empty reason exits non-zero"
+      ],
+      "validation": {
+        "method": "manual-review",
+        "required_evidence": [
+          "Automated test covering each of the four rejection cases"
+        ]
+      }
+    },
+    {
+      "id": "REQ-060",
+      "demand_id": "DEM-014",
+      "statement": "A done-waived node unblocks its dependents exactly as a done node does",
+      "priority": "must",
+      "acceptance": [
+        "A node depending only on a done-waived node becomes ready"
+      ],
+      "validation": {
+        "method": "manual-review",
+        "required_evidence": [
+          "Automated test asserting dependent readiness after a waiver"
+        ]
+      }
+    },
+    {
+      "id": "REQ-061",
+      "demand_id": "DEM-014",
+      "statement": "All waiver enforcement lives in the dge CLI so a raw CLI call is governed identically to one made through a skill; skills only narrate rejections",
+      "priority": "must",
+      "acceptance": [
+        "Every rejection rule is enforced by the CLI/engine",
+        "verifiable without any skill"
+      ],
+      "validation": {
+        "method": "manual-review",
+        "required_evidence": [
+          "The rejection tests call the CLI/engine directly",
+          "not a skill"
+        ]
+      }
+    },
+    {
+      "id": "REQ-062",
+      "demand_id": "DEM-014",
+      "statement": "Status output surfaces done-waived nodes distinctly: counted separately from done and showing the reason",
+      "priority": "must",
+      "acceptance": [
+        "dge status shows a done-waived count separate from done",
+        "The waiver reason is visible in a per-node view"
+      ],
+      "validation": {
+        "method": "manual-review",
+        "required_evidence": [
+          "Automated test asserting done-waived is rendered separately with its reason"
+        ]
+      }
+    },
+    {
+      "id": "REQ-063",
+      "demand_id": "DEM-015",
+      "statement": "Every dge-* skill's SKILL.md instructs the assistant to lead its final conversational reply with a bold one-line synthesis and end with a ## Next block referencing one shared convention",
+      "priority": "must",
+      "acceptance": [
+        "skills/README.md defines the output convention once",
+        "All 10 dge-*/SKILL.md files (in skills/ and .claude/skills/) reference the convention and specify skill-specific synthesis + Next content",
+        "tests/skill-cli-contract.test.mjs asserts every skill references the convention",
+        "npm test passes"
+      ],
+      "validation": {
+        "method": "automated-test",
+        "required_evidence": [
+          "npm test output showing new convention-coverage test passing for all 10 skills"
+        ]
+      }
+    },
+    {
+      "id": "REQ-064",
+      "demand_id": "DEM-016",
+      "statement": "DGE automatically regenerates one stable repository-wide viewer artifact and returns its clickable link after design without requiring a viewer command.",
+      "priority": "must",
+      "acceptance": [
+        "A design mutation creates delivery-graph/view/index.html",
+        "Subsequent graph mutations update the same path instead of creating new viewer URLs",
+        "The dge-design final response contract includes the viewer link"
+      ],
+      "validation": {
+        "method": "automated-test",
+        "required_evidence": [
+          "CLI integration tests prove automatic generation and stable-link output"
+        ]
+      }
+    },
+    {
+      "id": "REQ-065",
+      "demand_id": "DEM-016",
+      "statement": "The viewer provides a three-panel desktop workspace with demand selection and a real left-to-right executable dependency graph.",
+      "priority": "must",
+      "acceptance": [
+        "The left panel lists every demand and selects one at a time",
+        "The center panel renders selected-demand nodes and directional dependency edges",
+        "The right panel displays details for the selected demand or node"
+      ],
+      "validation": {
+        "method": "automated-test",
+        "required_evidence": [
+          "Rendered DOM tests and desktop screenshots prove the three-panel DAG workspace"
+        ]
+      }
+    },
+    {
+      "id": "REQ-066",
+      "demand_id": "DEM-016",
+      "statement": "Every graph node makes its task and correctness state understandable without presenting uncertain work as healthy.",
+      "priority": "must",
+      "acceptance": [
+        "Cards show task title and lifecycle status and agent assignment and risk level",
+        "Cards show up to two validation criteria with pass or pending or fail or ambiguous state",
+        "Additional criteria collapse behind a +N more indicator",
+        "Active work and its dependency path receive the strongest emphasis"
+      ],
+      "validation": {
+        "method": "automated-test",
+        "required_evidence": [
+          "State-fixture tests prove truthful card content and styling for every status"
+        ]
+      }
+    },
+    {
+      "id": "REQ-067",
+      "demand_id": "DEM-016",
+      "statement": "The inspector exposes the complete requirement and validation and evidence record behind a selected graph node.",
+      "priority": "must",
+      "acceptance": [
+        "The inspector shows linked requirements and the full validation contract",
+        "The inspector shows evidence artifacts and verifier verdict and repair attempts and blockers",
+        "Failed or missing or ambiguous proof cannot display completion styling"
+      ],
+      "validation": {
+        "method": "automated-test",
+        "required_evidence": [
+          "Inspector fixture tests prove full traceability and fail-closed presentation"
+        ]
+      }
+    },
+    {
+      "id": "REQ-068",
+      "demand_id": "DEM-016",
+      "statement": "The viewer works entirely offline as a read-only projection while preserving user context across automatic updates.",
+      "priority": "must",
+      "acceptance": [
+        "The artifact loads with networking disabled and makes zero external requests",
+        "The viewer refreshes graph state every two seconds",
+        "Selected demand and node and graph viewport and zoom survive refresh",
+        "The viewer contains no graph mutation controls"
+      ],
+      "validation": {
+        "method": "automated-test",
+        "required_evidence": [
+          "Offline browser tests and refresh-state tests pass"
+        ]
+      }
+    },
+    {
+      "id": "REQ-069",
+      "demand_id": "DEM-016",
+      "statement": "The graph workspace provides focused navigation for large dependency graphs without obscuring active delivery flow.",
+      "priority": "should",
+      "acceptance": [
+        "Users can pan and zoom and fit and reset the graph",
+        "Selecting a node highlights upstream and downstream paths",
+        "Large graphs provide a minimap and focus-active-path control",
+        "URL hashes restore the selected demand and node"
+      ],
+      "validation": {
+        "method": "automated-test",
+        "required_evidence": [
+          "Interaction tests prove navigation and deep-link restoration"
+        ]
+      }
+    },
+    {
+      "id": "REQ-070",
+      "demand_id": "DEM-016",
+      "statement": "The viewer delivers an exquisite accessible desktop visual experience in dark and light themes.",
+      "priority": "should",
+      "acceptance": [
+        "Dark and light themes maintain readable contrast and clear status hierarchy",
+        "Keyboard users can operate demand selection and graph nodes and inspector controls",
+        "Reduced-motion mode removes live activity animation",
+        "Layouts at 1280x800 and 1440x900 and 1920x1080 have no overlap or clipping",
+        "A final visual review removes generic styling and resolves spacing and hierarchy defects"
+      ],
+      "validation": {
+        "method": "artifact-review",
+        "required_evidence": [
+          "Reviewed screenshots for both themes at all required desktop sizes plus accessibility results"
+        ]
+      }
+    },
+    {
+      "id": "REQ-071",
+      "demand_id": "DEM-017",
+      "statement": "The viewer shows the inspector only while a valid work node is selected and hides it on every supported deselection path.",
+      "priority": "must",
+      "acceptance": [
+        "No inspector element consumes layout space when no node is selected",
+        "Selecting a work node opens the inspector with that node's details",
+        "Each approved deselection action clears selection and hides the inspector"
+      ],
+      "validation": {
+        "method": "automated-test",
+        "required_evidence": [
+          "Automated interaction tests prove the initial hidden state plus selection opening plus every deselection path"
+        ]
+      }
+    },
+    {
+      "id": "REQ-072",
+      "demand_id": "DEM-017",
+      "statement": "Inspector visibility restores only from a valid node selection and fails closed for stale or mismatched state.",
+      "priority": "must",
+      "acceptance": [
+        "A valid URL hash or session selection reopens the inspector after refresh",
+        "Any missing or stale or cross-demand node selection is cleared and leaves the inspector hidden"
+      ],
+      "validation": {
+        "method": "automated-test",
+        "required_evidence": [
+          "Automated restoration fixtures cover valid state plus missing state plus stale state plus cross-demand state"
+        ]
+      }
+    },
+    {
+      "id": "REQ-073",
+      "demand_id": "DEM-017",
+      "statement": "The graph workspace switches between two and three columns without overlay and refits after inspector visibility changes.",
+      "priority": "must",
+      "acceptance": [
+        "The graph expands into the inspector space while the inspector is hidden",
+        "The visible inspector occupies 380px without overlaying the graph",
+        "The graph automatically refits after each open or close transition"
+      ],
+      "validation": {
+        "method": "artifact-review",
+        "required_evidence": [
+          "DOM assertions and six desktop theme screenshots prove no overlap or clipping at every required viewport"
+        ]
+      }
+    },
+    {
+      "id": "REQ-074",
+      "demand_id": "DEM-017",
+      "statement": "Inspector dismissal is explicit and keyboard accessible with predictable focus restoration.",
+      "priority": "must",
+      "acceptance": [
+        "The inspector provides a visible Close inspector button",
+        "Escape closes the inspector",
+        "Closing through the button or Escape returns focus to the previously selected graph node",
+        "The hidden inspector is absent from the accessibility tree"
+      ],
+      "validation": {
+        "method": "automated-test",
+        "required_evidence": [
+          "Keyboard and accessibility tests prove dismissal plus focus restoration plus hidden-state semantics"
+        ]
+      }
+    },
+    {
+      "id": "REQ-075",
+      "demand_id": "DEM-017",
+      "statement": "Inspector opening and closing uses restrained motion while respecting reduced-motion preferences.",
+      "priority": "should",
+      "acceptance": [
+        "A short transition communicates the workspace width change",
+        "prefers-reduced-motion disables the transition",
+        "Graph refitting waits until the transition completes"
+      ],
+      "validation": {
+        "method": "artifact-review",
+        "required_evidence": [
+          "Reduced-motion assertions and reviewed browser evidence prove stable open and close transitions"
+        ]
+      }
+    },
+    {
+      "id": "REQ-076",
+      "demand_id": "DEM-018",
+      "statement": "The demand rail renders demands in descending numeric demand-ID order on initial load and after refresh.",
+      "priority": "must",
+      "acceptance": [
+        "DEM-018 appears before DEM-017 regardless of title text",
+        "Static HTML and JavaScript-enhanced rendering use the same descending order",
+        "Refresh preserves descending numeric order"
+      ],
+      "validation": {
+        "method": "automated-test",
+        "required_evidence": [
+          "Executable ordering fixtures cover double-digit IDs plus initial rendering plus enhanced rendering plus refresh"
+        ]
+      }
+    },
+    {
+      "id": "REQ-077",
+      "demand_id": "DEM-018",
+      "statement": "Every demand containing an in_progress or review node is presented as running without treating other lifecycle states as running.",
+      "priority": "must",
+      "acceptance": [
+        "Any in_progress node makes its owning demand running",
+        "Any review node makes its owning demand running",
+        "Ready-only plus blocked-only plus completed demands are not running",
+        "Every running demand shows a static accent and a textual running-node count",
+        "Selected styling remains stronger than running styling"
+      ],
+      "validation": {
+        "method": "automated-test",
+        "required_evidence": [
+          "State fixtures and accessibility assertions prove running derivation plus count text plus non-color semantics"
+        ]
+      }
+    },
+    {
+      "id": "REQ-078",
+      "demand_id": "DEM-018",
+      "statement": "Default demand selection follows valid URL state then valid session state then the newest running demand then the newest demand.",
+      "priority": "must",
+      "acceptance": [
+        "A valid URL demand remains selected",
+        "A valid session demand is restored when no valid URL demand exists",
+        "The highest numeric running demand is selected when no valid restored state exists",
+        "The highest numeric demand is selected when no demand is running",
+        "Refresh never replaces a valid user selection when another demand starts running"
+      ],
+      "validation": {
+        "method": "automated-test",
+        "required_evidence": [
+          "Executable precedence fixtures cover URL plus session plus multiple-running plus no-running plus refresh cases"
+        ]
+      }
+    },
+    {
+      "id": "REQ-079",
+      "demand_id": "DEM-018",
+      "statement": "The demand rail automatically reveals the selected demand without changing strict descending order.",
+      "priority": "must",
+      "acceptance": [
+        "A selected demand below the visible rail is scrolled into view",
+        "Auto-scroll does not reorder demands",
+        "Keyboard and pointer selection remain usable after auto-scroll"
+      ],
+      "validation": {
+        "method": "automated-test",
+        "required_evidence": [
+          "Interaction tests prove selected-demand visibility plus stable ordering plus keyboard and pointer operation"
+        ]
+      }
+    },
+    {
+      "id": "REQ-080",
+      "demand_id": "DEM-018",
+      "statement": "Running and selected demand states remain visually legible across supported desktop sizes and themes.",
+      "priority": "should",
+      "acceptance": [
+        "Running and selected states are distinguishable in dark and light themes",
+        "Demand labels and running counts do not clip at 1280x800 or 1440x900 or 1920x1080",
+        "The demand rail remains independently scrollable"
+      ],
+      "validation": {
+        "method": "artifact-review",
+        "required_evidence": [
+          "Six reviewed desktop theme screenshots prove legibility plus containment plus scrolling"
+        ]
+      }
+    },
+    {
+      "id": "REQ-081",
+      "demand_id": "DEM-019",
+      "statement": "The desktop viewer replaces the fixed two-second reload with an accessible toolbar selector offering Off, 5 seconds, 10 seconds, 15 seconds, and 30 seconds, defaulting to 15 seconds.",
+      "priority": "must",
+      "acceptance": [
+        "No automatic two-second reload remains in the generated viewer.",
+        "The selected rate schedules refresh only at that rate and Off schedules none.",
+        "The controls are keyboard operable and have accessible labels."
+      ],
+      "validation": {
+        "method": "automated-test",
+        "required_evidence": [
+          "Executable refresh-control tests cover every option",
+          "default behavior",
+          "Off",
+          "and absence of the legacy timer."
+        ]
+      }
+    },
+    {
+      "id": "REQ-082",
+      "demand_id": "DEM-019",
+      "statement": "Refresh behavior preserves the current demand, selected node, viewport position, zoom, theme, and selected refresh rate; automatic refresh pauses while hidden and resumes when the viewer becomes visible.",
+      "priority": "must",
+      "acceptance": [
+        "A valid session selection and every listed viewer context field restore after manual and automatic refresh.",
+        "No automatic refresh occurs while the document is hidden.",
+        "Returning to a visible document resumes only the selected interval."
+      ],
+      "validation": {
+        "method": "automated-test",
+        "required_evidence": [
+          "Executable lifecycle and state-restoration fixtures cover hidden",
+          "visible",
+          "manual refresh",
+          "and every preserved context field."
+        ]
+      }
+    },
+    {
+      "id": "REQ-083",
+      "demand_id": "DEM-019",
+      "statement": "The toolbar provides a Refresh now action and shows the active refresh setting plus the last successful refresh time without disrupting desktop layout.",
+      "priority": "should",
+      "acceptance": [
+        "Refresh now immediately refreshes the generated viewer and preserves context.",
+        "The status reports the selected interval and last successful refresh time in text.",
+        "At 1280x800 and 1440x900 and 1920x1080 in both themes toolbar controls and refresh status remain visible without overlap."
+      ],
+      "validation": {
+        "method": "manual-review",
+        "required_evidence": [
+          "Automated DOM assertions plus reviewed browser screenshots at supported desktop sizes and themes."
+        ]
+      }
+    },
+    {
+      "id": "REQ-084",
+      "demand_id": "DEM-020",
+      "statement": "dge setup signing generates a repo-private HMAC key at .dge/signing.key (chmod 600) and refuses to proceed unless .gitignore covers .dge/",
+      "priority": "must",
+      "acceptance": [
+        "Running dge setup signing creates .dge/signing.key with 600 permissions",
+        "The command refuses with a clear error when .gitignore does not exclude .dge/",
+        "The key file never appears in git status or git ls-files"
+      ],
+      "validation": {
+        "method": "automated-test",
+        "required_evidence": [
+          "Test asserts the generated key path is untracked by git after setup signing runs",
+          "Test asserts setup signing exits non-zero when .gitignore lacks a .dge/ entry"
+        ]
+      }
+    },
+    {
+      "id": "REQ-085",
+      "demand_id": "DEM-020",
+      "statement": "A sealed node's validation contract is tamper-evident: editing validation.required or a traced requirement's acceptance criteria breaks the HMAC seal and verifyNode refuses before checking evidence completeness",
+      "priority": "must",
+      "acceptance": [
+        "verifyNode on a node whose sealed contract bytes were altered fails with a broken-seal error and never reaches the evidence-completeness check",
+        "The seal digest covers both validation.required and the acceptance criteria of the requirements the node traces to",
+        "A meaning-preserving re-save (key reorder or whitespace) does not break the seal"
+      ],
+      "validation": {
+        "method": "automated-test",
+        "required_evidence": [
+          "Red-team test plays an adversarial builder: it weakens a sealed node's validation.required then asserts verifyNode refuses on broken seal",
+          "Test asserts altering a traced requirement's acceptance prose (leaving required intact) also breaks the seal"
+        ]
+      }
+    },
+    {
+      "id": "REQ-086",
+      "demand_id": "DEM-020",
+      "statement": "The seal can only be minted through dge seal-contract with an interactive human confirmation a headless run cannot satisfy; no dge-* skill may call it and hand-stamping without the key is impossible",
+      "priority": "must",
+      "acceptance": [
+        "seal-contract requires an interactive confirmation and aborts in a non-TTY headless run",
+        "Producing a valid seal without the signing key is impossible",
+        "Re-sealing an already-sealed node requires an explicit --reseal flag and records fresh sealed_by and sealed_at"
+      ],
+      "validation": {
+        "method": "automated-test",
+        "required_evidence": [
+          "Test asserts seal-contract exits without sealing when stdin is not a TTY (headless agent simulation)",
+          "Test asserts a forged seal computed without .dge/signing.key is rejected by verifyNode"
+        ]
+      }
+    },
+    {
+      "id": "REQ-087",
+      "demand_id": "DEM-020",
+      "statement": "High-risk and release nodes require an independent verifier from a different model family prompted to refute; when no cross-family verifier is available verification blocks rather than downgrading to same-family",
+      "priority": "should",
+      "acceptance": [
+        "A high-risk node verified only by the same model family is blocked with a cross-family-required error",
+        "When no cross-family verifier is configured verify escalates with an honest error and never self-certifies",
+        "A planted fail-open bug with green deterministic evidence yields a REFUTED verdict from the cross-family verifier"
+      ],
+      "validation": {
+        "method": "automated-test",
+        "required_evidence": [
+          "Fixtured REFUTED transcript drives a hermetic CI test asserting the planted fail-open bug is caught despite green evidence",
+          "One live cross-family REFUTED run captured as a durable proof receipt under docs/proof/"
+        ]
+      }
+    },
+    {
+      "id": "REQ-088",
+      "demand_id": "DEM-020",
+      "statement": "Acceptance criteria split into builder-visible and holdout subsets; holdout criteria live in a separate sealed store the builder never reads and only the verifier sees; an empty holdout is reported as none not as satisfied",
+      "priority": "should",
+      "acceptance": [
+        "Holdout criteria text is absent from graph.json which carries only a holdout_digest pointer",
+        "A builder implementation satisfying every builder-visible criterion but failing a holdout criterion is blocked at verify",
+        "A node with no holdout criteria reports holdout none rather than an empty pass"
+      ],
+      "validation": {
+        "method": "automated-test",
+        "required_evidence": [
+          "Overfit-detection test asserts a build passing all visible criteria but failing a holdout criterion is refused at verify",
+          "Test asserts the holdout criteria text never appears in graph.json only the digest reference does"
+        ]
+      }
+    },
+    {
+      "id": "REQ-089",
+      "demand_id": "DEM-021",
+      "statement": "Pin the OKF revision and produce a complete DGE-to-OKF v0.2 concept mapping, classifying every durable DGE concept as native-OKF / DGE-extension / runtime-only / human-projection",
+      "priority": "must",
+      "acceptance": [
+        "A committed mapping document pins OKF v0.2 at commit 3fcbb9f and covers Intent Spec Task Dependency Capability Policy Allocation Observation AdaptationProposal GateEvaluation Evidence Provenance Result and PerformanceAggregate",
+        "Every concept carries exactly one classification and native mappings cite the OKF section they use"
+      ],
+      "validation": {
+        "method": "manual-review",
+        "required_evidence": [
+          "committed mapping doc reviewed against the pinned SPEC.md"
+        ]
+      }
+    },
+    {
+      "id": "REQ-090",
+      "demand_id": "DEM-021",
+      "statement": "Record an architecture decision covering canonical state OKF extension namespace backward compatibility and organization-learning boundary",
+      "priority": "must",
+      "acceptance": [
+        "A committed ADR states graph.json stays canonical the OKF bundle is a projection the DGE extension namespace is versioned and legacy reads never rewrite",
+        "The ADR resolves the graph.json-canonical-entry vs OKF-packaging tension explicitly"
+      ],
+      "validation": {
+        "method": "manual-review",
+        "required_evidence": [
+          "committed ADR file under docs"
+        ]
+      }
+    },
+    {
+      "id": "REQ-091",
+      "demand_id": "DEM-021",
+      "statement": "Add OKF-aligned domain types and a bundle generator that emits an OKF v0.2 bundle as a projection of graph.json",
+      "priority": "must",
+      "acceptance": [
+        "The generator writes concept markdown with YAML frontmatter a root index.md carrying okf_version 0.2 and maps validation contracts to Attested Computation concepts",
+        "DGE-specific fields appear only under a namespaced extension key and never overload native OKF fields"
+      ],
+      "validation": {
+        "method": "manual-review",
+        "required_evidence": [
+          "npm test covers the generator against golden fixtures"
+        ]
+      }
+    },
+    {
+      "id": "REQ-092",
+      "demand_id": "DEM-021",
+      "statement": "Add a compatibility reader plus round-trip so a legacy graph.json converts to an OKF bundle and back preserving every task dependency validation contract evidence reference and state with stable identifiers",
+      "priority": "must",
+      "acceptance": [
+        "A round-trip test over golden legacy and new-format fixtures proves no semantic loss and all IDs remain stable",
+        "Existing tests remain green"
+      ],
+      "validation": {
+        "method": "manual-review",
+        "required_evidence": [
+          "npm test round-trip suite passes"
+        ]
+      }
+    },
+    {
+      "id": "REQ-093",
+      "demand_id": "DEM-021",
+      "statement": "Extend dge migrate with a read-only OKF bundle preview that writes nothing and an explicit confirmed write step",
+      "priority": "must",
+      "acceptance": [
+        "Running the preview emits a semantic diff and leaves graph.json byte-identical on disk",
+        "Only an explicit confirmed invocation writes the bundle and a regression test asserts the no-rewrite property"
+      ],
+      "validation": {
+        "method": "manual-review",
+        "required_evidence": [
+          "npm test no-rewrite regression asserts byte-stable graph.json after preview"
+        ]
+      }
+    },
+    {
+      "id": "REQ-094",
+      "demand_id": "DEM-021",
+      "statement": "Add OKF v0.2 conformance validation for the emitted bundle",
+      "priority": "must",
+      "acceptance": [
+        "The validator confirms every non-reserved md file has parseable frontmatter with a non-empty type and the root index.md carries okf_version and it flags a bundle that violates these",
+        "A conformant emitted bundle passes and a deliberately malformed one fails clearly"
+      ],
+      "validation": {
+        "method": "manual-review",
+        "required_evidence": [
+          "npm test conformance suite passes with a positive and a negative fixture"
+        ]
+      }
+    }
+  ],
+  "gaps": [
+    {
+      "id": "GAP-001",
+      "type": "validation",
+      "severity": "blocker",
+      "question": "How is Copilot CLI install proven when the agent cannot run a live Copilot session in this repo?",
+      "blocks": [
+        "REQ-003"
+      ],
+      "resolution": "Split proof: automated static schema validation (claude plugin validate + JSON parse) gates the graph now; live Copilot/Claude install is a documented manual checklist captured via 'dge evidence add' after the manifests are pushed to GitHub."
+    },
+    {
+      "id": "GAP-002",
+      "type": "architecture",
+      "severity": "blocker",
+      "question": "Should the store be a physical demand-centric reorg or a logical demand-grouped view?",
+      "blocks": [
+        "REQ-021"
+      ],
+      "resolution": "Both: build a physical demand-centric reorg AND a dge show observability view."
+    },
+    {
+      "id": "GAP-003",
+      "type": "architecture",
+      "severity": "blocker",
+      "question": "Where does a node that serves requirements from multiple demands physically live?",
+      "blocks": [
+        "REQ-020"
+      ],
+      "resolution": "N/A by new model rule: a node belongs to exactly one demand (all its requirement_ids share one demand_id), so no node has two physical parents. Cross-demand shared work is modeled via depends_on between single-demand nodes."
+    },
+    {
+      "id": "GAP-004",
+      "type": "scope",
+      "severity": "blocker",
+      "question": "Is this a demand to build now, or a design discussion to answer in prose?",
+      "blocks": [
+        "REQ-022"
+      ],
+      "resolution": "Build now as DEM-007."
+    },
+    {
+      "id": "GAP-005",
+      "type": "scope",
+      "severity": "major",
+      "question": "How should AMBIGUOUS be signaled by the validate step so the conductor can distinguish it from PASS/FAIL — a new evidence result state (e.g. --result pass|fail|ambiguous), a conductor-side judgment, or an exit-code convention? This decides whether execute-graph's binary transient/structural classification must change, and ties to the evidence-add --result pass|fail backlog.",
+      "blocks": [
+        "REQ-031"
+      ],
+      "resolution": "Split mechanism. Result-ambiguity -> extend 'dge evidence' with --result pass|fail|ambiguous; the done gate treats 'ambiguous' as unsatisfied so a node cannot close on it (productizes the evidence-add-can-falsely-satisfy backlog). Fix-ambiguity -> conductor-side rule bounded by structure: after a FAIL, pause-and-ask only when the repair would exit the node's declared blast radius OR more than one node-satisfying change exists and the contract does not disambiguate; otherwise retry as today. execute-graph gains a third branch (AMBIGUOUS) beyond its transient/structural binary. Minimal, testable engine change."
+    },
+    {
+      "id": "GAP-006",
+      "type": "scope",
+      "severity": "blocker",
+      "question": "Is the single-step-setup target ONE command via npm postinstall (auto-runs install-skills on npm install; fewer commands but fires in CI and is 'magic'), or ONE EXPLICIT command like 'dge setup' (runs install-skills [+ optional init]; greppable, no surprise)?",
+      "blocks": [
+        "REQ-042"
+      ],
+      "resolution": "Re-scoped: the target is a bootstrap installer (CLI + skills for chosen harnesses), not a bare npm one-liner. Superseded by GAP-009 which picks the delivery vehicle."
+    },
+    {
+      "id": "GAP-007",
+      "type": "architecture",
+      "severity": "blocker",
+      "question": "Auto-init default path is cwd-relative, so add-demand in a subdirectory could still create a stray delivery-graph/ there. Is default-path + printed-notice enough, or must auto-init also require a project-root marker (.git/package.json) and refuse otherwise?",
+      "blocks": [
+        "REQ-041"
+      ],
+      "resolution": "Require a project-root marker (.git or package.json): auto-init creates the store only at the default path AND when a project root is detected; otherwise it refuses with a clear message. Explicit --graph to a missing file still fails loudly. Enforces 'never create a store in the wrong directory'."
+    },
+    {
+      "id": "GAP-008",
+      "type": "scope",
+      "severity": "warning",
+      "question": "Default title value: literal 'Delivery graph' (deterministic) vs repo/folder basename vs package.json name?",
+      "blocks": [
+        "REQ-040"
+      ],
+      "resolution": "Literal 'Delivery graph' default title (deterministic, no filesystem guessing), overridable with --title."
+    },
+    {
+      "id": "GAP-009",
+      "type": "architecture",
+      "severity": "blocker",
+      "question": "Bootstrap installer delivery vehicle: (A) shell script install-delivery-graph.sh + a .ps1 twin (curl|bash; two files); (B) dge setup subcommand run after npm install (one cross-platform code path, explicit); or (C) npx one-shot 'npx github:rafaelolsr/delivery-graph setup' (single command from scratch, cross-platform, reuses install-skills)?",
+      "blocks": [
+        "REQ-042"
+      ],
+      "resolution": "C: npx one-shot bootstrap 'npx github:rafaelolsr/delivery-graph setup' — single cross-platform command, reuses install-skills, no .sh/.ps1 twin, no curl|bash."
+    },
+    {
+      "id": "GAP-010",
+      "type": "dependency",
+      "severity": "blocker",
+      "question": "Parallel multi-harness execution (REQ-047) requires a concurrency-safe store, but graph.json is a single unlocked file today. Is the concurrency-safe store a SEPARATE demand that DEM-011 depends on, or a track inside DEM-011? DEM-011 cannot be 'done' until it exists.",
+      "blocks": [
+        "REQ-047"
+      ],
+      "resolution": "Resolved: the concurrency-safe store is its own demand DEM-012 (created), NOT a track inside DEM-011. DEM-011's parallel requirement (REQ-047) depends on DEM-012 being done first. The dependency is wired at plan time: DEM-011's parallel-execution nodes will carry depends_on pointing at DEM-012's store nodes (depends_on is a node-level field). Build order is strict and sequential: DEM-012 first (bootstrapped on a single harness), then DEM-011. This mirrors the ROADMAP split of 'the unlock' vs 'the destination.'"
+    },
+    {
+      "id": "GAP-011",
+      "type": "validation",
+      "severity": "blocker",
+      "question": "REQ-045 requires distinguishing INFRASTRUCTURE failure (→ fallback) from work/evidence failure (→ block). How is that classification made reliably per harness, so a real code defect can never be laundered into a pass by retrying on another harness?",
+      "blocks": [
+        "REQ-045"
+      ],
+      "resolution": "Resolved during intake grilling: fallback is triggered by INFRASTRUCTURE failure ONLY (CLI missing / auth failure / network error / timeout). A failed evidence gate NEVER triggers a harness swap — the node is blocked, full stop. Classification is the adapter's responsibility: each harness adapter must report whether a failure was infra (dispatch could not run) vs work (dispatch ran, evidence failed). This keeps the gate sovereign and closes the 'launder a failing node through harness roulette' hole. Adapter contract detail (how each harness signals the two classes) is captured as GAP-013's adapter-contract scope for the planning pass."
+    },
+    {
+      "id": "GAP-012",
+      "type": "validation",
+      "severity": "major",
+      "question": "The dynamic router is itself an unproven agent judgment. Beyond 'log the rationale + allow config pin' (REQ-044), what evidence, if any, proves a routing decision was ACCEPTABLE? Or is inspectability + overridability sufficient, with no correctness claim on the pick itself?",
+      "blocks": [
+        "REQ-044"
+      ],
+      "resolution": "Resolved: router acceptability = inspectability + overridability with NO correctness claim on the pick itself. Encoded in NODE-042: routeNode always emits source (pin|recommended) + rationale (the inspectable record REQ-044 requires) and honors config pins that override unconditionally. The recommender is a legible deterministic trait rule set (not an opaque model) precisely because the judgment is unproven; a human reads the why and can pin a different choice. No evidence proves a pick correct; the gate still validates the resulting work independently."
+    },
+    {
+      "id": "GAP-013",
+      "type": "scope",
+      "severity": "major",
+      "question": "Which harnesses are in scope for v1 (Claude Code, Copilot, Kimi, opencode, Codex — all, or a subset)? What is the minimum adapter contract each must satisfy (invoke a task, return a result, report infra availability)?",
+      "blocks": [
+        "REQ-043"
+      ],
+      "resolution": "v1 harness matrix = claude + copilot (both already HARNESS_TARGETS in skill-installer; two adapters is the minimum that proves harness-agnosticism). kimi / codex / opencode deferred to fast-follow as adapter-only additions (no engine change). Minimum adapter contract = three ops: id (stable string); available() returning {ok reason} as a cheap infra probe; dispatch(task) returning {class exitCode stdout stderr artifacts} where class is infra_failure / work_failure / ok. The class field mirrors bin/dge.mjs runCapturedEvidence's existing split (spawnSync error = could-not-run = infra; ran-nonzero = work) and drives REQ-045 fallback: fall back iff infra_failure never on work_failure. Full note in NODE-040 evidence."
+    }
+  ],
+  "tracks": [
+    {
+      "id": "TRK-packaging",
+      "title": "Packaging"
+    },
+    {
+      "id": "TRK-validation",
+      "title": "Validation"
+    },
+    {
+      "id": "TRK-store-layout-demand-centric",
+      "title": "Store layout (demand-centric)"
+    },
+    {
+      "id": "TRK-cli-primitives",
+      "title": "CLI primitives",
+      "description": "Engine/CLI surfaces the conductor reuses or extends: evidence --result, dge brief renderers, execute-graph AMBIGUOUS branch, blast-radius check. Invariants untouched."
+    },
+    {
+      "id": "TRK-conductor",
+      "title": "Conductor",
+      "description": "/dge-deliver conductor skill: single entry verb, cross-phase sequencing, two judgment gates, conversational editing, auto-advance, resume."
+    },
+    {
+      "id": "TRK-validation-2",
+      "title": "Validation",
+      "description": "Regression + invariant tests, ambiguity behavior tests, silent-mode evidence guard, and the e2e flow transcript."
+    },
+    {
+      "id": "TRK-cli-record-editing",
+      "title": "CLI record editing",
+      "description": "remove-requirement, edit-requirement, edit-demand — mirror existing authoring patterns"
+    },
+    {
+      "id": "TRK-store-concurrency",
+      "title": "Store concurrency"
+    },
+    {
+      "id": "TRK-multi-harness-orchestration",
+      "title": "Multi-harness orchestration"
+    },
+    {
+      "id": "TRK-first-run-friction",
+      "title": "First-run friction"
+    },
+    {
+      "id": "TRK-scannable-output-rendering",
+      "title": "Scannable output rendering"
+    },
+    {
+      "id": "TRK-waiver-engine",
+      "title": "Waiver engine"
+    },
+    {
+      "id": "TRK-waiver-validation",
+      "title": "Waiver validation"
+    },
+    {
+      "id": "TRK-skill-output-convention",
+      "title": "Skill output convention"
+    },
+    {
+      "id": "TRK-graph-viewer-implementation",
+      "title": "Graph viewer implementation",
+      "description": "Offline viewer projection and generation and graph workspace behavior"
+    },
+    {
+      "id": "TRK-graph-viewer-validation",
+      "title": "Graph viewer validation",
+      "description": "Truth-state and offline and accessibility and visual acceptance proof"
+    },
+    {
+      "id": "TRK-viewer-refresh-implementation",
+      "title": "Viewer refresh implementation",
+      "description": "Offline refresh policy and toolbar controls for the Delivery Graph viewer."
+    },
+    {
+      "id": "TRK-viewer-refresh-validation",
+      "title": "Viewer refresh validation",
+      "description": "Evidence for offline refresh policy behavior and desktop toolbar presentation."
+    },
+    {
+      "id": "TRK-seal-track-1",
+      "title": "Seal (Track 1)"
+    },
+    {
+      "id": "TRK-cross-family-verification-track-2",
+      "title": "Cross-family verification (Track 2)"
+    },
+    {
+      "id": "TRK-holdout-criteria-track-3",
+      "title": "Holdout criteria (Track 3)"
+    },
+    {
+      "id": "TRK-research",
+      "title": "Research"
+    },
+    {
+      "id": "TRK-implementation",
+      "title": "Implementation"
+    },
+    {
+      "id": "TRK-validation-3",
+      "title": "Validation"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "NODE-001",
+      "title": "Write .claude-plugin/plugin.json (serves Claude Code and Copilot CLI)",
+      "type": "implementation",
+      "track": "TRK-packaging",
+      "requirement_ids": [
+        "REQ-001",
+        "REQ-003"
+      ],
+      "depends_on": [],
+      "status": "done",
+      "validation": {
+        "required": [
+          "claude plugin validate . passes",
+          ".claude-plugin/plugin.json parses as JSON with kebab-case name"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-001/evidence/NODE-001/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-002",
+      "title": "Write .claude-plugin/marketplace.json listing the delivery-graph plugin (source ./)",
+      "type": "implementation",
+      "track": "TRK-packaging",
+      "requirement_ids": [
+        "REQ-002"
+      ],
+      "depends_on": [
+        "NODE-001"
+      ],
+      "status": "done",
+      "validation": {
+        "required": [
+          "claude plugin validate . passes",
+          ".claude-plugin/marketplace.json parses as JSON with name/owner/plugins and plugin has name+source"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-001/evidence/NODE-002/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-003",
+      "title": "Remove manifests/claude and manifests/copilot stubs; update README/docs to the marketplace install",
+      "type": "docs",
+      "track": "TRK-packaging",
+      "requirement_ids": [
+        "REQ-004"
+      ],
+      "depends_on": [
+        "NODE-002"
+      ],
+      "status": "done",
+      "validation": {
+        "required": [
+          "manifests/claude and manifests/copilot no longer exist (ls/git shows removed)",
+          "README documents /plugin marketplace add + copilot plugin marketplace add install path"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-001/evidence/NODE-003/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-004",
+      "title": "Manual live-install verification checklist for Claude Code and Copilot CLI (post-push)",
+      "type": "test",
+      "track": "TRK-validation",
+      "requirement_ids": [
+        "REQ-003"
+      ],
+      "depends_on": [
+        "NODE-003"
+      ],
+      "status": "done",
+      "validation": {
+        "required": [
+          "Manual: /plugin marketplace add + install shows /dge-* skills in Claude Code (transcript via dge evidence add)",
+          "Manual: copilot plugin marketplace add + install shows /dge-* skills in Copilot CLI (transcript via dge evidence add)"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-001/evidence/NODE-004/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-005",
+      "title": "Make evidence result-aware: manual evidence carries pass/fail; only pass satisfies a contract item",
+      "type": "implementation",
+      "track": "TRK-validation",
+      "requirement_ids": [
+        "REQ-010",
+        "REQ-012"
+      ],
+      "depends_on": [],
+      "status": "done",
+      "validation": {
+        "required": [
+          "npm test: manual evidence add with a fail result does not satisfy; getEvidenceStatus counts only pass",
+          "npm test: dge done stays blocked and names the unmet item when the only matching evidence is a fail"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-003/evidence/NODE-005/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-006",
+      "title": "Add --result pass|fail to 'dge evidence add' (default pass), wired to result-aware completeness",
+      "type": "implementation",
+      "track": "TRK-validation",
+      "requirement_ids": [
+        "REQ-010"
+      ],
+      "depends_on": [
+        "NODE-005"
+      ],
+      "status": "done",
+      "validation": {
+        "required": [
+          "npm test: 'evidence add --result fail' records a fail item; 'evidence add --result pass' (or default) records a pass item",
+          "npm test: CLI help lists --result and existing evidence add calls still pass"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-003/evidence/NODE-006/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-007",
+      "title": "Add 'dge evidence remove' (and replace) so records are corrected via CLI, not hand-edited JSON",
+      "type": "implementation",
+      "track": "TRK-validation",
+      "requirement_ids": [
+        "REQ-011"
+      ],
+      "depends_on": [
+        "NODE-006"
+      ],
+      "status": "done",
+      "validation": {
+        "required": [
+          "npm test: evidence remove NODE-### EVD-### deletes the item and recomputes completeness",
+          "npm test: removing the only pass evidence for a required item makes done blocked again"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-003/evidence/NODE-007/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-008",
+      "title": "Add src/output.mjs: emoji/ascii glyph selection (--ascii/NO_EMOJI) and relative-path helper",
+      "type": "implementation",
+      "track": "TRK-validation",
+      "requirement_ids": [
+        "REQ-006",
+        "REQ-008"
+      ],
+      "depends_on": [],
+      "status": "done",
+      "validation": {
+        "required": [
+          "npm test: glyph() returns emoji by default and plain text under ascii mode (--ascii or NO_EMOJI)",
+          "npm test: relativePath() strips the graph root so output never contains an absolute path"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-002/evidence/NODE-008/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-009",
+      "title": "Rewire done/verify/review/add-* to a concise emoji summary by default; --json for full payload",
+      "type": "implementation",
+      "track": "TRK-validation",
+      "requirement_ids": [
+        "REQ-005",
+        "REQ-007"
+      ],
+      "depends_on": [
+        "NODE-008"
+      ],
+      "status": "done",
+      "validation": {
+        "required": [
+          "npm test: default done output has requirement ids",
+          "evidence N/N",
+          "unblocked node",
+          "and no raw JSON dump",
+          "npm test: --json on done/verify/review/add emits a single parseable JSON object"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-002/evidence/NODE-009/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-010",
+      "title": "Guard that persisted verification.md, review-*.md, evidence.json are unchanged by the output redesign",
+      "type": "test",
+      "track": "TRK-validation",
+      "requirement_ids": [
+        "REQ-009"
+      ],
+      "depends_on": [
+        "NODE-009"
+      ],
+      "status": "done",
+      "validation": {
+        "required": [
+          "npm test: verification.md and evidence.json contents/paths match the pre-redesign expectations",
+          "npm test: full suite passes (no behavioral regression",
+          "only terminal output changed)"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-002/evidence/NODE-010/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-011",
+      "title": "Ship an executable bin/dge (no extension) so the plugin PATH provides the dge command",
+      "type": "implementation",
+      "track": "TRK-packaging",
+      "requirement_ids": [
+        "REQ-016"
+      ],
+      "depends_on": [],
+      "status": "done",
+      "validation": {
+        "required": [
+          "npm test confirms bin/dge exists and is executable and runs dge --version like bin/dge.mjs",
+          "the plugin package files list includes bin so bin/dge ships to consumers"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-005/evidence/NODE-011/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-012",
+      "title": "Add CLI preflight to dge-intake and dge-plan-graph and remove the hand-write-JSON fallback",
+      "type": "docs",
+      "track": "TRK-packaging",
+      "requirement_ids": [
+        "REQ-017",
+        "REQ-018"
+      ],
+      "depends_on": [
+        "NODE-011"
+      ],
+      "status": "done",
+      "validation": {
+        "required": [
+          "npm test greps the skills and finds a preflight and no instruction to write graph.json directly",
+          "dge-intake and dge-plan-graph require the dge CLI and stop when it is unavailable"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-005/evidence/NODE-012/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-013",
+      "title": "Add privacy architecture ownership to the gap-type enum in the schema",
+      "type": "implementation",
+      "track": "TRK-validation",
+      "requirement_ids": [
+        "REQ-019"
+      ],
+      "depends_on": [],
+      "status": "done",
+      "validation": {
+        "required": [
+          "npm test adds a privacy gap and an architecture gap and an ownership gap and dge validate passes",
+          "npm test confirms the original gap types still validate"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-006/evidence/NODE-013/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-014",
+      "title": "Make each --validation flag one contract item (no comma splitting)",
+      "type": "implementation",
+      "track": "TRK-validation",
+      "requirement_ids": [
+        "REQ-013"
+      ],
+      "depends_on": [],
+      "status": "done",
+      "validation": {
+        "required": [
+          "npm test proves a --validation value containing commas stays a single required item",
+          "npm test proves repeating --validation still yields one item per flag"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-004/evidence/NODE-014/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-015",
+      "title": "Add dge remove-node that deletes a node and rejects removal when dependents exist",
+      "type": "implementation",
+      "track": "TRK-validation",
+      "requirement_ids": [
+        "REQ-014"
+      ],
+      "depends_on": [
+        "NODE-014"
+      ],
+      "status": "done",
+      "validation": {
+        "required": [
+          "npm test removes a leaf node and rejects removing a node with dependents",
+          "npm test confirms remove-node updates graph.json through the engine"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-004/evidence/NODE-015/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-016",
+      "title": "Add dge set-validation that replaces a node validation contract via CLI",
+      "type": "implementation",
+      "track": "TRK-validation",
+      "requirement_ids": [
+        "REQ-015"
+      ],
+      "depends_on": [
+        "NODE-015"
+      ],
+      "status": "done",
+      "validation": {
+        "required": [
+          "npm test replaces validation.required and re-checks evidence completeness",
+          "npm test proves set-validation items are comma-safe like add-node"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-004/evidence/NODE-016/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-017",
+      "title": "Enforce one-demand-per-node rule in the model and add-node",
+      "type": "implementation",
+      "track": "TRK-store-layout-demand-centric",
+      "requirement_ids": [
+        "REQ-020"
+      ],
+      "depends_on": [],
+      "status": "done",
+      "validation": {
+        "required": [
+          "add-node given requirements from two different demands exits non-zero with an explanatory message",
+          "dge validate flags a seeded node whose requirement_ids span two demands",
+          "existing single-demand nodes still validate; node carries a derived/stored owning demand_id"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-007/evidence/NODE-017/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-018",
+      "title": "Rebuild path construction + schema regex around demands/DEM-###/ layout",
+      "type": "implementation",
+      "track": "TRK-store-layout-demand-centric",
+      "requirement_ids": [
+        "REQ-021"
+      ],
+      "depends_on": [
+        "NODE-017"
+      ],
+      "status": "done",
+      "validation": {
+        "required": [
+          "markdown-artifacts.mjs writes demands/DEM-###/DEM-###.md and demands/DEM-###/requirements/REQ-###.md (flat list, no intra-demand hierarchy)",
+          "new nodes get evidence_path delivery-graph/demands/DEM-###/evidence/NODE-###/ (evidence is a flat sibling list, not nested under a node)",
+          "no nodes/ folder or per-node .md files are created; node structure stays in graph.json and is surfaced via dge show",
+          "schema regex and graph-engine.mjs evidence_path check accept the nested demand-scoped pattern and reject the old flat one"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-007/evidence/NODE-018/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-019",
+      "title": "Implement dge show <DEM-###> demand tree view",
+      "type": "implementation",
+      "track": "TRK-store-layout-demand-centric",
+      "requirement_ids": [
+        "REQ-022"
+      ],
+      "depends_on": [
+        "NODE-018"
+      ],
+      "status": "done",
+      "validation": {
+        "required": [
+          "dge show DEM-001 lists its requirements, the nodes serving them, statuses, and evidence yes/no",
+          "dge show supports --json for full detail and is emoji-forward by default per DEM-002",
+          "dge show on an unknown demand id exits non-zero"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-007/evidence/NODE-019/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-020",
+      "title": "Migrate existing store to nested layout and rewrite evidence_path",
+      "type": "implementation",
+      "track": "TRK-store-layout-demand-centric",
+      "requirement_ids": [
+        "REQ-024"
+      ],
+      "depends_on": [
+        "NODE-018"
+      ],
+      "status": "done",
+      "validation": {
+        "required": [
+          "migration relocates existing DEM/REQ markdown and evidence/NODE-*/ into demands/DEM-###/ (flat lists, no intra-demand hierarchy)",
+          "every node evidence_path is rewritten to delivery-graph/demands/DEM-###/evidence/NODE-###/",
+          "dge validate passes post-migration and no orphaned flat requirements/ or evidence/NODE-*/ dirs remain"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-007/evidence/NODE-020/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-021",
+      "title": "Prove graph.json stays canonical: folder tree is derivable and byte-stable",
+      "type": "test",
+      "track": "TRK-validation",
+      "requirement_ids": [
+        "REQ-023"
+      ],
+      "depends_on": [
+        "NODE-018",
+        "NODE-020"
+      ],
+      "status": "done",
+      "validation": {
+        "required": [
+          "deleting and rebuilding the folder tree from graph.json reproduces the markdown artifacts byte-for-byte",
+          "dge validate reads only graph.json (no dependence on the folder tree)",
+          "skills fail loudly rather than hand-write graph.json (upholds DEM-005)"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-007/evidence/NODE-021/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-022",
+      "title": "Implement dge remove-demand DEM-### (delete folder + purge graph.json)",
+      "type": "implementation",
+      "track": "TRK-store-layout-demand-centric",
+      "requirement_ids": [
+        "REQ-025"
+      ],
+      "depends_on": [
+        "NODE-018"
+      ],
+      "status": "done",
+      "validation": {
+        "required": [
+          "remove-demand deletes demands/DEM-###/ and purges the demand, its requirements, nodes, and resolved gaps from graph.json",
+          "remove-demand refuses with non-zero exit when a node in another demand depends_on one of this demand's nodes",
+          "dge validate passes after a successful remove-demand and no orphaned ids remain in graph.json"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-007/evidence/NODE-022/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-023",
+      "title": "Add 'dge evidence --result pass|fail|ambiguous'; done gate treats ambiguous/fail as unsatisfied",
+      "type": "implementation",
+      "track": "TRK-cli-primitives",
+      "requirement_ids": [
+        "REQ-031",
+        "REQ-035"
+      ],
+      "depends_on": [],
+      "status": "done",
+      "validation": {
+        "required": [
+          "npm test proves evidence --result=ambiguous and --result=fail both leave the contract item unsatisfied so dge done cannot close; existing verified/done invariant tests still pass"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-008/evidence/NODE-023/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-024",
+      "title": "Add 'dge brief demand|graph --mermaid' renderers (reuse status/show renderers)",
+      "type": "implementation",
+      "track": "TRK-cli-primitives",
+      "requirement_ids": [
+        "REQ-028",
+        "REQ-034"
+      ],
+      "depends_on": [],
+      "status": "done",
+      "validation": {
+        "required": [
+          "npm test: dge brief demand renders requirements/gaps from graph.json; dge brief graph --mermaid emits a valid Mermaid DAG + per-node change/blast-radius summary + ready-queue order, all derived from graph.json"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-008/evidence/NODE-024/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-025",
+      "title": "Extend execute-graph loop with AMBIGUOUS third branch + structural blast-radius/contract pause triggers",
+      "type": "implementation",
+      "track": "TRK-cli-primitives",
+      "requirement_ids": [
+        "REQ-031",
+        "REQ-032"
+      ],
+      "depends_on": [
+        "NODE-023"
+      ],
+      "status": "done",
+      "validation": {
+        "required": [
+          "npm test: loop yields PASS/FAIL/AMBIGUOUS; AMBIGUOUS pauses once (distinct from FAIL-retry and PASS-continue); blast-radius overrun and missing/non-executable contract each trigger a structural pause"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-008/evidence/NODE-025/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-026",
+      "title": "Extract shared skill preamble (preflight, graph-read, CLI contract) into one reusable module the 9 skills + conductor call",
+      "type": "implementation",
+      "track": "TRK-conductor",
+      "requirement_ids": [
+        "REQ-027"
+      ],
+      "depends_on": [],
+      "status": "done",
+      "validation": {
+        "required": [
+          "npm test / diff: the nine skills' invariant-bearing logic is unchanged; shared preamble is factored to one place; engine invariant suite still green"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-008/evidence/NODE-026/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-027",
+      "title": "Author /dge-deliver conductor skill: single entry verb, internal phase sequencing with cross-phase context, auto-advance, abandon-clean + resume-from-queue",
+      "type": "implementation",
+      "track": "TRK-conductor",
+      "requirement_ids": [
+        "REQ-026",
+        "REQ-027",
+        "REQ-033"
+      ],
+      "depends_on": [
+        "NODE-024",
+        "NODE-026"
+      ],
+      "status": "done",
+      "validation": {
+        "required": [
+          "e2e transcript: /dge-deliver drives intake->brief->plan->graph->execute->summary with zero user-typed skill names after the entry verb; abandoning at a gate preserves the graph; re-running resumes from dge next"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-008/evidence/NODE-027/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-028",
+      "title": "Wire the two judgment gates into the conductor: render brief -> plain-language edit -> dge CLI mutation -> re-render, exit only on explicit approval; gate 2 never auto-skipped",
+      "type": "implementation",
+      "track": "TRK-conductor",
+      "requirement_ids": [
+        "REQ-028",
+        "REQ-029"
+      ],
+      "depends_on": [
+        "NODE-024",
+        "NODE-027"
+      ],
+      "status": "done",
+      "validation": {
+        "required": [
+          "transcript: exactly two approval gates appear, no 'run next skill?' prompts; a plain-language edit produces a CLI mutation + re-rendered brief; execution is blocked until gate 2 approval; an edit reintroducing a blocker gap blocks approval"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-008/evidence/NODE-028/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-029",
+      "title": "Conductor invokes execute-graph in quiet mode (narration suppressed, stop-on-failure loud), re-renders live status board per node transition, emits final summary",
+      "type": "implementation",
+      "track": "TRK-conductor",
+      "requirement_ids": [
+        "REQ-030",
+        "REQ-034",
+        "REQ-035"
+      ],
+      "depends_on": [
+        "NODE-025",
+        "NODE-027"
+      ],
+      "status": "done",
+      "validation": {
+        "required": [
+          "test + transcript: clean node emits only the compact completion line (no intra-node narration); board re-renders per node transition from graph.json; failing node halts loudly; final summary lists work done"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-008/evidence/NODE-029/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-030",
+      "title": "Regression tests: verified-CLI-minted-only + done-requires-verified hold under conductor's quiet path; quiet-mode done is impossible without an evidence artifact on disk",
+      "type": "test",
+      "track": "TRK-validation-2",
+      "requirement_ids": [
+        "REQ-035",
+        "REQ-027"
+      ],
+      "depends_on": [
+        "NODE-023",
+        "NODE-029"
+      ],
+      "status": "done",
+      "validation": {
+        "required": [
+          "npm test: a quiet-mode run cannot reach done without evidence on disk; the verified/done invariant tests pass unchanged under the conductor path"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-008/evidence/NODE-030/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-031",
+      "title": "Ambiguity tests: fix-ambiguity and result-ambiguity each pause exactly once; present-but-wrong evidence is not auto-counted as pass; blast-radius/missing-contract pauses fire",
+      "type": "test",
+      "track": "TRK-validation-2",
+      "requirement_ids": [
+        "REQ-031",
+        "REQ-032"
+      ],
+      "depends_on": [
+        "NODE-025"
+      ],
+      "status": "done",
+      "validation": {
+        "required": [
+          "npm test: fix-ambiguity pauses once and resumes on answer; result-ambiguity (--result ambiguous / present-but-wrong) does not satisfy the contract; structural pause triggers are covered"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-008/evidence/NODE-031/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-032",
+      "title": "End-to-end flow proof: scripted /dge-deliver run reaching done with zero user-typed skill names after the entry verb; capture the transcript as evidence",
+      "type": "test",
+      "track": "TRK-validation-2",
+      "requirement_ids": [
+        "REQ-026",
+        "REQ-036"
+      ],
+      "depends_on": [
+        "NODE-027",
+        "NODE-028",
+        "NODE-029"
+      ],
+      "status": "done",
+      "validation": {
+        "required": [
+          "Captured e2e transcript shows one entry verb, two judgment gates, no intermediate skill-name commands, silent execution, and a final summary; REQ-036 (auto-routing) confirmed out of scope in the run"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-008/evidence/NODE-032/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-033",
+      "title": "Add dge remove-requirement REQ-### (guarded against orphaning a node)",
+      "type": "implementation",
+      "track": "TRK-cli-record-editing",
+      "requirement_ids": [
+        "REQ-037"
+      ],
+      "depends_on": [],
+      "status": "done",
+      "validation": {
+        "required": [
+          "npm test: remove unreferenced requirement ok + graph valid; remove node-referenced requirement refused naming the node; gap-only-blocking-it handled"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-009/evidence/NODE-033/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-034",
+      "title": "Add dge edit-requirement REQ-### (statement/priority/acceptance/validation in place)",
+      "type": "implementation",
+      "track": "TRK-cli-record-editing",
+      "requirement_ids": [
+        "REQ-038"
+      ],
+      "depends_on": [],
+      "status": "done",
+      "validation": {
+        "required": [
+          "npm test: field edits apply and only those fields; invalid priority/method rejected; id and demand_id unchanged"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-009/evidence/NODE-034/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-035",
+      "title": "Add dge edit-demand DEM-### (problem/outcome/constraints/non_goals)",
+      "type": "implementation",
+      "track": "TRK-cli-record-editing",
+      "requirement_ids": [
+        "REQ-039"
+      ],
+      "depends_on": [],
+      "status": "done",
+      "validation": {
+        "required": [
+          "npm test: non-goals/constraints added post-hoc validate; problem/outcome replaced; id/title/source stable"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-009/evidence/NODE-035/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-036",
+      "title": "Choose the store concurrency mechanism",
+      "type": "research",
+      "track": "TRK-store-concurrency",
+      "requirement_ids": [
+        "REQ-048"
+      ],
+      "depends_on": [],
+      "status": "done",
+      "validation": {
+        "required": [
+          "A short design note commits to ONE mechanism (file lock / read-version compare-and-swap / per-node fragments) with rationale and its handling of the lost-update race on runMutation read-modify-write"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-012/evidence/NODE-036/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-037",
+      "title": "Implement concurrency-safe writes on the read-modify-write path",
+      "type": "implementation",
+      "track": "TRK-store-concurrency",
+      "requirement_ids": [
+        "REQ-048"
+      ],
+      "depends_on": [
+        "NODE-036"
+      ],
+      "status": "done",
+      "validation": {
+        "required": [
+          "The chosen mechanism guards runMutation/writeGraph so a read-modify-write cycle cannot lose a concurrent update; unit test of the guard passes"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-012/evidence/NODE-037/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-038",
+      "title": "Prove single-writer backward compatibility",
+      "type": "test",
+      "track": "TRK-store-concurrency",
+      "requirement_ids": [
+        "REQ-049"
+      ],
+      "depends_on": [
+        "NODE-037"
+      ],
+      "status": "done",
+      "validation": {
+        "required": [
+          "npm test"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-012/evidence/NODE-038/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-039",
+      "title": "Prove concurrency safety with a race test",
+      "type": "test",
+      "track": "TRK-store-concurrency",
+      "requirement_ids": [
+        "REQ-048"
+      ],
+      "depends_on": [
+        "NODE-038"
+      ],
+      "status": "done",
+      "validation": {
+        "required": [
+          "Automated race test: N concurrent writers complete N distinct nodes; no lost/corrupted writes and dge validate passes on the final store"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-012/evidence/NODE-039/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-040",
+      "title": "Define v1 harness matrix and minimum adapter contract",
+      "type": "research",
+      "track": "TRK-multi-harness-orchestration",
+      "requirement_ids": [
+        "REQ-043"
+      ],
+      "depends_on": [],
+      "status": "done",
+      "validation": {
+        "required": [
+          "Design note names the v1 harnesses (subset of Claude Code / Copilot / Kimi / opencode / Codex) and specifies the minimum adapter contract each must satisfy: invoke a task / return a result / report infra availability vs work failure. Resolves GAP-013."
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-011/evidence/NODE-040/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-041",
+      "title": "Implement harness-agnostic adapter interface with two adapters",
+      "type": "implementation",
+      "track": "TRK-multi-harness-orchestration",
+      "requirement_ids": [
+        "REQ-043"
+      ],
+      "depends_on": [
+        "NODE-040"
+      ],
+      "status": "done",
+      "validation": {
+        "required": [
+          "Automated test: one node dispatched through two different harness adapters; both write results back through the same interface; adding an adapter needs no engine/gate change"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-011/evidence/NODE-041/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-042",
+      "title": "Router: recommend harness/model with rationale log and config pin override",
+      "type": "implementation",
+      "track": "TRK-multi-harness-orchestration",
+      "requirement_ids": [
+        "REQ-044"
+      ],
+      "depends_on": [
+        "NODE-041"
+      ],
+      "status": "done",
+      "validation": {
+        "required": [
+          "Automated test: a routed node emits an inspectable rationale record (node → chosen harness/model + why); a config-pinned node ignores the recommender and uses the pin. Router acceptability per GAP-012: inspectability + overridability is the evidence; no correctness claim on the pick itself."
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-011/evidence/NODE-042/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-043",
+      "title": "Infra-only fallback that never fires on an evidence-gate failure",
+      "type": "implementation",
+      "track": "TRK-multi-harness-orchestration",
+      "requirement_ids": [
+        "REQ-045"
+      ],
+      "depends_on": [
+        "NODE-041"
+      ],
+      "status": "done",
+      "validation": {
+        "required": [
+          "Automated test: a simulated infra error (CLI missing / auth / network / timeout) dispatches to the next harness; a failing evidence gate blocks the node and does NOT re-dispatch. Adapter classifies infra-failure vs work-failure."
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-011/evidence/NODE-043/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-044",
+      "title": "Cost-aware model selection",
+      "type": "implementation",
+      "track": "TRK-multi-harness-orchestration",
+      "requirement_ids": [
+        "REQ-046"
+      ],
+      "depends_on": [
+        "NODE-042"
+      ],
+      "status": "done",
+      "validation": {
+        "required": [
+          "Automated test: under a cost policy a low-complexity node resolves to a cheaper model than a high-complexity node; the chosen model appears in the routing rationale artifact."
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-011/evidence/NODE-044/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-045",
+      "title": "Parallel multi-harness execution over the concurrency-safe store",
+      "type": "implementation",
+      "track": "TRK-multi-harness-orchestration",
+      "requirement_ids": [
+        "REQ-047"
+      ],
+      "depends_on": [
+        "NODE-041",
+        "NODE-039"
+      ],
+      "status": "done",
+      "validation": {
+        "required": [
+          "Automated test: two harnesses execute two independent ready nodes concurrently; both persist with no lost/corrupted writes and the store stays valid. Builds on DEM-012's concurrency-safe store."
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-011/evidence/NODE-045/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-046",
+      "title": "End-to-end multi-harness integration proof",
+      "type": "test",
+      "track": "TRK-multi-harness-orchestration",
+      "requirement_ids": [
+        "REQ-043"
+      ],
+      "depends_on": [
+        "NODE-042",
+        "NODE-043",
+        "NODE-044",
+        "NODE-045"
+      ],
+      "status": "done",
+      "validation": {
+        "required": [
+          "Automated e2e: a demand delivered across at least two harnesses with routing, an infra fallback, and a parallel step; every node still evidence-gated; store valid at the end."
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-011/evidence/NODE-046/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-047",
+      "title": "Make dge init title optional with deterministic default",
+      "type": "implementation",
+      "track": "TRK-first-run-friction",
+      "requirement_ids": [
+        "REQ-040"
+      ],
+      "depends_on": [],
+      "status": "done",
+      "validation": {
+        "required": [
+          "node --test tests/init-default-title.test.mjs passes: init without --title yields a schema-valid graph with a deterministic default title; --title still overrides"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-010/evidence/NODE-047/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-048",
+      "title": "Auto-create store at default path on first mutation",
+      "type": "implementation",
+      "track": "TRK-first-run-friction",
+      "requirement_ids": [
+        "REQ-041"
+      ],
+      "depends_on": [
+        "NODE-047"
+      ],
+      "status": "done",
+      "validation": {
+        "required": [
+          "node --test tests/first-mutation-autocreate.test.mjs passes: first add-* with no graph creates delivery-graph/graph.json and prints a notice; an explicit --graph at a missing path still fails loudly"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-010/evidence/NODE-048/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-049",
+      "title": "Single npx setup bootstrap (CLI + skills) cross-platform",
+      "type": "implementation",
+      "track": "TRK-first-run-friction",
+      "requirement_ids": [
+        "REQ-042"
+      ],
+      "depends_on": [
+        "NODE-048"
+      ],
+      "status": "done",
+      "validation": {
+        "required": [
+          "node --test tests/setup-bootstrap.test.mjs passes: setup installs skills for selected harness reusing installSkills and prints install-first guidance when a harness is absent rather than half-configuring"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-010/evidence/NODE-049/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-050",
+      "title": "Add optional demand summary field with --summary CLI capture",
+      "type": "implementation",
+      "track": "TRK-scannable-output-rendering",
+      "requirement_ids": [
+        "REQ-050"
+      ],
+      "depends_on": [],
+      "status": "done",
+      "validation": {
+        "required": [
+          "graph-authoring test proves add-demand --summary then edit-demand --summary round-trips the value",
+          "validation test proves assertValidGraph accepts a demand with no summary and existing summary-less demands still pass",
+          "unit test proves a summary-less demand round-trips as undefined not empty string (never through requireText)"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-013/evidence/NODE-050/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-051",
+      "title": "Add shared renderNextSteps helper in output.mjs (glyph-aware, ASCII-safe)",
+      "type": "implementation",
+      "track": "TRK-scannable-output-rendering",
+      "requirement_ids": [
+        "REQ-052"
+      ],
+      "depends_on": [],
+      "status": "done",
+      "validation": {
+        "required": [
+          "output test proves renderNextSteps emits one Next section with the given items in emoji mode",
+          "output test proves renderNextSteps renders the ASCII fallback with no raw emoji when ascii option is set"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-013/evidence/NODE-051/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-052",
+      "title": "Wire bold TL;DR lead + Next block + status headline into all renderers",
+      "type": "implementation",
+      "track": "TRK-scannable-output-rendering",
+      "requirement_ids": [
+        "REQ-051",
+        "REQ-053",
+        "REQ-055"
+      ],
+      "depends_on": [
+        "NODE-050",
+        "NODE-051"
+      ],
+      "status": "done",
+      "validation": {
+        "required": [
+          "show-renderer test proves renderDemandView leads with the bold summary when set and with the outcome first sentence when absent",
+          "brief-renderer test proves renderGraphBrief emits the bold lead and ends with exactly one Next section",
+          "status-renderer test proves renderStatus emits the bold done-total ready blocked headline in the mixed and all-done states",
+          "renderer tests prove demand brief graph brief status board done block and review report each end with exactly one Next section",
+          "per-renderer tests prove the empty state the ASCII state and a demand-scoped count case with no cross-demand leakage"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-013/evidence/NODE-052/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-053",
+      "title": "Add cross-renderer guard test enforcing the shared skeleton on every surface",
+      "type": "test",
+      "track": "TRK-scannable-output-rendering",
+      "requirement_ids": [
+        "REQ-054"
+      ],
+      "depends_on": [
+        "NODE-052"
+      ],
+      "status": "done",
+      "validation": {
+        "required": [
+          "guard test iterates every surface (demand brief graph brief status board done block review report setup output) and asserts a bold lead and exactly one Next on each",
+          "guard test runs in both emoji and ASCII modes",
+          "a deliberately broken renderer makes the guard fail (demonstrated in this node evidence)"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-013/evidence/NODE-053/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-054",
+      "title": "Bring LLM-narrated surfaces to the skeleton via SKILL prose in both mirrors",
+      "type": "docs",
+      "track": "TRK-scannable-output-rendering",
+      "requirement_ids": [
+        "REQ-056"
+      ],
+      "depends_on": [
+        "NODE-052"
+      ],
+      "status": "done",
+      "validation": {
+        "required": [
+          "skill-sync test proves skills/ and .claude/skills/ stay byte-identical after the edits",
+          "behavior-level test proves dge-deliver and dge-execute-graph require synthesis-first plus a Next block in the final summary (not a phrase match)",
+          "behavior-level test proves dge-intake instructs capturing a one-line summary and caps outcome length and shows --summary in its CLI contract"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-013/evidence/NODE-054/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-055",
+      "title": "Add done-waived terminal status to the schema enum and state machine (review -> done-waived, no outgoing transitions)",
+      "type": "implementation",
+      "track": "TRK-waiver-engine",
+      "requirement_ids": [
+        "REQ-058"
+      ],
+      "depends_on": [],
+      "status": "done",
+      "validation": {
+        "required": [
+          "npm test -- tests/graph-engine.test.mjs asserts done-waived is in NODE_STATUSES, reachable from review, and terminal",
+          "npm test asserts the existing done gate is unchanged: done still requires verified plus an evidence path"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-014/evidence/NODE-055/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-056",
+      "title": "Implement the waiver transition and its four hard rejects in the engine (no-evidence, deps-done, non-empty reason; reject blocked/incomplete-deps/evidence-present/blank)",
+      "type": "implementation",
+      "track": "TRK-waiver-engine",
+      "requirement_ids": [
+        "REQ-057",
+        "REQ-059"
+      ],
+      "depends_on": [
+        "NODE-055"
+      ],
+      "status": "done",
+      "validation": {
+        "required": [
+          "npm test asserts a review node with no evidence and done deps + reason transitions to done-waived and the reason persists in graph.json",
+          "npm test asserts each of the four rejection cases (blocked, incomplete deps, any evidence present, blank reason) throws/exits non-zero"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-014/evidence/NODE-056/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-057",
+      "title": "Make done-waived count as complete for dependency readiness so it unblocks dependents exactly like done",
+      "type": "implementation",
+      "track": "TRK-waiver-engine",
+      "requirement_ids": [
+        "REQ-060"
+      ],
+      "depends_on": [
+        "NODE-055"
+      ],
+      "status": "done",
+      "validation": {
+        "required": [
+          "npm test asserts a node depending only on a done-waived node becomes ready"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-014/evidence/NODE-057/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-058",
+      "title": "Wire dge done --waive <reason> in the CLI: all enforcement delegates to the engine so a raw CLI call is governed identically; emit a scannable summary",
+      "type": "implementation",
+      "track": "TRK-waiver-engine",
+      "requirement_ids": [
+        "REQ-057",
+        "REQ-061"
+      ],
+      "depends_on": [
+        "NODE-056"
+      ],
+      "status": "done",
+      "validation": {
+        "required": [
+          "npm test -- tests/dge-waive-cli.test.mjs passes: dge done --waive drives the engine transition and rejects blank reason, non-review status, and existing-evidence guardrails via exit code, with no skill involved"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-014/evidence/NODE-058/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-059",
+      "title": "Render done-waived distinctly in status and show: count separate from done, glyph via glyph(), reason visible per node",
+      "type": "implementation",
+      "track": "TRK-waiver-engine",
+      "requirement_ids": [
+        "REQ-062"
+      ],
+      "depends_on": [
+        "NODE-056",
+        "NODE-058"
+      ],
+      "status": "ready",
+      "validation": {
+        "required": [
+          "npm test asserts status shows a done-waived count separate from done and the reason appears in the per-node/show view",
+          "npm test -- tests/cross-renderer-skeleton.test.mjs still passes: the new glyph routes through glyph(name, options), no hardcoded emoji in ASCII mode"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-014/evidence/NODE-059/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-060",
+      "title": "End-to-end waiver proof: a no-evidence node reaches done-waived via CLI and unblocks a dependent; regression proves regular done still requires verified+evidence",
+      "type": "test",
+      "track": "TRK-waiver-validation",
+      "requirement_ids": [
+        "REQ-057",
+        "REQ-058",
+        "REQ-059",
+        "REQ-060",
+        "REQ-061",
+        "REQ-062"
+      ],
+      "depends_on": [
+        "NODE-057",
+        "NODE-059"
+      ],
+      "status": "ready",
+      "validation": {
+        "required": [
+          "npm test runs a scripted flow: waive a no-evidence node to done-waived, confirm a dependent becomes ready, confirm status counts it separately with its reason",
+          "npm test regression asserts an un-waived node with missing/failing evidence still cannot reach regular done"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-014/evidence/NODE-060/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-061",
+      "title": "Reference shared output convention in all 10 dge-* skills",
+      "type": "implementation",
+      "track": "TRK-skill-output-convention",
+      "requirement_ids": [
+        "REQ-063"
+      ],
+      "depends_on": [],
+      "status": "done",
+      "validation": {
+        "required": [
+          "npm test passes including skill-cli-contract.test.mjs convention-coverage tests for all 10 skills"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-015/evidence/NODE-061/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-062",
+      "title": "Generate the stable offline viewer artifact and design link",
+      "type": "implementation",
+      "track": "TRK-graph-viewer-implementation",
+      "requirement_ids": [
+        "REQ-064"
+      ],
+      "depends_on": [],
+      "status": "done",
+      "validation": {
+        "required": [
+          "npm test -- tests/viewer-generator.test.mjs tests/viewer-cli-integration.test.mjs"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-016/evidence/NODE-062/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-063",
+      "title": "Build the three-panel demand workspace and left-to-right DAG",
+      "type": "implementation",
+      "track": "TRK-graph-viewer-implementation",
+      "requirement_ids": [
+        "REQ-065"
+      ],
+      "depends_on": [
+        "NODE-062"
+      ],
+      "status": "done",
+      "validation": {
+        "required": [
+          "npm test -- tests/viewer-renderer.test.mjs tests/viewer-layout.test.mjs"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-016/evidence/NODE-063/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-064",
+      "title": "Render truthful task cards and the complete validation inspector",
+      "type": "implementation",
+      "track": "TRK-graph-viewer-implementation",
+      "requirement_ids": [
+        "REQ-066",
+        "REQ-067"
+      ],
+      "depends_on": [
+        "NODE-063"
+      ],
+      "status": "done",
+      "validation": {
+        "required": [
+          "npm test -- tests/viewer-truth-states.test.mjs tests/viewer-inspector.test.mjs"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-016/evidence/NODE-064/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-065",
+      "title": "Add offline refresh and graph navigation with state preservation",
+      "type": "implementation",
+      "track": "TRK-graph-viewer-implementation",
+      "requirement_ids": [
+        "REQ-068",
+        "REQ-069"
+      ],
+      "depends_on": [
+        "NODE-064"
+      ],
+      "status": "done",
+      "validation": {
+        "required": [
+          "npm test -- tests/viewer-offline-refresh.test.mjs tests/viewer-interactions.test.mjs"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-016/evidence/NODE-065/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-066",
+      "title": "Polish dark and light desktop themes and accessibility",
+      "type": "implementation",
+      "track": "TRK-graph-viewer-implementation",
+      "requirement_ids": [
+        "REQ-070"
+      ],
+      "depends_on": [
+        "NODE-065"
+      ],
+      "status": "done",
+      "validation": {
+        "required": [
+          "npm test -- tests/viewer-accessibility.test.mjs",
+          "Visual review confirms no overlap or clipping at 1280x800 and 1440x900 and 1920x1080 in both themes"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-016/evidence/NODE-066/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-067",
+      "title": "Prove the viewer end to end across all graph and uncertainty states",
+      "type": "test",
+      "track": "TRK-graph-viewer-validation",
+      "requirement_ids": [
+        "REQ-064",
+        "REQ-065",
+        "REQ-066",
+        "REQ-067",
+        "REQ-068",
+        "REQ-069",
+        "REQ-070"
+      ],
+      "depends_on": [
+        "NODE-065",
+        "NODE-066"
+      ],
+      "status": "done",
+      "validation": {
+        "required": [
+          "npm run check",
+          "Offline browser evidence covers empty and design-only and active and blocked and failed and ambiguous and completed fixtures",
+          "Reviewed screenshots prove the final viewer is visually polished in dark and light themes"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-016/evidence/NODE-067/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-068",
+      "title": "Make inspector visibility a validated selection state",
+      "type": "implementation",
+      "track": "TRK-graph-viewer-implementation",
+      "requirement_ids": [
+        "REQ-071",
+        "REQ-072"
+      ],
+      "depends_on": [],
+      "status": "blocked",
+      "validation": {
+        "required": [
+          "npm test -- tests/viewer-interactions.test.mjs tests/viewer-inspector.test.mjs",
+          "Fixtures prove initial hidden state plus node toggle plus empty-canvas deselection plus demand switching plus valid restoration plus stale-state rejection"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-017/evidence/NODE-068/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-069",
+      "title": "Add adaptive two-to-three-panel layout and refit motion",
+      "type": "implementation",
+      "track": "TRK-graph-viewer-implementation",
+      "requirement_ids": [
+        "REQ-073",
+        "REQ-075"
+      ],
+      "depends_on": [
+        "NODE-068"
+      ],
+      "status": "ready",
+      "validation": {
+        "required": [
+          "npm test -- tests/viewer-layout.test.mjs tests/viewer-accessibility.test.mjs",
+          "DOM assertions prove hidden inspector space is reclaimed and visible inspector space never overlays the graph",
+          "Reduced-motion assertions prove transitions are disabled and graph refitting follows visibility changes"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-017/evidence/NODE-069/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-070",
+      "title": "Add accessible inspector dismissal and focus restoration",
+      "type": "implementation",
+      "track": "TRK-graph-viewer-implementation",
+      "requirement_ids": [
+        "REQ-071",
+        "REQ-074"
+      ],
+      "depends_on": [
+        "NODE-068"
+      ],
+      "status": "ready",
+      "validation": {
+        "required": [
+          "npm test -- tests/viewer-interactions.test.mjs tests/viewer-accessibility.test.mjs",
+          "Keyboard tests prove Close inspector and Escape hide the inspector and return focus to the previously selected work node",
+          "Accessibility assertions prove a hidden inspector is absent from the accessibility tree"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-017/evidence/NODE-070/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-071",
+      "title": "Prove contextual inspector behavior across interactions and desktop layouts",
+      "type": "test",
+      "track": "TRK-graph-viewer-validation",
+      "requirement_ids": [
+        "REQ-071",
+        "REQ-072",
+        "REQ-073",
+        "REQ-074",
+        "REQ-075"
+      ],
+      "depends_on": [
+        "NODE-069",
+        "NODE-070"
+      ],
+      "status": "ready",
+      "validation": {
+        "required": [
+          "npm run check",
+          "Offline browser evidence covers every approved deselection path plus valid restoration plus stale-state rejection",
+          "Reviewed screenshots prove two-panel and three-panel layouts at 1280x800 and 1440x900 and 1920x1080 in dark and light themes",
+          "Reduced-motion browser evidence proves opening and closing remains stable without animation"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-017/evidence/NODE-071/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-072",
+      "title": "Build newest-first demand projection with running metadata",
+      "type": "implementation",
+      "track": "TRK-graph-viewer-implementation",
+      "requirement_ids": [
+        "REQ-076",
+        "REQ-077"
+      ],
+      "depends_on": [],
+      "status": "done",
+      "validation": {
+        "required": [
+          "npm test -- tests/viewer-demand-ordering.test.mjs tests/viewer-accessibility.test.mjs",
+          "Executable fixtures prove numeric descending order plus in_progress and review derivation plus exclusion of ready and blocked and completed states",
+          "Static and enhanced demand rendering consume the same ordered projection"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-018/evidence/NODE-072/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-073",
+      "title": "Add running-aware default selection and selected-demand reveal",
+      "type": "implementation",
+      "track": "TRK-graph-viewer-implementation",
+      "requirement_ids": [
+        "REQ-078",
+        "REQ-079"
+      ],
+      "depends_on": [
+        "NODE-072"
+      ],
+      "status": "done",
+      "validation": {
+        "required": [
+          "npm test -- tests/viewer-interactions.test.mjs tests/viewer-demand-ordering.test.mjs",
+          "Executable fixtures prove URL then session then newest-running then newest-demand precedence",
+          "Interaction evidence proves refresh preserves valid selection and auto-scroll reveals selection without reordering"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-018/evidence/NODE-073/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-074",
+      "title": "Polish running and selected demand states across desktop themes",
+      "type": "implementation",
+      "track": "TRK-graph-viewer-implementation",
+      "requirement_ids": [
+        "REQ-077",
+        "REQ-080"
+      ],
+      "depends_on": [
+        "NODE-072",
+        "NODE-073"
+      ],
+      "status": "blocked",
+      "validation": {
+        "required": [
+          "npm test -- tests/viewer-accessibility.test.mjs tests/viewer-layout.test.mjs",
+          "DOM assertions prove running count text and stronger selected semantics without color-only meaning",
+          "Browser review proves demand labels and running counts remain contained at all required desktop sizes in both themes"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-018/evidence/NODE-074/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-075",
+      "title": "Prove newest-first running-aware demand navigation end to end",
+      "type": "test",
+      "track": "TRK-graph-viewer-validation",
+      "requirement_ids": [
+        "REQ-076",
+        "REQ-077",
+        "REQ-078",
+        "REQ-079",
+        "REQ-080"
+      ],
+      "depends_on": [
+        "NODE-074"
+      ],
+      "status": "ready",
+      "validation": {
+        "required": [
+          "npm run check",
+          "Offline browser evidence covers descending order plus multiple running demands plus URL and session precedence plus no-running fallback plus refresh preservation",
+          "Reviewed screenshots prove running and selected states at 1280x800 and 1440x900 and 1920x1080 in dark and light themes",
+          "Browser evidence proves the selected demand auto-scrolls into view while strict descending order remains unchanged"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-018/evidence/NODE-075/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-076",
+      "title": "Replace fixed reload with offline refresh policy",
+      "type": "implementation",
+      "track": "TRK-viewer-refresh-implementation",
+      "requirement_ids": [
+        "REQ-081",
+        "REQ-082"
+      ],
+      "depends_on": [],
+      "status": "done",
+      "validation": {
+        "required": [
+          "npm test -- tests/viewer-offline-refresh.test.mjs tests/viewer-interactions.test.mjs",
+          "Executable fixtures prove every interval including Off and default 15 seconds and absence of the two-second timer.",
+          "Executable lifecycle fixtures prove hidden-tab pause and visible-tab resume while demand node viewport zoom theme and interval restore."
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-019/evidence/NODE-076/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-077",
+      "title": "Add refresh toolbar controls and observable status",
+      "type": "implementation",
+      "track": "TRK-viewer-refresh-implementation",
+      "requirement_ids": [
+        "REQ-081",
+        "REQ-083"
+      ],
+      "depends_on": [
+        "NODE-076"
+      ],
+      "status": "done",
+      "validation": {
+        "required": [
+          "npm test -- tests/viewer-accessibility.test.mjs tests/viewer-layout.test.mjs tests/viewer-offline-refresh.test.mjs",
+          "DOM assertions prove native selector Refresh now action active interval and last successful refresh time.",
+          "Desktop browser review proves toolbar controls remain visible without overlap at all supported sizes and themes."
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-019/evidence/NODE-077/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-078",
+      "title": "Prove user-controlled offline refresh end to end",
+      "type": "test",
+      "track": "TRK-viewer-refresh-validation",
+      "requirement_ids": [
+        "REQ-081",
+        "REQ-082",
+        "REQ-083"
+      ],
+      "depends_on": [
+        "NODE-077"
+      ],
+      "status": "in_progress",
+      "validation": {
+        "required": [
+          "npm run check",
+          "Offline interaction evidence covers Off each interval default manual refresh hidden-tab pause visible resume and context preservation.",
+          "Reviewed desktop screenshots cover 1280x800 1440x900 and 1920x1080 in dark and light themes."
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-019/evidence/NODE-078/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-079",
+      "title": "dge setup signing: repo-private HMAC key foundation",
+      "type": "implementation",
+      "track": "TRK-seal-track-1",
+      "requirement_ids": [
+        "REQ-084"
+      ],
+      "depends_on": [],
+      "status": "done",
+      "validation": {
+        "required": [
+          "Test asserts .dge/signing.key exists with 600 perms and is untracked by git after setup signing",
+          "Test asserts setup signing exits non-zero when .gitignore lacks a .dge/ entry"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-020/evidence/NODE-079/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-080",
+      "title": "HMAC seal: mint via seal-contract + tamper-evident verifyNode gate",
+      "type": "implementation",
+      "track": "TRK-seal-track-1",
+      "requirement_ids": [
+        "REQ-085"
+      ],
+      "depends_on": [
+        "NODE-079"
+      ],
+      "status": "done",
+      "validation": {
+        "required": [
+          "Red-team test: weaken a sealed node's validation.required then assert verifyNode refuses on broken seal BEFORE the evidence-completeness check",
+          "Test asserts altering a traced requirement's acceptance prose (required intact) also breaks the seal",
+          "Test asserts a meaning-preserving re-save (key reorder or whitespace) does NOT break the seal"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-020/evidence/NODE-080/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-081",
+      "title": "seal-contract action: human-only, TTY-gated, hand-stamp impossible (Track 1 proof gate)",
+      "type": "test",
+      "track": "TRK-seal-track-1",
+      "requirement_ids": [
+        "REQ-086"
+      ],
+      "depends_on": [
+        "NODE-080"
+      ],
+      "status": "done",
+      "validation": {
+        "required": [
+          "Test asserts seal-contract exits without sealing when stdin is not a TTY (headless agent simulation)",
+          "Test asserts a forged seal computed without .dge/signing.key is rejected by verifyNode",
+          "Test asserts re-sealing requires explicit --reseal and records fresh sealed_by and sealed_at"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-020/evidence/NODE-081/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-082",
+      "title": "Cross-family refutation for high-risk nodes (fail-closed)",
+      "type": "implementation",
+      "track": "TRK-cross-family-verification-track-2",
+      "requirement_ids": [
+        "REQ-087"
+      ],
+      "depends_on": [
+        "NODE-081"
+      ],
+      "status": "done",
+      "validation": {
+        "required": [
+          "Test asserts a high-risk node verified only by the same model family is blocked with a cross-family-required error",
+          "Test asserts verify escalates with an honest error and never self-certifies when no cross-family verifier is configured",
+          "Fixtured REFUTED transcript drives a hermetic CI test asserting a planted fail-open bug is caught despite green evidence",
+          "One live cross-family REFUTED run is captured as a durable proof receipt under docs/proof/"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-020/evidence/NODE-082/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-083",
+      "title": "Holdout acceptance criteria in a separate sealed store",
+      "type": "implementation",
+      "track": "TRK-holdout-criteria-track-3",
+      "requirement_ids": [
+        "REQ-088"
+      ],
+      "depends_on": [
+        "NODE-081"
+      ],
+      "status": "done",
+      "validation": {
+        "required": [
+          "Overfit-detection test asserts a build passing all builder-visible criteria but failing a holdout criterion is refused at verify",
+          "Test asserts holdout criteria text never appears in graph.json only the holdout_digest reference does",
+          "Test asserts a node with no holdout criteria reports holdout none rather than an empty pass"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-020/evidence/NODE-083/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-084",
+      "title": "Produce and pin the DGE-to-OKF v0.2 concept mapping doc",
+      "type": "research",
+      "track": "TRK-research",
+      "requirement_ids": [
+        "REQ-089"
+      ],
+      "depends_on": [],
+      "status": "done",
+      "validation": {
+        "required": [
+          "committed mapping doc pins OKF v0.2 at commit 3fcbb9f and covers all 13 durable concepts (Intent Spec Task Dependency Capability Policy Allocation Observation AdaptationProposal GateEvaluation Evidence Provenance Result PerformanceAggregate)",
+          "each concept carries exactly one classification (native-OKF / DGE-extension / runtime-only / human-projection) and every native mapping cites the OKF SPEC section it uses"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-021/evidence/NODE-084/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-085",
+      "title": "Record the architecture decision (canonical state / OKF extension namespace / compatibility / learning boundary)",
+      "type": "research",
+      "track": "TRK-research",
+      "requirement_ids": [
+        "REQ-090"
+      ],
+      "depends_on": [
+        "NODE-084"
+      ],
+      "status": "done",
+      "validation": {
+        "required": [
+          "committed ADR states graph.json stays canonical the OKF bundle is a projection the DGE extension namespace is versioned and legacy reads never rewrite",
+          "the ADR resolves the graph.json-canonical-entry vs OKF-packaging tension explicitly"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-021/evidence/NODE-085/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-086",
+      "title": "Add OKF-aligned domain types and a YAML-frontmatter concept serializer",
+      "type": "implementation",
+      "track": "TRK-implementation",
+      "requirement_ids": [
+        "REQ-091"
+      ],
+      "depends_on": [
+        "NODE-085"
+      ],
+      "status": "done",
+      "validation": {
+        "required": [
+          "npm test proves a concept round-trips through the frontmatter serializer with type required and unknown keys preserved",
+          "npm test proves all DGE-specific fields serialize only under a single versioned namespaced extension key and never as native OKF keys"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-021/evidence/NODE-086/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-087",
+      "title": "Implement the OKF v0.2 bundle generator as a projection of graph.json",
+      "type": "implementation",
+      "track": "TRK-implementation",
+      "requirement_ids": [
+        "REQ-091"
+      ],
+      "depends_on": [
+        "NODE-086"
+      ],
+      "status": "done",
+      "validation": {
+        "required": [
+          "npm test proves the generator emits concept markdown files a root index.md carrying okf_version 0.2 and maps each validation contract to an Attested Computation concept with executor.receipt and attester",
+          "npm test proves graph.json is the only canonical writer and the generator never writes back to graph.json"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-021/evidence/NODE-087/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-088",
+      "title": "Add the compatibility reader and lossless graph.json to OKF bundle round-trip",
+      "type": "implementation",
+      "track": "TRK-implementation",
+      "requirement_ids": [
+        "REQ-092"
+      ],
+      "depends_on": [
+        "NODE-087"
+      ],
+      "status": "done",
+      "validation": {
+        "required": [
+          "npm test round-trip over golden legacy and new-format fixtures proves no task dependency validation contract evidence reference or state is lost and every identifier stays stable",
+          "the existing full test suite remains green"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-021/evidence/NODE-088/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-089",
+      "title": "Add OKF v0.2 conformance validation for the emitted bundle",
+      "type": "implementation",
+      "track": "TRK-implementation",
+      "requirement_ids": [
+        "REQ-094"
+      ],
+      "depends_on": [
+        "NODE-087"
+      ],
+      "status": "done",
+      "validation": {
+        "required": [
+          "npm test proves the validator confirms every non-reserved md file has parseable frontmatter with a non-empty type and the root index.md carries okf_version",
+          "npm test proves a conformant bundle passes and a deliberately malformed bundle fails with a clear error"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-021/evidence/NODE-089/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-090",
+      "title": "Extend dge migrate with a read-only OKF bundle preview and an explicit confirmed write",
+      "type": "implementation",
+      "track": "TRK-implementation",
+      "requirement_ids": [
+        "REQ-093"
+      ],
+      "depends_on": [
+        "NODE-088"
+      ],
+      "status": "done",
+      "validation": {
+        "required": [
+          "npm test proves the preview emits a semantic diff and leaves graph.json byte-identical on disk (no-rewrite regression)",
+          "npm test proves only an explicit confirmed invocation writes the bundle"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-021/evidence/NODE-090/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-091",
+      "title": "End-to-end M1+M2 proof: all four Prove-gate evidence types green together",
+      "type": "test",
+      "track": "TRK-validation-3",
+      "requirement_ids": [
+        "REQ-089",
+        "REQ-090",
+        "REQ-091",
+        "REQ-092",
+        "REQ-093",
+        "REQ-094"
+      ],
+      "depends_on": [
+        "NODE-090"
+      ],
+      "status": "done",
+      "validation": {
+        "required": [
+          "npm run check passes with the full suite green including round-trip conformance and no-rewrite tests",
+          "all four gate artifacts are captured as evidence: the committed mapping doc plus ADR plus a passing OKF conformance run plus a passing round-trip run plus the byte-stable no-rewrite proof"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-021/evidence/NODE-091/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    }
+  ]
+}
