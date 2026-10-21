@@ -68,6 +68,38 @@ path — not even a "quiet" or automated one — that reaches `done` without pro
 > [roadmap](ROADMAP.md) — local concurrency and risk-based verifier-policy substrates exist today;
 > production control-plane wiring, isolated worktrees, and durable run history make it fully real.
 
+## Governed adaptive & autonomous (the control plane)
+
+On top of the evidence-gated graph, DGE ships a **governed adaptive control plane** and an
+**autonomous-systems** layer. Every added increment of autonomy is paid for with an increment of
+governance and verification, so the system can reorganize itself *while remaining observable,
+evaluable, and constrained*.
+
+- **Adaptive allocation.** For each ready node the governor picks a model by **risk + proven
+  history**, filters ineligible candidates *before* cost (an ineligible-cheap option never wins),
+  treats unknown cost/latency/reliability as **unknown, never zero**, and records a rationale — no
+  single unexplained score. `dge govern` runs this read-only over a real `graph.json`.
+- **Policy-bounded authority.** Seven gates (Intent · Spec · Allocation · Mutation · Task-Prove ·
+  Demand-Prove · Learning) govern every meaningful transition. An agent can **never grant itself
+  authority** — a non-human permission expansion is *rejected*, not merely deferred; only a human
+  can escalate one. A Result is blocked unless the original Intent is achieved (not merely
+  all-tasks-done).
+- **Self-reorganizing organizations.** From a **bare goal**, `dge orchestrate "<goal>"` decomposes
+  subgoals, discovers capabilities, **synthesizes its own agents** (least-privilege permissions,
+  granted by policy) and a topology **derived** from the goal — then replaces an underperforming
+  agent through the mutation gate, versioned and reversible, rolling back on regression.
+- **Evaluation & learning loop.** A reorganization is kept only if it **measurably beats** the org
+  it replaced on **held-out** work (a counterfactual A/B — the system does not grade its own
+  homework). Only **proven, sanitized** outcomes are admitted to an organization-wide store; the
+  next run reads them. Raw prompts/source/secrets/evidence content are excluded by default.
+
+The governance/autonomy engine runs **alongside** the classic execute loop (it does not replace
+it), is **deterministic and offline** in tests (a real harness executor is pluggable; CI uses a
+fake — no paid models in tests), and is proven end-to-end. See
+[`docs/proof/governed-adaptive-m3-m8.md`](docs/proof/governed-adaptive-m3-m8.md),
+[`docs/proof/stage6-autonomous-systems.md`](docs/proof/stage6-autonomous-systems.md), and
+[`docs/proof/stage6.5-evaluation-learning-loop.md`](docs/proof/stage6.5-evaluation-learning-loop.md).
+
 ## 60-second quickstart
 
 Add DGE to any repo and drive one node from demand to evidence-gated `done`. Runs **fully
@@ -488,6 +520,31 @@ Run it from your harness:
 </details>
 
 <details>
+<summary><strong>Governed adaptive control plane & autonomous orchestration</strong></summary>
+
+Both commands are **read-only** over `graph.json` (planning decisions, not mutations) and run a
+deterministic offline governor — a real harness executor is pluggable via config.
+
+```bash
+# Adaptive governor: for each ready node, pick a model by risk + proven history, gate it,
+# and print the plan + a governance report. Candidates/policy come from an explicit --config.
+npx dge govern DEM-001 --config governance.json
+npx dge govern --json                      # full report: allocations, expectations, gate verdicts
+
+# Autonomous orchestration (Stage 6): from a BARE GOAL the system builds and self-reorganizes
+# its own agent organization, then reports what it decided and did.
+npx dge orchestrate "Reduce cloud cost by 20% without degrading reliability" --config org.json
+npx dge orchestrate "<goal>" --json        # full org, reorg ledger, and governance report
+```
+
+`--config` is loaded only from an **explicit path** (never a home-directory default). For
+`orchestrate` it supplies the capability registry, candidate models, and — in tests — a
+deterministic `quality` map that stands in for a live executor. A missing capability surfaces as a
+**gap** (no fake org is built); an unproven run **admits nothing** to organization learning.
+
+</details>
+
+<details>
 <summary><strong>Downstream battle test (proving DGE from a consuming repo)</strong></summary>
 
 DGE should be proven from a real consuming repository, not by creating all runtime artifacts inside
@@ -606,7 +663,9 @@ This repository contains the plugin source and shared contracts:
 ├── schemas/                   # Graph schemas and validation contracts
 ├── scripts/                   # Local validation and status tooling
 ├── src/                       # Core graph engine and renderers
-├── tests/                     # Engine tests
+│   ├── governance/            # Governed adaptive control plane (policy, 7 gates, allocation, org store)
+│   └── autonomy/              # Autonomous systems (goal → self-built agent org, learning, A/B eval)
+├── tests/                     # Engine tests (incl. governance/ and autonomy/ suites)
 └── skills/                    # Multi-harness skill definitions
 ```
 

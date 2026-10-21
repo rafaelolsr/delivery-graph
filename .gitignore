@@ -18,3 +18,5 @@ architecture-report.html
 architecture-report.pt-br.html
 demands-010-012-report.html
 
+# DGE evidence-gate signing key (DEM-020) — the HMAC root of trust never enters git
+.dge/

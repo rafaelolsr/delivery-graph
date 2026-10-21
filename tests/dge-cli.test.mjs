@@ -78,7 +78,7 @@ test("CLI status --demand scopes the board and progress line to one demand", () 
   const scoped = run("status", "--graph", graphPath, "--demand", "DEM-001");
   assert.match(scoped, /Node one/);
   assert.doesNotMatch(scoped, /Node two/);
-  assert.match(scoped, /Design ✅ → Plan ✅ → Execute 🟡 \(0\/1\) → Verify ⚪ → Done ⚪/);
+  assert.match(scoped, /Intent ✅ → Spec ✅ → Build 🟡 \(0\/1\) → Prove ⚪ → Result ⚪/);
 
   const unscoped = run("status", "--graph", graphPath);
   assert.match(unscoped, /Node one/);

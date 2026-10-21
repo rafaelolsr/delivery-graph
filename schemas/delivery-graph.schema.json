@@ -20,7 +20,18 @@
         "source": { "type": "string" },
         "created_at": { "type": "string" },
         "updated_at": { "type": "string" },
-        "rev": { "type": "integer", "minimum": 0 }
+        "rev": { "type": "integer", "minimum": 0 },
+        "settings": {
+          "type": "object",
+          "description": "Graph-wide policy toggles. Opt-in so existing graphs keep their behavior.",
+          "properties": {
+            "require_seal": {
+              "type": "boolean",
+              "description": "DEM-020: when true, verifyNode requires an intact HMAC seal on a node's validation contract before considering evidence. Default off.",
+              "default": false
+            }
+          }
+        }
       }
     },
     "demands": {
@@ -180,6 +191,23 @@
             "evidence_path": {
               "type": "string",
               "pattern": "^delivery-graph/demands/DEM-[0-9]{3,}/evidence/NODE-[0-9]{3,}/$"
+            },
+            "seal": {
+              "type": "object",
+              "description": "DEM-020: HMAC seal over the canonical contract bytes (validation.required + traced requirements' acceptance) at the moment a human approved the node. A mismatch means the contract was edited after sealing.",
+              "required": ["digest", "algo"],
+              "additionalProperties": false,
+              "properties": {
+                "digest": { "type": "string", "minLength": 1 },
+                "algo": { "type": "string", "enum": ["sha256-hmac"] },
+                "sealed_at": { "type": "string" },
+                "sealed_by": { "type": "string" }
+              }
+            },
+            "holdout_digest": {
+              "type": "string",
+              "description": "DEM-020 Track 3: HMAC digest pointer to the node's sealed holdout criteria in delivery-graph/holdout/NODE-###.json. The criteria TEXT never appears in graph.json — only this pointer — so a builder cannot overfit to criteria it never saw.",
+              "minLength": 1
             }
           }
         },

@@ -65,26 +65,34 @@ test("standard-risk verification may reuse the harness but never the run", () =>
   );
 });
 
+// DEM-020 Track 2: high-risk now requires a cross-FAMILY verifier, not merely a
+// different harness. Same-family (or unconfigured families) fails closed.
+const FAMILIES = { claude: "anthropic", copilot: "openai" };
+
 test("high-risk verification fails closed without another harness", () => {
   assert.throws(
     () =>
       planIndependentVerification({
         node: releaseNode,
         builder,
-        availableHarnesses: ["claude"]
+        availableHarnesses: ["claude"],
+        policy: { harnessFamilies: FAMILIES }
       }),
-    /requires a verifier harness different/
+    /requires a cross-family verifier/
   );
 });
 
-test("high-risk verification selects a different harness", () => {
+test("high-risk verification selects a cross-family harness", () => {
   const plan = planIndependentVerification({
     node: releaseNode,
     builder,
-    availableHarnesses: ["claude", "copilot"]
+    availableHarnesses: ["claude", "copilot"],
+    policy: { harnessFamilies: FAMILIES }
   });
   assert.equal(plan.risk, VERIFICATION_RISKS.HIGH);
   assert.equal(plan.verifier.harness, "copilot");
+  assert.equal(plan.verifier.cross_family, true);
+  assert.equal(plan.stance, "refute");
 });
 
 test("verifier context contains only node, contract, diff, and evidence", () => {

@@ -2,6 +2,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { assertValidGraph, isNodeComplete, writeFileAtomic } from "./graph-engine.mjs";
 import { resolveRuntimePath } from "./path-utils.mjs";
+import { checkSeal } from "./seal.mjs";
+import { holdoutStatus } from "./holdout.mjs";
 
 export function evidenceManifestPath(graphPath, node) {
   return path.join(resolveRuntimePath(graphPath, node.validation.evidence_path), "evidence.json");
@@ -199,6 +201,14 @@ export function writeCommandAttemptArtifact(graphPath, graph, nodeId, input) {
   return { artifact: `artifacts/${artifactFileName}`, artifactPath };
 }
 
+// The set of evidence keys with a passing item and NO unresolved ambiguous item —
+// the same rule getEvidenceStatus uses, but unfiltered by validation.required so
+// holdout keys (deliberately absent from `required`) can be evaluated too.
+function passingEvidenceKeys(items = []) {
+  const ambiguous = new Set(items.filter((item) => item.result === "ambiguous").map((item) => item.satisfies));
+  return [...new Set(items.filter(isPassing).map((item) => item.satisfies))].filter((key) => !ambiguous.has(key));
+}
+
 export function getEvidenceStatus(graphPath, graph, node) {
   const manifest = readEvidenceManifest(graphPath, node);
 
@@ -234,10 +244,43 @@ export function getAllEvidenceStatuses(graphPath, graph) {
 export function verifyNode(graphPath, graph, nodeId, options = {}) {
   assertValidGraph(graph);
   const node = findNode(graph, nodeId);
+
+  // Seal gate (DEM-020 Track 1 / NODE-080): when the graph opts into seal
+  // enforcement, a node's validation contract must carry an intact HMAC seal
+  // BEFORE any evidence is considered. This is fail-closed — a missing, broken,
+  // or uncheckable seal blocks verification, so an agent that weakened its own
+  // contract cannot reach `verified` no matter how green the evidence is. When
+  // require_seal is off (the default) verifyNode behaves exactly as before.
+  if (graph.graph?.settings?.require_seal) {
+    const sealCheck = checkSeal(graph, node, { repoRoot: options.repoRoot });
+    if (!sealCheck.ok) {
+      throw new Error(
+        `${node.id} cannot be verified: validation contract seal ${sealCheck.reason} (${sealCheck.detail}); re-seal with \`dge seal-contract ${node.id}\``
+      );
+    }
+  }
+
   const evidenceStatus = getEvidenceStatus(graphPath, graph, node);
 
   if (!evidenceStatus.complete) {
     throw new Error(`${node.id} is missing validation evidence: ${evidenceStatus.missing.join(", ")}`);
+  }
+
+  // Holdout gate (DEM-020 Track 3 / NODE-083): criteria the builder never saw.
+  // Their text lives in a separate sealed store; only the verifier reads it. A
+  // build that satisfied every builder-visible criterion but not a holdout one is
+  // refused here. A node with no holdout is an EXPLICIT `none`, never a silent pass.
+  //
+  // Holdout keys deliberately are NOT in validation.required (that is how they stay
+  // hidden from the builder), so we cannot use evidenceStatus.satisfied (which is
+  // filtered to `required`). Instead we derive the raw set of passing evidence keys
+  // with the same ambiguous-key rule the evidence gate uses, so a holdout key with
+  // an unresolved ambiguous item does not count as satisfied.
+  const holdoutSatisfied = passingEvidenceKeys(evidenceStatus.items);
+  const holdout = holdoutStatus(graphPath, node, holdoutSatisfied, { repoRoot: options.repoRoot });
+  if (holdout.state === "blocked") {
+    const detail = holdout.missing.length > 0 ? `${holdout.detail}: ${holdout.missing.join(", ")}` : holdout.detail;
+    throw new Error(`${node.id} cannot be verified: holdout ${detail}`);
   }
 
   // Verification is only meaningful for a node that is actually being worked.

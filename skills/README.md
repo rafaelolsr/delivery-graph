@@ -30,19 +30,21 @@ shared with every CLI-rendered surface (DEM-013):
 This is a convention enforced by `tests/skill-cli-contract.test.mjs`, not a
 template file — each skill states it in its own words at its own output step.
 
-## Demand progress indicator (design/plan/execute/verify)
+## Demand progress indicator (Intent/Spec/Build/Prove/Result)
 
 After a mutation that touches a demand's requirements or nodes, the skill's
 final reply includes the demand's one-line lifecycle indicator — where the
-demand sits across `Design → Plan → Execute → Verify → Done` — placed between
-the synthesis line and the detail/`## Next` block.
+demand sits across `Intent → Spec → Build → Prove → Result` — placed between
+the synthesis line and the detail/`## Next` block. These labels mirror the
+agentic-engineering loop (Objetivo → Especificação → Execução → Verificação →
+Resultado); `Prove` names the evidence gate that makes done proven, not claimed.
 
 The stage is always derived, never stored: call `dge show DEM-### --json` or
 `dge status --demand DEM-### --json` (whichever the skill already calls) and
 render its `progress` field with the shared format, e.g.:
 
 ```
-Design ✅ → Plan ✅ → Execute 🟡 (3/7, 🚫1 blocked) → Verify ⚪ → Done ⚪
+Intent ✅ → Spec ✅ → Build 🟡 (3/7, 🚫1 blocked) → Prove ⚪ → Result ⚪
 ```
 
 `dge-design`, `dge-plan-graph`, `dge-work-node`, `dge-execute-graph`, and

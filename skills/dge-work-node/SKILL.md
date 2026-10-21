@@ -12,9 +12,40 @@ Use this skill to implement one ready atomic node.
 
 Execute only the selected node's scope, then produce evidence for `/dge-verify`.
 
+## Multi-node offer (run once, before any work)
+
+Before implementing, check whether the demand still has more than one ready node:
+
+```bash
+npx dge next --json   # inspect ready_count
+```
+
+- If `ready_count <= 1`, skip this section and proceed to the single-node Workflow.
+- If `ready_count > 1`, the user is facing a multi-task demand. **Do not silently
+  start one node and hand back a "Next" prompt per task.** Offer the fork exactly
+  once:
+
+  > This demand has **N ready nodes**. Do you want to:
+  > 1. **Follow along** — I implement one node, report, and stop (you drive each).
+  > 2. **Run all autonomously** — I execute the whole ready queue end to end,
+  >    evidence-gated, stopping only on failure or a genuine judgment call.
+
+  - **Follow along** → continue with the single-node Workflow below (current behavior).
+  - **Run all autonomously** → hand off to the `/dge-execute-graph` loop in **quiet
+    mode**: one compact completion line per node, re-render `npx dge status` after
+    each transition, loud only on failure/ambiguity. Do not re-implement that loop
+    here — delegate to it so the evidence and independent-verification gates stay
+    identical. Stop offering; the fork is asked at most once per invocation.
+
+This offer is a **procedure** choice (which run mode), not a judgment call, so a
+one-time question is allowed. It never decides whether an outcome is acceptable —
+both modes keep every evidence and verification gate intact.
+
 ## Core rules
 
-1. Work on exactly one node unless the user explicitly asks for a batch.
+1. Work on exactly one node unless the user chooses "run all" in the multi-node
+   offer above, or explicitly asks for a batch. In "run all", delegate to
+   `/dge-execute-graph` rather than looping here.
 2. Do not start a node whose dependencies are not complete.
 3. Keep the node's validation contract visible throughout execution.
 4. Do not mark the node done; `/dge-verify` owns completion.
@@ -64,7 +95,9 @@ Follow the shared output convention (see `skills/README.md`): lead the final
 reply with a bold one-line synthesis (e.g. "NODE-### implemented, evidence
 captured, ready for verify"), then the demand's progress indicator (see
 `skills/README.md`), then changed files, evidence paths, and remaining
-validation, then a `## Next` block: `/dge-verify NODE-###`.
+validation, then a `## Next` block: `/dge-verify NODE-###`. If ready nodes remain
+after this one, also offer `/dge-execute-graph` to finish the rest autonomously, so
+the user is never forced to re-enter a node id per task.
 
 ## Evidence format
 

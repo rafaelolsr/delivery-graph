@@ -24,6 +24,25 @@ Walk the dependency-aware ready queue, implement each ready node with `/dge-work
 7. Respect an optional `--max N` cap on how many nodes to execute per run, and a `--max-retries N` cap on transient retries per node (default 1). Always stop when the queue is dry.
 8. After implementation evidence passes, dispatch `/dge-verify` in a fresh agent context. Standard-risk nodes may reuse the builder harness in a fresh run; high-risk nodes require a different harness. A verifier failure returns the node for repair and cannot flow to `done`.
 
+## Follow-along offer (symmetric to `/dge-work-node`)
+
+This skill's default is autonomous end-to-end execution. When invoked **directly** by
+the user (not by `/dge-deliver`, which has already chosen autonomy), and before the
+first node, offer the reverse fork **once**:
+
+> This will run **N ready nodes** autonomously, evidence-gated, until the queue is
+> dry. Prefer to **follow along** one node at a time instead? Say so and I'll run a
+> single `/dge-work-node` and stop.
+
+- No answer, or "run all" → proceed with the autonomous Workflow below.
+- "Follow along" → execute exactly one node with `/dge-work-node` discipline and stop,
+  leaving the rest of the queue for the next invocation.
+
+Skip this offer entirely in **quiet mode** (invoked by `/dge-deliver`) — autonomy is
+already the approved path there. Like the `/dge-work-node` offer, this is a one-time
+**procedure** choice, never a judgment gate; both modes keep every evidence and
+verification gate intact.
+
 ## Failure classification
 
 Classify every `dge done` / `dge evidence run` failure by the CLI error text before deciding whether to retry:

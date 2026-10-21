@@ -7,6 +7,7 @@
 //
 //   npx github:rafaelolsr/delivery-graph setup --harness claude [--harness copilot] [--force]
 import { runSetup, renderSetup } from "../src/setup.mjs";
+import { setupSigning, renderSigning } from "../src/signing.mjs";
 
 main();
 
@@ -14,7 +15,18 @@ function main() {
   const argv = process.argv.slice(2);
   // Drop a leading "setup" verb so both `dge-setup ...` and the package's
   // `setup` bin (`npx ... setup ...`) reach the same code.
-  const args = parseArgs(argv[0] === "setup" ? argv.slice(1) : argv);
+  const rest = argv[0] === "setup" ? argv.slice(1) : argv;
+
+  // `setup signing` (DEM-020 / NODE-079): stand up the repo-private HMAC key the
+  // evidence-gate seal is built on, gated on .gitignore already covering .dge/.
+  if (rest[0] === "signing") {
+    const signingArgs = parseArgs(rest.slice(1));
+    const signing = setupSigning({ force: Boolean(signingArgs.force) });
+    console.log(renderSigning(signing));
+    process.exit(signing.ok ? 0 : 1);
+  }
+
+  const args = parseArgs(rest);
 
   const result = runSetup({
     harnesses: toList(args.harness),

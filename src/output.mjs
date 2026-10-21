@@ -113,17 +113,22 @@ export function renderNextSteps(items, options = {}) {
   return lines.join("\n");
 }
 
+// User-facing stage labels mirror the agentic-engineering loop
+// (Objetivo → Especificação → Execução → Verificação → Resultado). The internal
+// stage tokens stay design/plan/execute/verify/done; only the display changes.
+// "Prove" (not "Verify") is deliberate — it broadcasts DGE's "done is proven, not
+// claimed" thesis on the stage that runs the evidence gate.
 const DEMAND_STAGE_LABELS = {
-  design: "Design",
-  plan: "Plan",
-  execute: "Execute",
-  verify: "Verify",
-  done: "Done"
+  design: "Intent",
+  plan: "Spec",
+  execute: "Build",
+  verify: "Prove",
+  done: "Result"
 };
 const DEMAND_STAGE_ORDER = ["design", "plan", "execute", "verify", "done"];
 
 // The one-line demand lifecycle indicator every demand-scoped surface shows:
-// `Design ✅ → Plan ✅ → Execute 🟡 (3/7, 1 in review, 🚫1 blocked) → Verify ⚪ → Done ⚪`.
+// `Intent ✅ → Spec ✅ → Build 🟡 (3/7, 1 in review, 🚫1 blocked) → Prove ⚪ → Result ⚪`.
 // `progress` is the shape returned by graph-engine's `demandProgress`. Stages
 // before the current one render done, the current one renders current (with
 // counts and blocked/in-review annotations when relevant), later ones render

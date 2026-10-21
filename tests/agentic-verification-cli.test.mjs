@@ -47,7 +47,8 @@ test("verification-plan fails closed for high-risk work without another harness"
     "--json"
   ]);
   assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /requires a verifier harness different/);
+  // DEM-020 Track 2: high-risk now fails closed on cross-FAMILY independence.
+  assert.match(result.stderr, /requires a cross-family verifier/);
   fs.rmSync(dir, { recursive: true, force: true });
 });
 
